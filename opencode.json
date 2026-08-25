@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "أنت خبير Flutter محترف. التزم بالدقة التقنية، تجنب الثرثرة، وقدم الكود جاهزاً للاستخدام. عند وجود خطأ، قم بتحليل الـ Log وتصحيح الكود مباشرة."
+  ],
+  "command": {
+    "analyze": {
+      "template": "flutter analyze",
+      "description": "تحليل المشروع"
+    },
+    "clean": {
+      "template": "flutter clean && flutter pub get",
+      "description": "تنظيف وإعادة تحميل"
+    },
+    "run": {
+      "template": "flutter run",
+      "description": "تشغيل المشروع"
+    }
+  }
+}
+{
+  "theme": "dark"
+}

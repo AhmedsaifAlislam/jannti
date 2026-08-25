@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جنتي - Splash Screen</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Amiri', serif;
+            overflow: hidden;
+            background: #071a10;
+        }
+        
+        .splash {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(180deg, #071a10 0%, #0d2818 50%, #143d24 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        /* Logo container */
+        .logo-container {
+            position: relative;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .logo-container svg {
+            filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.3));
+        }
+        
+        /* Golden particles */
+        .particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #FFD700;
+            border-radius: 50%;
+            opacity: 0;
+            animation: sparkle 3s ease-in-out infinite;
+        }
+        
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: translateY(0) scale(0); }
+            50% { opacity: 0.8; transform: translateY(-50px) scale(1); }
+        }
+        
+        /* Loading bar */
+        .loading-container {
+            position: absolute;
+            bottom: 80px;
+            width: 200px;
+        }
+        
+        .loading-bar {
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 215, 0, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .loading-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #FFD700, #FFA500);
+            border-radius: 2px;
+            animation: load 2.5s ease-in-out forwards;
+        }
+        
+        @keyframes load {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        
+        /* App name */
+        .app-name {
+            color: #FFD700;
+            font-size: 24px;
+            margin-top: 30px;
+            opacity: 0;
+            animation: fadeIn 1s ease 0.5s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .tagline {
+            color: rgba(255, 215, 0, 0.6);
+            font-size: 14px;
+            margin-top: 10px;
+            opacity: 0;
+            animation: fadeIn 1s ease 1s forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="splash">
+        <!-- Particles -->
+        <div class="particles" id="particles"></div>
+        
+        <!-- Logo -->
+        <div class="logo-container">
+            <svg width="180" height="200" viewBox="-20 -40 220 240">
+                <defs>
+                    <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#FFD700"/>
+                        <stop offset="100%" stop-color="#B8860B"/>
+                    </linearGradient>
+                    <linearGradient id="palmGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#2E7D32"/>
+                        <stop offset="100%" stop-color="#1B5E20"/>
+                    </linearGradient>
+                </defs>
+                
+                <!-- Outer gate -->
+                <path d="M30 200 L30 75 Q30 52 55 38 L100 8 L145 38 Q170 52 170 75 L170 200" 
+                      fill="none" stroke="url(#goldGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                <!-- Inner gate line -->
+                <path d="M40 200 L40 77 Q40 57 60 45 L100 18 L140 45 Q160 57 160 77 L160 200" 
+                      fill="none" stroke="url(#goldGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                
+                <!-- Palm trunk -->
+                <line x1="100" y1="195" x2="100" y2="110" stroke="#2E7D32" stroke-width="7" stroke-linecap="round"/>
+                <!-- Palm fronds -->
+                <path d="M100 115 Q85 95 48 108" fill="none" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+                <path d="M100 115 Q115 95 152 108" fill="none" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+                <path d="M100 120 Q80 102 52 118" fill="none" stroke="#66BB6A" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M100 120 Q120 102 148 118" fill="none" stroke="#66BB6A" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M100 125 Q85 110 58 128" fill="none" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+                <path d="M100 125 Q115 110 142 128" fill="none" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+                
+                <!-- Glow -->
+                <circle cx="100" cy="-2" r="20" fill="#FFD700" opacity="0.12"/>
+                
+                <!-- Crescent -->
+                <circle cx="100" cy="-2" r="14" fill="#FFD700"/>
+                <circle cx="106" cy="-5" r="11" fill="#071a10"/>
+                
+                <!-- Light rays -->
+                <line x1="100" y1="-18" x2="100" y2="-38" stroke="#FFD700" stroke-width="2.5" opacity="0.6" stroke-linecap="round"/>
+                <line x1="86" y1="-12" x2="68" y2="-35" stroke="#FFD700" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
+                <line x1="114" y1="-12" x2="132" y2="-35" stroke="#FFD700" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
+            </svg>
+        </div>
+        
+        <!-- App name -->
+        <div class="app-name">جنتي</div>
+        <div class="tagline">حيث يلتقي الذكر بالجمال</div>
+        
+        <!-- Loading bar -->
+        <div class="loading-container">
+            <div class="loading-bar">
+                <div class="loading-fill"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Create particles
+        const particles = document.getElementById('particles');
+        for (let i = 0; i < 30; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 3 + 's';
+            particle.style.animationDuration = (2 + Math.random() * 2) + 's';
+            particles.appendChild(particle);
+        }
+    </script>
+</body>
+</html>

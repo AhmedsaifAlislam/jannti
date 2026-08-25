@@ -1,0 +1,66 @@
+<div style="text-align:center; padding:20px;">
+  <h2>التصميم النهائي - مع الإضاءة</h2>
+  <p class="subtitle">أشعة أقوى + هالة مضيئة</p>
+
+  <div class="cards">
+    <div class="card selected" data-choice="exact2" onclick="toggleSelect(this)">
+      <div class="card-image" style="background:#0D1F17; padding:20px; display:flex; flex-direction:column; align-items:center; gap:15px;">
+        <svg width="200" height="220" viewBox="0 0 200 220">
+          <defs>
+            <!-- Glow filter for crescent -->
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            <!-- Bigger glow for rays -->
+            <filter id="glowBig" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          
+          <!-- Outer gate - rounded shoulders -->
+          <path d="M30 210 L30 85 Q30 65 50 50 L100 15 L150 50 Q170 65 170 85 L170 210" 
+                fill="none" stroke="#FFD700" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- Inner gate line -->
+          <path d="M42 210 L42 88 Q42 70 58 57 L100 28 L142 57 Q158 70 158 88 L158 210" 
+                fill="none" stroke="#FFD700" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          
+          <!-- Palm trunk -->
+          <line x1="100" y1="205" x2="100" y2="115" stroke="#2E7D32" stroke-width="7" stroke-linecap="round"/>
+          <!-- Palm fronds -->
+          <path d="M100 120 Q75 105 50 115" fill="none" stroke="#4CAF50" stroke-width="4" stroke-linecap="round"/>
+          <path d="M100 120 Q125 105 150 115" fill="none" stroke="#4CAF50" stroke-width="4" stroke-linecap="round"/>
+          <path d="M100 125 Q80 115 55 125" fill="none" stroke="#66BB6A" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M100 125 Q120 115 145 125" fill="none" stroke="#66BB6A" stroke-width="3.5" stroke-linecap="round"/>
+          
+          <!-- Glow behind crescent (soft yellow circle) -->
+          <circle cx="100" cy="14" r="25" fill="#FFD700" opacity="0.15" filter="url(#glow)"/>
+          
+          <!-- Crescent - with glow -->
+          <circle cx="100" cy="14" r="16" fill="#FFD700" filter="url(#glow)"/>
+          <circle cx="106" cy="11" r="13" fill="#0D1F17"/>
+          
+          <!-- 3 light rays - longer, thicker, with glow -->
+          <line x1="100" y1="-5" x2="100" y2="-30" stroke="#FFD700" stroke-width="5" opacity="0.8" stroke-linecap="round" filter="url(#glowBig)"/>
+          <line x1="82" y1="0" x2="65" y2="-25" stroke="#FFD700" stroke-width="4" opacity="0.6" stroke-linecap="round" filter="url(#glowBig)"/>
+          <line x1="118" y1="0" x2="135" y2="-25" stroke="#FFD700" stroke-width="4" opacity="0.6" stroke-linecap="round" filter="url(#glowBig)"/>
+        </svg>
+      </div>
+      <div class="card-body">
+        <h3>التصميم - مع إضاءة كاملة</h3>
+        <p>هالة مضيئة + أشعة أقوى + توهج ذهبي</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px; padding:15px; background:rgba(255,215,0,0.1); border-radius:12px; border:1px solid rgba(255,215,0,0.2);">
+    <p>قولي لو الإضاءة كده تمام أو عايزها أقوى/أضعف</p>
+  </div>
+</div>

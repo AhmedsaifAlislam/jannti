@@ -1,0 +1,96 @@
+<div style="text-align:center; padding:20px;">
+  <h2>تصميم اللوجو + السبيلاش</h2>
+  <p class="subtitle">اختار التصميم اللي يعجبك</p>
+
+  <div class="cards">
+    <!-- Design A -->
+    <div class="card" data-choice="a" onclick="toggleSelect(this)">
+      <div class="card-image" style="background:#0D1F17; padding:30px; display:flex; flex-direction:column; align-items:center; gap:15px;">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <!-- Gate -->
+          <path d="M30 95 L30 40 Q60 15 90 40 L90 95" fill="none" stroke="#FFD700" stroke-width="3"/>
+          <path d="M35 95 L35 42 Q60 20 85 42 L85 95" fill="none" stroke="#FFD700" stroke-width="1.5"/>
+          <!-- Palm -->
+          <line x1="60" y1="95" x2="60" y2="55" stroke="#2E7D32" stroke-width="3"/>
+          <path d="M60 55 Q45 45 40 50" fill="none" stroke="#4CAF50" stroke-width="2"/>
+          <path d="M60 55 Q75 45 80 50" fill="none" stroke="#4CAF50" stroke-width="2"/>
+          <path d="M60 58 Q50 50 42 55" fill="none" stroke="#66BB6A" stroke-width="1.5"/>
+          <path d="M60 58 Q70 50 78 55" fill="none" stroke="#66BB6A" stroke-width="1.5"/>
+          <!-- Crescent -->
+          <circle cx="60" cy="30" r="8" fill="#FFD700"/>
+          <circle cx="63" cy="28" r="6" fill="#0D1F17"/>
+          <!-- Light rays -->
+          <line x1="60" y1="20" x2="60" y2="10" stroke="#FFD700" stroke-width="1" opacity="0.6"/>
+          <line x1="50" y1="23" x2="45" y2="15" stroke="#FFD700" stroke-width="1" opacity="0.4"/>
+          <line x1="70" y1="23" x2="75" y2="15" stroke="#FFD700" stroke-width="1" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="card-body">
+        <h3>A - بوابة كلاسيكية</h3>
+        <p>بوابة مقوسة + نخلة + هلال + أشعة ضوء</p>
+      </div>
+    </div>
+
+    <!-- Design B -->
+    <div class="card" data-choice="b" onclick="toggleSelect(this)">
+      <div class="card-image" style="background:#0D1F17; padding:30px; display:flex; flex-direction:column; align-items:center; gap:15px;">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <!-- Double arch gate -->
+          <path d="M25 95 L25 50 Q35 35 45 50 L45 95" fill="none" stroke="#FFD700" stroke-width="2.5"/>
+          <path d="M75 95 L75 50 Q85 35 95 50 L95 95" fill="none" stroke="#FFD700" stroke-width="2.5"/>
+          <!-- Central dome -->
+          <path d="M45 50 Q60 25 75 50" fill="none" stroke="#FFD700" stroke-width="2.5"/>
+          <!-- Palm in center -->
+          <line x1="60" y1="90" x2="60" y2="58" stroke="#2E7D32" stroke-width="3"/>
+          <path d="M60 58 Q48 50 42 55" fill="none" stroke="#4CAF50" stroke-width="2"/>
+          <path d="M60 58 Q72 50 78 55" fill="none" stroke="#4CAF50" stroke-width="2"/>
+          <!-- Crescent on dome -->
+          <circle cx="60" cy="32" r="7" fill="#FFD700"/>
+          <circle cx="62.5" cy="30.5" r="5.5" fill="#0D1F17"/>
+          <!-- Star -->
+          <circle cx="55" cy="33" r="1.5" fill="#FFD700"/>
+        </svg>
+      </div>
+      <div class="card-body">
+        <h3>B - بوابة مزدوجة</h3>
+        <p>قوس مزدوج + قبة + نخلة + هلال ونجمة</p>
+      </div>
+    </div>
+
+    <!-- Design C -->
+    <div class="card" data-choice="c" onclick="toggleSelect(this)">
+      <div class="card-image" style="background:#0D1F17; padding:30px; display:flex; flex-direction:column; align-items:center; gap:15px;">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <!-- Minimalist pointed arch -->
+          <path d="M35 95 L35 50 Q60 20 85 50 L85 95" fill="none" stroke="#FFD700" stroke-width="3"/>
+          <!-- Palm fronds only (no trunk) -->
+          <path d="M60 70 Q45 55 35 60" fill="none" stroke="#4CAF50" stroke-width="2.5"/>
+          <path d="M60 70 Q75 55 85 60" fill="none" stroke="#4CAF50" stroke-width="2.5"/>
+          <path d="M60 68 Q50 58 40 63" fill="none" stroke="#66BB6A" stroke-width="2"/>
+          <path d="M60 68 Q70 58 80 63" fill="none" stroke="#66BB6A" stroke-width="2"/>
+          <!-- Crescent integrated -->
+          <circle cx="60" cy="35" r="9" fill="#FFD700"/>
+          <circle cx="63" cy="33" r="7" fill="#0D1F17"/>
+          <!-- Subtle glow -->
+          <circle cx="60" cy="35" r="14" fill="none" stroke="#FFD700" stroke-width="0.5" opacity="0.3"/>
+        </svg>
+      </div>
+      <div class="card-body">
+        <h3>C - بوابة بسيطة</h3>
+        <p>قوس حاد + أوراق نخل + هلال مضيء</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:30px; padding:20px; background:rgba(255,215,0,0.1); border-radius:12px; border:1px solid rgba(255,215,0,0.2);">
+    <h3 style="color:#FFD700; margin-bottom:10px;">السبلاش page</h3>
+    <p>كل التصميمات هتبقى على سبيلاش بسيط:</p>
+    <ul style="text-align:right; max-width:400px; margin:10px auto;">
+      <li>خلفية gradient أخضر غامق → فاتح</li>
+      <li>اللوجو في النص مع animation خفيف</li>
+      <li>جسيمات ذهبية متحركة حول اللوجو</li>
+      <li>شريط تحميل ذهبي في الأسفل</li>
+      <li>المدة: ثانيتين-تلاتة</li>
+    </ul>
+  </div>
+</div>

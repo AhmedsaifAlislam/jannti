@@ -1,0 +1,72 @@
+<div style="text-align:center; padding:20px;">
+  <h2>التصميم - إضاءة كاملة من برا وجوّا</h2>
+  <p class="subtitle">4 أشعة + هلال مضيء من الداخل</p>
+
+  <div class="cards">
+    <div class="card selected" data-choice="exact4" onclick="toggleSelect(this)">
+      <div class="card-image" style="background:#0D1F17; padding:20px; display:flex; flex-direction:column; align-items:center; gap:15px;">
+        <svg width="220" height="260" viewBox="-20 -40 240 280">
+          <defs>
+            <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="6" result="blur"/>
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            <filter id="glowSoft" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="8" result="blur"/>
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          
+          <!-- Outer gate -->
+          <path d="M30 210 L30 85 Q30 65 50 50 L100 15 L150 50 Q170 65 170 85 L170 210" 
+                fill="none" stroke="#FFD700" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- Inner gate line -->
+          <path d="M42 210 L42 88 Q42 70 58 57 L100 28 L142 57 Q158 70 158 88 L158 210" 
+                fill="none" stroke="#FFD700" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          
+          <!-- Palm trunk -->
+          <line x1="100" y1="205" x2="100" y2="115" stroke="#2E7D32" stroke-width="7" stroke-linecap="round"/>
+          <!-- Palm fronds -->
+          <path d="M100 120 Q75 105 50 115" fill="none" stroke="#4CAF50" stroke-width="4" stroke-linecap="round"/>
+          <path d="M100 120 Q125 105 150 115" fill="none" stroke="#4CAF50" stroke-width="4" stroke-linecap="round"/>
+          <path d="M100 125 Q80 115 55 125" fill="none" stroke="#66BB6A" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M100 125 Q120 115 145 125" fill="none" stroke="#66BB6A" stroke-width="3.5" stroke-linecap="round"/>
+          
+          <!-- Outer glow around crescent -->
+          <circle cx="100" cy="14" r="35" fill="#FFD700" opacity="0.1" filter="url(#glowSoft)"/>
+          
+          <!-- Inner glow INSIDE crescent - so it's not hollow -->
+          <circle cx="103" cy="12" r="10" fill="#FFD700" opacity="0.25" filter="url(#glow)"/>
+          
+          <!-- Crescent shape -->
+          <circle cx="100" cy="14" r="16" fill="#FFD700" filter="url(#glow)"/>
+          <circle cx="106" cy="11" r="13" fill="#0D1F17"/>
+          
+          <!-- Inner glow again on top so it shows through the dark cutout -->
+          <circle cx="104" cy="13" r="8" fill="#FFD700" opacity="0.2" filter="url(#glow)"/>
+          
+          <!-- 4 light rays -->
+          <line x1="100" y1="-5" x2="100" y2="-35" stroke="#FFD700" stroke-width="4" opacity="0.7" stroke-linecap="round" filter="url(#glow)"/>
+          <line x1="85" y1="0" x2="65" y2="-28" stroke="#FFD700" stroke-width="3" opacity="0.5" stroke-linecap="round" filter="url(#glow)"/>
+          <line x1="115" y1="0" x2="135" y2="-28" stroke="#FFD700" stroke-width="3" opacity="0.5" stroke-linecap="round" filter="url(#glow)"/>
+          <!-- Middle ray -->
+          <line x1="100" y1="-5" x2="100" y2="-30" stroke="#FFD700" stroke-width="3.5" opacity="0.6" stroke-linecap="round" filter="url(#glow)"/>
+        </svg>
+      </div>
+      <div class="card-body">
+        <h3>التصميم - إضاءة من برا وجوّا</h3>
+        <p>4 أشعة + هلال مضيء من الداخل + هالة كاملة</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px; padding:15px; background:rgba(255,215,0,0.1); border-radius:12px; border:1px solid rgba(255,215,0,0.2);">
+    <p>قولي لو كده الإضاءة بقت كاملة من برا وجوّا</p>
+  </div>
+</div>
