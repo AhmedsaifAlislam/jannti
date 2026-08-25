@@ -1,0 +1,68 @@
+<div style="text-align:center; padding:20px;">
+  <h2>التصميم - الهلال رجع</h2>
+  <p class="subtitle">هلال واضح في النص</p>
+
+  <div class="cards">
+    <div class="card selected" data-choice="crescent-back" onclick="toggleSelect(this)">
+      <div class="card-image" style="padding:0; display:flex; flex-direction:column; align-items:center; border-radius:12px; overflow:hidden;">
+        <svg width="240" height="280" viewBox="-30 -50 280 300">
+          <defs>
+            <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#071a10"/>
+              <stop offset="50%" stop-color="#0d2818"/>
+              <stop offset="100%" stop-color="#143d24"/>
+            </linearGradient>
+            <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FFD700"/>
+              <stop offset="100%" stop-color="#B8860B"/>
+            </linearGradient>
+            <linearGradient id="palmGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#2E7D32"/>
+              <stop offset="100%" stop-color="#1B5E20"/>
+            </linearGradient>
+          </defs>
+          
+          <!-- Background -->
+          <rect x="-30" y="-50" width="280" height="300" fill="url(#bgGrad)"/>
+          
+          <!-- Outer gate -->
+          <path d="M35 220 L35 80 Q35 55 60 40 L110 8 L160 40 Q185 55 185 80 L185 220" 
+                fill="none" stroke="url(#goldGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- Inner gate line -->
+          <path d="M45 220 L45 82 Q45 60 65 47 L110 20 L155 47 Q175 60 175 82 L175 220" 
+                fill="none" stroke="url(#goldGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          
+          <!-- Palm trunk - thick and visible -->
+          <line x1="110" y1="215" x2="110" y2="115" stroke="#2E7D32" stroke-width="8" stroke-linecap="round"/>
+          <!-- Palm fronds - natural curved shape -->
+          <path d="M110 125 Q95 100 50 115" fill="none" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+          <path d="M110 125 Q125 100 170 115" fill="none" stroke="#4CAF50" stroke-width="3" stroke-linecap="round"/>
+          <path d="M110 130 Q88 108 55 125" fill="none" stroke="#66BB6A" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M110 130 Q132 108 165 125" fill="none" stroke="#66BB6A" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M110 135 Q92 115 60 135" fill="none" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+          <path d="M110 135 Q128 115 160 135" fill="none" stroke="#81C784" stroke-width="2" stroke-linecap="round"/>
+          
+          <!-- Crescent - using TWO CIRCLES method, centered at x=110 -->
+          <circle cx="110" cy="-2" r="14" fill="#FFD700"/>
+          <circle cx="116" cy="-5" r="11" fill="#071a10"/>
+          
+          <!-- Glow behind crescent - only behind the gold part -->
+          <circle cx="110" cy="-2" r="22" fill="#FFD700" opacity="0.12"/>
+          
+          <!-- 3 light rays from center -->
+          <line x1="110" y1="-18" x2="110" y2="-42" stroke="#FFD700" stroke-width="2.5" opacity="0.6" stroke-linecap="round"/>
+          <line x1="95" y1="-12" x2="75" y2="-38" stroke="#FFD700" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
+          <line x1="125" y1="-12" x2="145" y2="-38" stroke="#FFD700" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="card-body">
+        <h3>التصميم - الهلال واضح</h3>
+        <p>هلال دائري في النص + 3 أشعة</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px; padding:15px; background:rgba(255,215,0,0.1); border-radius:12px; border:1px solid rgba(255,215,0,0.2);">
+    <p>قولي لو الهلال بقى واضح دلوقتي</p>
+  </div>
+</div>
