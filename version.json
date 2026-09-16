@@ -1,0 +1,15 @@
+{
+  "version_name": "1.0.1",
+  "version_code": 2,
+  "min_supported_version_code": 1,
+  "title": "تحديث جديد مبارك لـ جنّتي ✨",
+  "release_notes": [
+    "إضافة أصوات طبيعية نقية جديدة لخلوة الذكر",
+    "تحسين أداء واستقرار مشهد الفردوس ثلاثي الأبعاد",
+    "اعتماد أيقونة جنّتي الملكية الرسمية",
+    "تحسينات عامة على دقة العداد والتزامن"
+  ],
+  "apk_url": "https://github.com/zain-jannti/jannti/releases/latest/download/app-release.apk",
+  "web_url": "https://github.com/zain-jannti/jannti",
+  "force_update": false
+}

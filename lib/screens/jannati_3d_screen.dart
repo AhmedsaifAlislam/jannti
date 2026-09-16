@@ -69,6 +69,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
   bool _disposed = false;
   bool _loaded = false;
   bool _didSync = false;
+  bool _platformInitStarted = false; // guard: prevent double initPlatformState
   bool _autoRotate = true;
   bool _soundEnabled = true;
   RewardType? _selectedFilter;
@@ -226,6 +227,8 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
   }
 
   Future<void> initPlatformState() async {
+    if (_platformInitStarted) return; // guard: skip if already initializing
+    _platformInitStarted = true;
     _width = _screenSize!.width;
     _height = _screenSize!.height;
 
