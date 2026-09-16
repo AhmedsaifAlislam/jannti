@@ -16,6 +16,8 @@ dependencies:
   three_dart_flutterflow: ^0.0.17
   three_dart_jsm_flutterflow: ^0.0.11
   http: ^0.13.6
+  path_provider: ^2.1.6
+  archive: ^3.6.1
 
 dependency_overrides:
   shared_preferences_android: 2.3.4
@@ -48,8 +50,3 @@ flutter:
     - assets/fonts/
     - assets/images/
     - assets/3d/
-    - assets/3d/tier1/
-    - assets/3d/tier2/
-    - assets/3d/tier3/
-    - assets/3d/tier4/
-    - assets/3d/tier5/
