@@ -15,8 +15,8 @@ class AppUpdateService {
   factory AppUpdateService() => _instance;
   AppUpdateService._internal();
 
-  static const int currentVersionCode = 1;
-  static const String currentVersionName = '1.0.0';
+  static const int currentVersionCode = 3;
+  static const String currentVersionName = '1.0.2';
 
   // 🌐 Default remote configuration endpoint
   // مربوط بمستودعك على GitHub
@@ -100,7 +100,7 @@ class AppUpdateService {
     }
   }
 
-  /// Opens the APK download URL or release page
+  /// Opens the APK download URL or initiates in-app download & install
   Future<void> openDownloadUrl(String url) async {
     if (url.isEmpty) return;
 
@@ -108,9 +108,13 @@ class AppUpdateService {
       if (kIsWeb) {
         launchWebUrl(url);
       } else {
-        await _channel.invokeMethod('openUrl', {'url': url});
+        if (url.toLowerCase().endsWith('.apk')) {
+          await _channel.invokeMethod('downloadAndInstallApk', {'url': url});
+        } else {
+          await _channel.invokeMethod('openUrl', {'url': url});
+        }
       }
-      debugPrint('🚀 Opened update URL: $url');
+      debugPrint('🚀 Handled update URL: $url');
     } catch (e) {
       debugPrint('⚠️ Error launching update URL: $e');
     }
