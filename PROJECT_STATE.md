@@ -1,5 +1,5 @@
 # PROJECT STATE - تطبيق جنتي (Jannati)
-> آخر تحديث: 2026-08-25 | اكتمال المرحلة 26: معالجة الجرد الجنائي بالكامل + إصلاح البناء بصفر أخطاء + تفعيل إذن INTERNET في AndroidManifest + تهيئة مستودع Git + مسبحة الخشوع بملء الشاشة واللمس الكلي (Zen Sanctuary) + النهر الفردوسي الإيزومتري المتدفق + نظام التعاقب الفلكي الواقعي + مكتبة أسرار وفضائل الغراس النبوية.
+> آخر تحديث: 2026-09-16 | اكتمال المرحلة 27: اعتماد أيقونة جنّتي الملكية الرسمية في أندرويد والويب + بناء نظام التحديث الذاتي التلقائي (In-App Auto Updater) المدمج للإرسال الفوري خارج Google Play Console + جاهزية ملف الـ APK النهائي.
 
 ---
 
@@ -10,8 +10,10 @@
 - نخيل / أشجار / بيوت / قصور / مساجد / كنوز
 
 ### المعمارية الحالية:
+- **Official Islamic App Icon**: أيقونة جنّتي الملكية (الهلال والنخلة والنجمة المشعة) بجميع مقاسات أندرويد والويب.
+- **In-App Auto-Updater Engine**: محرك تحديث ذاتي تلقائي (`AppUpdateService` + `JannatiUpdateDialog` + `MainActivity.kt Intent`) يتيح إرسال التحديثات لجميع المستخدمين بملف JSON سحابي بسيط ودون الحاجة لـ Google Play Console.
 - **100% Build Clean & Analyzed**: اجتياز `flutter analyze` بصفر أخطاء وصفر تحذيرات (`No issues found!`).
-- **Native Android Internet Permission**: إضافة إذن `INTERNET` و `ACCESS_NETWORK_STATE` في `AndroidManifest.xml` للبث الصوتي المباشر.
+- **Native Android Internet Permission**: إضافة إذن `INTERNET` و `ACCESS_NETWORK_STATE` في `AndroidManifest.xml`.
 - **Git Version Control Active**: مستودع Git محلي مهيأ ومحمي بـ Baseline Commit.
 - **Zen Fullscreen Dhikr Sanctuary**: وضع مسبحة الخشوع بملء الشاشة مع لمس كلي وتموجات نورانية نابضة.
 - **2.5D Animated River Stream**: مجرى مائي إيزومتري متدفق بتموجات ورغوة مائية متلألئة.

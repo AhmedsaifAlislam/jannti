@@ -1,6 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+// Conditional import: real web impl on web, stub on other platforms
+import 'audio_web_stub.dart'
+    if (dart.library.html) 'audio_web_impl.dart';
+
 class AudioItem {
   final String id;
   final String title;
@@ -134,15 +138,28 @@ class SpiritualAudioService {
   Future<void> playAudioItem(AudioItem item) async {
     try {
       _currentAudioId = item.id;
-      if (!kIsWeb) {
+
+      if (kIsWeb) {
+        // ✅ تشغيل HTML5 Audio حقيقي في المتصفح عبر conditional import
+        playSoundWeb(item.url, item.loop);
+        // نعطي المتصفح 300ms ثم نتحقق من الحالة الفعلية
+        await Future.delayed(const Duration(milliseconds: 300));
+        _isPlaying = !isWebAudioPaused();
+        if (_isPlaying) {
+          debugPrint('🎵 Web Audio playing: ${item.title} → ${item.url}');
+        } else {
+          debugPrint('⚠️ Web Audio paused or blocked after play(): ${item.url}');
+        }
+      } else {
+        // ✅ تشغيل عبر MethodChannel على أندرويد
         await _channel.invokeMethod('play', {
           'url': item.url,
           'isStream': item.isStream,
           'loop': item.loop,
         });
+        _isPlaying = true;
+        debugPrint('🎵 Native Audio playing: ${item.title}');
       }
-      _isPlaying = true;
-      debugPrint('🎵 Now playing: ${item.title} → ${item.url}');
     } catch (e) {
       debugPrint('⚠️ Audio play error: $e');
       _isPlaying = false;
@@ -160,7 +177,9 @@ class SpiritualAudioService {
 
   Future<void> stop() async {
     try {
-      if (!kIsWeb) {
+      if (kIsWeb) {
+        stopSoundWeb();
+      } else {
         await _channel.invokeMethod('stop');
       }
       _isPlaying = false;
@@ -173,7 +192,9 @@ class SpiritualAudioService {
 
   Future<void> setVolume(double volume) async {
     try {
-      if (!kIsWeb) {
+      if (kIsWeb) {
+        setVolumeWeb(volume.clamp(0.0, 1.0));
+      } else {
         await _channel.invokeMethod('setVolume', {
           'volume': volume.clamp(0.0, 1.0),
         });

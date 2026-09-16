@@ -1,5 +1,7 @@
 package com.example.jannti
 
+import android.content.Intent
+import android.net.Uri
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.util.Log
@@ -40,6 +42,23 @@ class MainActivity : FlutterActivity() {
                     val volume = call.argument<Double>("volume")?.toFloat() ?: 1.0f
                     mediaPlayer?.setVolume(volume, volume)
                     result.success(true)
+                }
+                "openUrl" -> {
+                    val url = call.argument<String>("url")
+                    if (!url.isNullOrBlank()) {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "❌ Failed to open URL: $url", e)
+                            result.error("OPEN_URL_FAILED", e.message, null)
+                        }
+                    } else {
+                        result.error("INVALID_URL", "URL cannot be null or empty", null)
+                    }
                 }
                 else -> result.notImplemented()
             }

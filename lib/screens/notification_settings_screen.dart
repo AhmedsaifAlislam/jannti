@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/app_update_service.dart';
+
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
 
@@ -120,6 +122,13 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               value: _nightTahajjud,
               onChanged: (v) => setState(() => _nightTahajjud = v),
             ),
+
+            const SizedBox(height: 20),
+
+            _buildSectionHeader('تحديثات وإصدار التطبيق', Icons.system_update_rounded),
+            const SizedBox(height: 10),
+
+            _buildUpdateTile(),
 
             const SizedBox(height: 32),
           ],
@@ -330,4 +339,89 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       ),
     );
   }
+
+  Widget _buildUpdateTile() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D2818).withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFFFD700).withValues(alpha: 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                ),
+                child: const Icon(Icons.verified_outlined, color: Color(0xFFFFD700), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'إصدار جنّتي المثبت',
+                      style: TextStyle(
+                        fontFamily: 'Amiri',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'الإصدار: v${AppUpdateService.currentVersionName} (بناء ${AppUpdateService.currentVersionCode})',
+                      style: TextStyle(
+                        fontFamily: 'GESSTwo',
+                        fontSize: 12,
+                        color: const Color(0xFFFFD700).withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                AppUpdateService().checkAndPromptUpdate(context, isManual: true);
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF03140C)),
+              label: const Text(
+                'التحقق من وجود تحديثات الآن 🔄',
+                style: TextStyle(
+                  fontFamily: 'GESSTwo',
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF03140C),
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFD700),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../data/adhkar_data.dart';
 import '../models/dhikr.dart';
 import '../models/reward_type.dart';
+import '../services/app_update_service.dart';
 import '../services/storage_service.dart';
 import '../utils/garden_assets.dart';
 import '../utils/number_formatter.dart';
@@ -117,6 +118,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
+
+    // Silent background check for updates
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppUpdateService().checkAndPromptUpdate(context, isManual: false);
+    });
   }
 
   @override

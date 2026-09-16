@@ -15,6 +15,7 @@ dependencies:
   flutter_gl_flutterflow: ^0.0.23
   three_dart_flutterflow: ^0.0.17
   three_dart_jsm_flutterflow: ^0.0.11
+  http: ^0.13.6
 
 dependency_overrides:
   shared_preferences_android: 2.3.4
