@@ -1,15 +1,15 @@
 {
-  "version_name": "1.0.1",
-  "version_code": 2,
+  "version_name": "1.0.0",
+  "version_code": 1,
   "min_supported_version_code": 1,
-  "title": "تحديث جديد مبارك لـ جنّتي ✨",
+  "title": "تطبيق جنّتي • الإصدار الأول 🌿✨",
   "release_notes": [
-    "إضافة أصوات طبيعية نقية جديدة لخلوة الذكر",
-    "تحسين أداء واستقرار مشهد الفردوس ثلاثي الأبعاد",
-    "اعتماد أيقونة جنّتي الملكية الرسمية",
-    "تحسينات عامة على دقة العداد والتزامن"
+    "واحة الذكر وغراس الجنة ومسبحة الخشوع بملء الشاشة",
+    "مشهد الفردوس ثلاثي الأبعاد وإيزومتري متكامل",
+    "أصوات طبيعية نقية 100% لخلوة الذكر",
+    "أيقونة جنّتي الملكية الرسمية"
   ],
-  "apk_url": "https://github.com/AhmedsaifAlislam/jannti/releases/latest/download/app-release.apk",
+  "apk_url": "https://github.com/AhmedsaifAlislam/jannti/releases",
   "web_url": "https://github.com/AhmedsaifAlislam/jannti",
   "force_update": false
 }
