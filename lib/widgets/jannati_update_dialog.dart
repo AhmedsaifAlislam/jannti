@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/app_version_info.dart';
 import 'jannati_logo.dart';
 
-class JannatiUpdateDialog extends StatelessWidget {
+class JannatiUpdateDialog extends StatefulWidget {
   final AppVersionInfo versionInfo;
   final VoidCallback onUpdate;
 
@@ -30,11 +31,40 @@ class JannatiUpdateDialog extends StatelessWidget {
   }
 
   @override
+  State<JannatiUpdateDialog> createState() => _JannatiUpdateDialogState();
+}
+
+class _JannatiUpdateDialogState extends State<JannatiUpdateDialog> {
+  bool _showDismissButton = false;
+  Timer? _delayTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // تأخير ظهور زر "تذكيري لاحقاً" لمدة 4 ثوانٍ مع جعل مظهره خافتاً جداً لزيادة التركيز على التحديث
+    if (!widget.versionInfo.forceUpdate) {
+      _delayTimer = Timer(const Duration(milliseconds: 3500), () {
+        if (mounted) {
+          setState(() {
+            _showDismissButton = true;
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _delayTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: PopScope(
-        canPop: !versionInfo.forceUpdate,
+        canPop: !widget.versionInfo.forceUpdate,
         child: Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -87,7 +117,7 @@ class JannatiUpdateDialog extends StatelessWidget {
                     ],
                   ).createShader(bounds),
                   child: Text(
-                    versionInfo.title,
+                    widget.versionInfo.title,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontFamily: 'Amiri',
@@ -110,7 +140,7 @@ class JannatiUpdateDialog extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'الإصدار الجديد: v${versionInfo.versionName}',
+                    'الإصدار الجديد: v${widget.versionInfo.versionName}',
                     style: const TextStyle(
                       fontFamily: 'GESSTwo',
                       fontSize: 12,
@@ -122,7 +152,7 @@ class JannatiUpdateDialog extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 // Release Notes
-                if (versionInfo.releaseNotes.isNotEmpty) ...[
+                if (widget.versionInfo.releaseNotes.isNotEmpty) ...[
                   Align(
                     alignment: Alignment.centerRight,
                     child: Text(
@@ -149,7 +179,7 @@ class JannatiUpdateDialog extends StatelessWidget {
                     child: SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: versionInfo.releaseNotes.map((note) {
+                        children: widget.versionInfo.releaseNotes.map((note) {
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Row(
@@ -187,7 +217,7 @@ class JannatiUpdateDialog extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () {
                       HapticFeedback.mediumImpact();
-                      onUpdate();
+                      widget.onUpdate();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFD700),
@@ -216,18 +246,30 @@ class JannatiUpdateDialog extends StatelessWidget {
                   ),
                 ),
 
-                if (!versionInfo.forceUpdate) ...[
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text(
-                      'تذكيري لاحقاً',
-                      style: TextStyle(
-                        fontFamily: 'GESSTwo',
-                        fontSize: 12,
-                        color: Colors.white54,
-                      ),
-                    ),
+                // زر "تذكيري لاحقاً" يظهر بتأخير 3.5 ثانية وبمظهر خافت غير بارز
+                if (!widget.versionInfo.forceUpdate) ...[
+                  const SizedBox(height: 10),
+                  AnimatedOpacity(
+                    opacity: _showDismissButton ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 600),
+                    child: _showDismissButton
+                        ? TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white24,
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            ),
+                            child: const Text(
+                              'تذكيري لاحقاً',
+                              style: TextStyle(
+                                fontFamily: 'GESSTwo',
+                                fontSize: 11,
+                                color: Colors.white30,
+                              ),
+                            ),
+                          )
+                        : const SizedBox(height: 28),
                   ),
                 ],
               ],
