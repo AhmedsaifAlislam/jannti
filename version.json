@@ -1,15 +1,15 @@
 {
-  "version_name": "1.0.0",
-  "version_code": 1,
+  "version_name": "1.0.1",
+  "version_code": 2,
   "min_supported_version_code": 1,
-  "title": "تطبيق جنّتي • الإصدار الأول 🌿✨",
+  "title": "تحديث جنّتي الفائق • الإصدار 1.0.1 🌿✨",
   "release_notes": [
-    "واحة الذكر وغراس الجنة ومسبحة الخشوع بملء الشاشة",
-    "مشهد الفردوس ثلاثي الأبعاد وإيزومتري متكامل",
-    "أصوات طبيعية نقية 100% لخلوة الذكر",
-    "أيقونة جنّتي الملكية الرسمية"
+    "تخفيض حجم التطبيق بنسبة 90% (من 216 MB إلى 24 MB فقط)",
+    "تحسين سرعة التثبيت والأداء العام",
+    "اعتماد أيقونة جنّتي الملكية المتكيفة (Adaptive Icon)",
+    "إتاحة تحميل معالم الجنان ثلاثية الأبعاد الفائقة عند الطلب"
   ],
-  "apk_url": "https://github.com/AhmedsaifAlislam/jannti/releases",
-  "web_url": "https://github.com/AhmedsaifAlislam/jannti",
+  "apk_url": "https://github.com/AhmedsaifAlislam/jannti/releases/download/v1.0.1/app-arm64-v8a-release.apk",
+  "web_url": "https://github.com/AhmedsaifAlislam/jannti/releases/tag/v1.0.1",
   "force_update": false
 }
