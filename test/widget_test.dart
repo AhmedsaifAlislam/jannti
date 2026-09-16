@@ -6,15 +6,22 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jannti/services/storage_service.dart';
 import 'package:jannti/main.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await StorageService().init();
+
     // Build our app and trigger a frame.
     await tester.pumpWidget(const JannatiApp());
 
-    // Verify the app title is displayed
-    expect(find.text('جنتي'), findsOneWidget);
+    // Verify the app title is displayed on splash screen
+    expect(find.text('جَنَّتِي'), findsOneWidget);
+
+    // Advance splash screen timer (4 seconds)
+    await tester.pump(const Duration(seconds: 5));
   });
 }
