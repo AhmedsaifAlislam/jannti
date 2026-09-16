@@ -19,9 +19,9 @@ class AppUpdateService {
   static const String currentVersionName = '1.0.0';
 
   // 🌐 Default remote configuration endpoint
-  // يمكن للمستخدم تغيير هذا الرابط ليطابق مستودع GitHub أو استضافته الخاصة
+  // مربوط بمستودعك على GitHub
   static String updateConfigUrl =
-      'https://raw.githubusercontent.com/zain-jannti/jannti/main/version.json';
+      'https://raw.githubusercontent.com/AhmedsaifAlislam/jannti/main/version.json';
 
   static const MethodChannel _channel = MethodChannel('com.example.jannti/audio');
 
