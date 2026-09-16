@@ -16,8 +16,9 @@ dependencies:
   three_dart_flutterflow: ^0.0.17
   three_dart_jsm_flutterflow: ^0.0.11
   http: ^0.13.6
-  path_provider: ^2.1.6
+  path_provider: 2.1.2
   archive: ^3.6.1
+  path_provider_foundation: 2.4.0
 
 dependency_overrides:
   shared_preferences_android: 2.3.4
