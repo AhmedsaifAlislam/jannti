@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/reward.dart';
 import '../models/reward_type.dart';
+import '../models/tier_system.dart';
 import '../services/spiritual_audio_service.dart';
 import '../services/storage_service.dart';
 import '../utils/garden_assets.dart';
@@ -17,10 +18,7 @@ class _TileInfo {
   final double elevation;
   bool isOccupied;
 
-  _TileInfo({
-    required this.type,
-    this.elevation = 0.0,
-  }) : isOccupied = false;
+  _TileInfo({required this.type, this.elevation = 0.0}) : isOccupied = false;
 }
 
 class _IsometricBuilding {
@@ -140,25 +138,29 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
 
   void _initParticles() {
     for (int i = 0; i < 48; i++) {
-      _particles.add(_Particle(
-        x: _rng.nextDouble() * _canvasW,
-        y: _rng.nextDouble() * _canvasH,
-        radius: 1.5 + _rng.nextDouble() * 2.5,
-        speed: 0.3 + _rng.nextDouble() * 0.7,
-        phase: _rng.nextDouble() * pi * 2,
-      ));
+      _particles.add(
+        _Particle(
+          x: _rng.nextDouble() * _canvasW,
+          y: _rng.nextDouble() * _canvasH,
+          radius: 1.5 + _rng.nextDouble() * 2.5,
+          speed: 0.3 + _rng.nextDouble() * 0.7,
+          phase: _rng.nextDouble() * pi * 2,
+        ),
+      );
     }
 
     for (int i = 0; i < 32; i++) {
-      _petals.add(_Petal(
-        x: _rng.nextDouble() * _canvasW,
-        y: _rng.nextDouble() * _canvasH,
-        size: 8.0 + _rng.nextDouble() * 8.0,
-        speedX: 0.8 + _rng.nextDouble() * 1.2,
-        speedY: 0.4 + _rng.nextDouble() * 0.6,
-        rotation: _rng.nextDouble() * pi * 2,
-        color: i % 2 == 0 ? const Color(0xFFF8BBD0) : const Color(0xFFFFD54F),
-      ));
+      _petals.add(
+        _Petal(
+          x: _rng.nextDouble() * _canvasW,
+          y: _rng.nextDouble() * _canvasH,
+          size: 8.0 + _rng.nextDouble() * 8.0,
+          speedX: 0.8 + _rng.nextDouble() * 1.2,
+          speedY: 0.4 + _rng.nextDouble() * 0.6,
+          rotation: _rng.nextDouble() * pi * 2,
+          color: i % 2 == 0 ? const Color(0xFFF8BBD0) : const Color(0xFFFFD54F),
+        ),
+      );
     }
   }
 
@@ -171,14 +173,6 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
 
     _transController.value = Matrix4.diagonal3Values(scale, scale, 1.0)
       ..setTranslationRaw(tx, ty, 0);
-  }
-
-  int _calculateTier(int count) {
-    if (count >= 10000) return 5;
-    if (count >= 2000) return 4;
-    if (count >= 500) return 3;
-    if (count >= 100) return 2;
-    return 1;
   }
 
   // Sizing: House, Mosque, Palace = 2x2. Tree, Palm, Treasure = 1x1.
@@ -211,7 +205,10 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
   }
 
   bool _canPlaceAt(int gx, int gy, int footSize) {
-    if (gx < 0 || gy < 0 || gx + footSize > _gridSize || gy + footSize > _gridSize) {
+    if (gx < 0 ||
+        gy < 0 ||
+        gx + footSize > _gridSize ||
+        gy + footSize > _gridSize) {
       return false;
     }
 
@@ -219,7 +216,9 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
       for (int y = gy; y < gy + footSize; y++) {
         final tile = _grid[x][y];
         // STRICT: Cannot place on water or bridge or already occupied tile!
-        if (tile.type == TileType.water || tile.type == TileType.bridge || tile.isOccupied) {
+        if (tile.type == TileType.water ||
+            tile.type == TileType.bridge ||
+            tile.isOccupied) {
           return false;
         }
       }
@@ -266,7 +265,8 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
       // Along the sand shores
       for (int x = 0; x < _gridSize; x++) {
         for (int y = 0; y < _gridSize; y++) {
-          if (_grid[x][y].type == TileType.sand || _grid[x][y].type == TileType.grass) {
+          if (_grid[x][y].type == TileType.sand ||
+              _grid[x][y].type == TileType.grass) {
             candidateList.add(Point(x, y));
           }
         }
@@ -328,9 +328,11 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
       final list = byType[type] ?? [];
       final count = list.length;
       if (count == 0) continue;
-      final tier = _calculateTier(count);
+      final tier = TierSystem.calculate(count);
 
-      int displayCount = (count < 8) ? count : (8 + (count - 8) ~/ 25).clamp(1, 24);
+      int displayCount = (count < 8)
+          ? count
+          : (8 + (count - 8) ~/ 25).clamp(1, 24);
 
       for (int i = 0; i < displayCount; i++) {
         final reward = i < list.length ? list[i] : list.last;
@@ -346,21 +348,26 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
     final footSize = _getItemFootprint(type);
     _markOccupied(spot.x, spot.y, footSize, true);
 
-    final asset = GardenAssets.getRandomAsset(type, seed: spot.x * 100 + spot.y);
+    final asset = GardenAssets.getRandomAsset(
+      type,
+      seed: spot.x * 100 + spot.y,
+    );
     final elev = _grid[spot.x][spot.y].elevation;
 
-    _buildings.add(_IsometricBuilding(
-      type: type,
-      gx: spot.x,
-      gy: spot.y,
-      sizeW: footSize,
-      sizeH: footSize,
-      elevation: elev,
-      assetPath: asset,
-      tier: tier,
-      bornAt: DateTime.now().millisecondsSinceEpoch,
-      sourceReward: source,
-    ));
+    _buildings.add(
+      _IsometricBuilding(
+        type: type,
+        gx: spot.x,
+        gy: spot.y,
+        sizeW: footSize,
+        sizeH: footSize,
+        elevation: elev,
+        assetPath: asset,
+        tier: tier,
+        bornAt: DateTime.now().millisecondsSinceEpoch,
+        sourceReward: source,
+      ),
+    );
     return true;
   }
 
@@ -452,7 +459,10 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildModalStat('النوع', building.type.displayName),
-                    _buildModalStat('الموقع', '(${building.gx}, ${building.gy})'),
+                    _buildModalStat(
+                      'الموقع',
+                      '(${building.gx}, ${building.gy})',
+                    ),
                     _buildModalStat('الحالة', 'نضرة وثابتة 🌿'),
                   ],
                 ),
@@ -603,7 +613,10 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
             child: Align(
               alignment: Alignment.topCenter,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: _buildTopBar(),
               ),
             ),
@@ -614,7 +627,10 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
             child: Align(
               alignment: Alignment.bottomCenter,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: _buildBottomPanel(),
               ),
             ),
@@ -706,7 +722,11 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 18),
+              icon: const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.white70,
+                size: 18,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
             const SizedBox(width: 4),
@@ -751,7 +771,11 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
             ),
             IconButton(
               tooltip: 'إعادة التوسيط',
-              icon: const Icon(Icons.center_focus_strong, color: Color(0xFFFFD700), size: 20),
+              icon: const Icon(
+                Icons.center_focus_strong,
+                color: Color(0xFFFFD700),
+                size: 20,
+              ),
               onPressed: _centerView,
             ),
             IconButton(
@@ -761,7 +785,9 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                 decoration: BoxDecoration(
                   color: const Color(0xFF2E7D32),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
+                  border: Border.all(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.5),
+                  ),
                 ),
                 child: const Text(
                   '3D',
@@ -815,7 +841,10 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                     },
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? const Color(0xFFFFD700).withValues(alpha: 0.25)
@@ -843,8 +872,12 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                             style: TextStyle(
                               fontFamily: 'GESSTwo',
                               fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? const Color(0xFFFFD700) : Colors.white70,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isSelected
+                                  ? const Color(0xFFFFD700)
+                                  : Colors.white70,
                             ),
                           ),
                         ],
@@ -897,8 +930,13 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),
                     foregroundColor: const Color(0xFFFFD700),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                 ),
                 if (_buildings.isNotEmpty)
@@ -930,10 +968,7 @@ class _IsometricGridPainter extends CustomPainter {
   final List<List<_TileInfo>> grid;
   final double waveProgress;
 
-  _IsometricGridPainter({
-    required this.grid,
-    required this.waveProgress,
-  });
+  _IsometricGridPainter({required this.grid, required this.waveProgress});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -994,10 +1029,26 @@ class _IsometricGridPainter extends CustomPainter {
 
   void _drawSingleTile(Canvas canvas, int gx, int gy, _TileInfo tile) {
     final elev = tile.elevation;
-    final top = _JannatiIsometricScreenState.gridToScreen(gx.toDouble(), gy.toDouble(), elev);
-    final right = _JannatiIsometricScreenState.gridToScreen(gx + 1.0, gy.toDouble(), elev);
-    final bottom = _JannatiIsometricScreenState.gridToScreen(gx + 1.0, gy + 1.0, elev);
-    final left = _JannatiIsometricScreenState.gridToScreen(gx.toDouble(), gy + 1.0, elev);
+    final top = _JannatiIsometricScreenState.gridToScreen(
+      gx.toDouble(),
+      gy.toDouble(),
+      elev,
+    );
+    final right = _JannatiIsometricScreenState.gridToScreen(
+      gx + 1.0,
+      gy.toDouble(),
+      elev,
+    );
+    final bottom = _JannatiIsometricScreenState.gridToScreen(
+      gx + 1.0,
+      gy + 1.0,
+      elev,
+    );
+    final left = _JannatiIsometricScreenState.gridToScreen(
+      gx.toDouble(),
+      gy + 1.0,
+      elev,
+    );
 
     final diamond = Path()
       ..moveTo(top.dx, top.dy)
@@ -1008,9 +1059,21 @@ class _IsometricGridPainter extends CustomPainter {
 
     // 1. If elevated plateau, draw extruded cliff sides first
     if (elev > 0.0) {
-      final baseLeft = _JannatiIsometricScreenState.gridToScreen(gx.toDouble(), gy + 1.0, 0.0);
-      final baseBottom = _JannatiIsometricScreenState.gridToScreen(gx + 1.0, gy + 1.0, 0.0);
-      final baseRight = _JannatiIsometricScreenState.gridToScreen(gx + 1.0, gy.toDouble(), 0.0);
+      final baseLeft = _JannatiIsometricScreenState.gridToScreen(
+        gx.toDouble(),
+        gy + 1.0,
+        0.0,
+      );
+      final baseBottom = _JannatiIsometricScreenState.gridToScreen(
+        gx + 1.0,
+        gy + 1.0,
+        0.0,
+      );
+      final baseRight = _JannatiIsometricScreenState.gridToScreen(
+        gx + 1.0,
+        gy.toDouble(),
+        0.0,
+      );
 
       // Left Cliff Face (Darker)
       final leftCliff = Path()
@@ -1036,7 +1099,9 @@ class _IsometricGridPainter extends CustomPainter {
       case TileType.grass:
         // Checkerboard subtle variation for true game grid texture
         final isEven = (gx + gy) % 2 == 0;
-        final grassColor = isEven ? const Color(0xFF389E5B) : const Color(0xFF318F50);
+        final grassColor = isEven
+            ? const Color(0xFF389E5B)
+            : const Color(0xFF318F50);
         canvas.drawPath(diamond, Paint()..color = grassColor);
 
         // Thin delicate tile border for seamless grid definition
@@ -1049,13 +1114,17 @@ class _IsometricGridPainter extends CustomPainter {
 
       case TileType.plateau:
         final isEven = (gx + gy) % 2 == 0;
-        final platColor = isEven ? const Color(0xFF42A864) : const Color(0xFF389A57);
+        final platColor = isEven
+            ? const Color(0xFF42A864)
+            : const Color(0xFF389A57);
         canvas.drawPath(diamond, Paint()..color = platColor);
         break;
 
       case TileType.sand:
         final isEven = (gx + gy) % 2 == 0;
-        final sandColor = isEven ? const Color(0xFFD9BD88) : const Color(0xFFCCAE77);
+        final sandColor = isEven
+            ? const Color(0xFFD9BD88)
+            : const Color(0xFFCCAE77);
         canvas.drawPath(diamond, Paint()..color = sandColor);
         break;
 
@@ -1065,17 +1134,14 @@ class _IsometricGridPainter extends CustomPainter {
           ..shader = const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF007791),
-              Color(0xFF00B4D8),
-              Color(0xFF0096C7),
-            ],
+            colors: [Color(0xFF007791), Color(0xFF00B4D8), Color(0xFF0096C7)],
           ).createShader(Rect.fromPoints(top, bottom));
         canvas.drawPath(diamond, waterPaint);
 
         // Dynamic Flowing Sparkling Wave Crests
         final wavePhase1 = ((gx * 3 + gy * 4) / 25.0 + waveProgress) % 1.0;
-        final wavePhase2 = ((gx * 2 + gy * 5) / 20.0 + waveProgress * 1.3) % 1.0;
+        final wavePhase2 =
+            ((gx * 2 + gy * 5) / 20.0 + waveProgress * 1.3) % 1.0;
 
         final w1P1 = Offset.lerp(top, left, wavePhase1)!;
         final w1P2 = Offset.lerp(right, bottom, wavePhase1)!;
@@ -1088,7 +1154,9 @@ class _IsometricGridPainter extends CustomPainter {
         final w2P1 = Offset.lerp(left, bottom, wavePhase2)!;
         final w2P2 = Offset.lerp(top, right, wavePhase2)!;
         final waveLine2 = Paint()
-          ..color = const Color(0xFFE0F7FA).withValues(alpha: 0.45 * sin(wavePhase2 * pi))
+          ..color = const Color(
+            0xFFE0F7FA,
+          ).withValues(alpha: 0.45 * sin(wavePhase2 * pi))
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.2;
         canvas.drawLine(w2P1, w2P2, waveLine2);
@@ -1185,7 +1253,11 @@ class _AtmosphereParticlesPainter extends CustomPainter {
       canvas.translate(curX, curY);
       canvas.rotate(pet.rotation + progress * pi * 2);
       canvas.drawOval(
-        Rect.fromCenter(center: Offset.zero, width: pet.size, height: pet.size * 0.5),
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: pet.size,
+          height: pet.size * 0.5,
+        ),
         pPaint,
       );
       canvas.restore();

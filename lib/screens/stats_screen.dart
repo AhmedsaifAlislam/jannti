@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../models/reward_type.dart';
 import '../models/spiritual_rank.dart';
+import '../models/tier_system.dart';
 import '../services/storage_service.dart';
 import '../utils/garden_assets.dart';
 import '../utils/number_formatter.dart';
@@ -49,7 +50,8 @@ class StatsScreen extends StatefulWidget {
   State<StatsScreen> createState() => _StatsScreenState();
 }
 
-class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStateMixin {
+class _StatsScreenState extends State<StatsScreen>
+    with SingleTickerProviderStateMixin {
   final StorageService _storage = StorageService();
   late AnimationController _glowController;
 
@@ -66,46 +68,6 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
   void dispose() {
     _glowController.dispose();
     super.dispose();
-  }
-
-  int _calculateTier(int count) {
-    if (count >= 10000) return 5;
-    if (count >= 2000) return 4;
-    if (count >= 500) return 3;
-    if (count >= 100) return 2;
-    return 1;
-  }
-
-  int _nextTierThreshold(int tier) {
-    switch (tier) {
-      case 1:
-        return 100;
-      case 2:
-        return 500;
-      case 3:
-        return 2000;
-      case 4:
-        return 10000;
-      default:
-        return 10000;
-    }
-  }
-
-  String _tierTitle(int tier) {
-    switch (tier) {
-      case 1:
-        return 'مرتبة الغرس الأولي (Tier 1)';
-      case 2:
-        return 'مرتبة النماء والازدهار (Tier 2)';
-      case 3:
-        return 'مرتبة العطاء والبركة (Tier 3)';
-      case 4:
-        return 'مرتبة الوفاء والارتقاء (Tier 4)';
-      case 5:
-        return 'مرتبة النور والخلود (Tier 5)';
-      default:
-        return 'المرتبة $tier';
-    }
   }
 
   void _showAllRanksModal(int totalDhikr) {
@@ -145,7 +107,11 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
               // Title
               Row(
                 children: const [
-                  Icon(Icons.workspace_premium, color: Color(0xFFFFD700), size: 26),
+                  Icon(
+                    Icons.workspace_premium,
+                    color: Color(0xFFFFD700),
+                    size: 26,
+                  ),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -189,20 +155,22 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                         color: isCurrent
                             ? const Color(0xFF1B5E20).withValues(alpha: 0.85)
                             : isUnlocked
-                                ? const Color(0xFF0D2818).withValues(alpha: 0.85)
-                                : Colors.black.withValues(alpha: 0.3),
+                            ? const Color(0xFF0D2818).withValues(alpha: 0.85)
+                            : Colors.black.withValues(alpha: 0.3),
                         border: Border.all(
                           color: isCurrent
                               ? const Color(0xFFFFD700)
                               : isUnlocked
-                                  ? const Color(0xFFFFD700).withValues(alpha: 0.3)
-                                  : Colors.white10,
+                              ? const Color(0xFFFFD700).withValues(alpha: 0.3)
+                              : Colors.white10,
                           width: isCurrent ? 2.0 : 1.0,
                         ),
                         boxShadow: isCurrent
                             ? [
                                 BoxShadow(
-                                  color: const Color(0xFFFFD700).withValues(alpha: 0.25),
+                                  color: const Color(
+                                    0xFFFFD700,
+                                  ).withValues(alpha: 0.25),
                                   blurRadius: 10,
                                 ),
                               ]
@@ -219,8 +187,8 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                               color: isCurrent
                                   ? const Color(0xFFFFD700)
                                   : isUnlocked
-                                      ? const Color(0xFF2E7D32)
-                                      : Colors.white10,
+                                  ? const Color(0xFF2E7D32)
+                                  : Colors.white10,
                             ),
                             child: Center(
                               child: Text(
@@ -246,7 +214,9 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                                           fontSize: 17,
                                           fontWeight: FontWeight.bold,
                                           color: isUnlocked
-                                              ? (isCurrent ? const Color(0xFFFFD700) : Colors.white)
+                                              ? (isCurrent
+                                                    ? const Color(0xFFFFD700)
+                                                    : Colors.white)
                                               : Colors.white38,
                                         ),
                                         overflow: TextOverflow.ellipsis,
@@ -254,10 +224,15 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                                     ),
                                     if (isCurrent) ...[
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 7,
+                                          vertical: 2,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFFFD700),
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: const Text(
                                           'رتبتك الحالية',
@@ -293,7 +268,9 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                                     fontSize: 10,
                                     color: isCurrent
                                         ? const Color(0xFFFFD700)
-                                        : (isUnlocked ? const Color(0xFF81C784) : Colors.white24),
+                                        : (isUnlocked
+                                              ? const Color(0xFF81C784)
+                                              : Colors.white24),
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -303,12 +280,14 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
 
                           // Lock / Unlocked Status Icon
                           Icon(
-                            isUnlocked ? Icons.check_circle : Icons.lock_outline,
+                            isUnlocked
+                                ? Icons.check_circle
+                                : Icons.lock_outline,
                             color: isCurrent
                                 ? const Color(0xFFFFD700)
                                 : isUnlocked
-                                    ? const Color(0xFF81C784)
-                                    : Colors.white24,
+                                ? const Color(0xFF81C784)
+                                : Colors.white24,
                             size: 20,
                           ),
                         ],
@@ -327,11 +306,16 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B5E20),
                     foregroundColor: const Color(0xFFFFD700),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: const Text(
                     'إغلاق',
-                    style: TextStyle(fontFamily: 'GESSTwo', fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontFamily: 'GESSTwo',
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -352,11 +336,14 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
 
     final totalRewards = allRewards.length;
     final allDhikrCounts = _storage.getAllDhikrCounts();
-    final totalDhikrCount = allDhikrCounts.values.fold(0, (sum, val) => sum + val);
+    final totalDhikrCount = allDhikrCounts.values.fold(
+      0,
+      (sum, val) => sum + val,
+    );
 
     int maxTier = 1;
     for (final type in RewardType.values) {
-      final t = _calculateTier(countsByType[type] ?? 0);
+      final t = TierSystem.calculate(countsByType[type] ?? 0);
       if (t > maxTier) maxTier = t;
     }
 
@@ -407,11 +394,17 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
             // 3. Category Progress Cards
             ...RewardType.values.map((type) {
               final count = countsByType[type] ?? 0;
-              final tier = _calculateTier(count);
-              final nextThreshold = _nextTierThreshold(tier);
+              final tier = TierSystem.calculate(count);
+              final nextThreshold = TierSystem.nextThreshold(tier);
               final progress = (count / nextThreshold).clamp(0.0, 1.0);
 
-              return _buildCategoryCard(type, count, tier, nextThreshold, progress);
+              return _buildCategoryCard(
+                type,
+                count,
+                tier,
+                nextThreshold,
+                progress,
+              );
             }),
 
             const SizedBox(height: 24),
@@ -419,7 +412,11 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
             // 4. Section Header: Milestones & Badges
             Row(
               children: const [
-                Icon(Icons.workspace_premium, color: Color(0xFFFFD700), size: 22),
+                Icon(
+                  Icons.workspace_premium,
+                  color: Color(0xFFFFD700),
+                  size: 22,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'أوسمة الارتقاء الروحاني الـ 14',
@@ -435,7 +432,12 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
             const SizedBox(height: 12),
 
             // 5. 3D-Styled Colorful Achievements Grid
-            _buildAchievementsGrid(totalDhikrCount, totalRewards, countsByType, maxTier),
+            _buildAchievementsGrid(
+              totalDhikrCount,
+              totalRewards,
+              countsByType,
+              maxTier,
+            ),
 
             const SizedBox(height: 100),
           ],
@@ -448,7 +450,11 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
   // 🏛️ HERO SUMMARY CARD WITH SOLE INTUITIVE CENTRAL RANK BANNER
   // =========================================================================
 
-  Widget _buildHeroSummarySection(int totalDhikr, int totalRewards, int maxTier) {
+  Widget _buildHeroSummarySection(
+    int totalDhikr,
+    int totalRewards,
+    int maxTier,
+  ) {
     final currentRank = SpiritualRanksData.getCurrentRank(totalDhikr);
 
     return Container(
@@ -456,10 +462,7 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
       decoration: BoxDecoration(
         color: Colors.white, // 🤍 Pure White Ceramic Card
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: const Color(0xFFFFD700),
-          width: 1.8,
-        ),
+        border: Border.all(color: const Color(0xFFFFD700), width: 1.8),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFFFFD700).withValues(alpha: 0.35),
@@ -504,11 +507,16 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                     ),
                     // Non-conflicting static level badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE8F5E9),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Text(
                         'الرتبة ${currentRank.level} من 14',
@@ -531,19 +539,24 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                   borderRadius: BorderRadius.circular(18),
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 14,
+                    ),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFFE8F5E9),
-                          Color(0xFFC8E6C9),
-                        ],
+                        colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
                       ),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.5), width: 1.2),
+                      border: Border.all(
+                        color: const Color(0xFF2E7D32).withValues(alpha: 0.5),
+                        width: 1.2,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF2E7D32).withValues(alpha: 0.12),
+                          color: const Color(
+                            0xFF2E7D32,
+                          ).withValues(alpha: 0.12),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -559,7 +572,10 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                             color: Color(0xFF1B5E20),
                           ),
                           child: Center(
-                            child: Text(currentRank.icon, style: const TextStyle(fontSize: 20)),
+                            child: Text(
+                              currentRank.icon,
+                              style: const TextStyle(fontSize: 20),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -590,7 +606,11 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                             ],
                           ),
                         ),
-                        const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF1B5E20)),
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 14,
+                          color: Color(0xFF1B5E20),
+                        ),
                       ],
                     ),
                   ),
@@ -734,7 +754,9 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withValues(alpha: 0.2),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Image.asset(
                   GardenAssets.getIconAsset(type),
@@ -758,7 +780,7 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      _tierTitle(tier),
+                      TierSystem.title(tier),
                       style: TextStyle(
                         fontFamily: 'GESSTwo',
                         fontSize: 11,
@@ -771,11 +793,16 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.6)),
+                  border: Border.all(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.6),
+                  ),
                 ),
                 child: Text(
                   '${NumberFormatter.toArabic(count)} غرسة',
@@ -796,7 +823,9 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
               value: progress,
               minHeight: 7,
               backgroundColor: Colors.black.withValues(alpha: 0.25),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFFD700)),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFFFFD700),
+              ),
             ),
           ),
           const SizedBox(height: 6),
@@ -971,15 +1000,10 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                       b.colors.first.withValues(alpha: 0.95),
                       b.colors.last.withValues(alpha: 0.85),
                     ]
-                  : [
-                      const Color(0xFF15201A),
-                      const Color(0xFF0B1410),
-                    ],
+                  : [const Color(0xFF15201A), const Color(0xFF0B1410)],
             ),
             border: Border.all(
-              color: b.unlocked
-                  ? const Color(0xFFFFD700)
-                  : Colors.white12,
+              color: b.unlocked ? const Color(0xFFFFD700) : Colors.white12,
               width: b.unlocked ? 1.6 : 1.0,
             ),
             boxShadow: b.unlocked
@@ -1029,7 +1053,9 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                   boxShadow: b.unlocked
                       ? [
                           BoxShadow(
-                            color: const Color(0xFFFFD700).withValues(alpha: 0.5),
+                            color: const Color(
+                              0xFFFFD700,
+                            ).withValues(alpha: 0.5),
                             blurRadius: 10,
                             spreadRadius: 1,
                           ),
@@ -1058,8 +1084,15 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                             fontSize: 26,
                             shadows: b.unlocked
                                 ? const [
-                                    Shadow(color: Colors.black87, blurRadius: 6, offset: Offset(0, 2)),
-                                    Shadow(color: Color(0xFFFFD700), blurRadius: 8),
+                                    Shadow(
+                                      color: Colors.black87,
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
+                                    Shadow(
+                                      color: Color(0xFFFFD700),
+                                      blurRadius: 8,
+                                    ),
                                   ]
                                 : null,
                           ),
@@ -1077,7 +1110,11 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                   color: b.unlocked ? Colors.white : Colors.white38,
                   shadows: b.unlocked
                       ? const [
-                          Shadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 1)),
+                          Shadow(
+                            color: Colors.black54,
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
                         ]
                       : null,
                 ),
@@ -1093,7 +1130,9 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                 style: TextStyle(
                   fontFamily: 'GESSTwo',
                   fontSize: 10,
-                  color: b.unlocked ? Colors.white.withValues(alpha: 0.9) : Colors.white24,
+                  color: b.unlocked
+                      ? Colors.white.withValues(alpha: 0.9)
+                      : Colors.white24,
                 ),
               ),
             ],
@@ -1121,5 +1160,3 @@ class _Badge {
     required this.unlocked,
   });
 }
-
-

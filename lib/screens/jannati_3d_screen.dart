@@ -9,9 +9,11 @@ import 'package:three_dart_flutterflow/three_dart.dart' as three;
 import 'package:three_dart_jsm_flutterflow/three_dart_jsm.dart' as three_jsm;
 
 import '../models/reward_type.dart';
+import '../models/tier_system.dart';
 import '../services/spiritual_audio_service.dart';
 import '../services/storage_service.dart';
 import '../three/asset_map.dart';
+import '../three/day_palette.dart';
 import '../utils/garden_assets.dart';
 import '../utils/number_formatter.dart';
 
@@ -33,20 +35,20 @@ class _SavedEntry {
   _SavedEntry(this.type, this.x, this.y, this.z, {this.tier = 1});
 
   Map<String, dynamic> toJson() => {
-        'type': type.name,
-        'x': x,
-        'y': y,
-        'z': z,
-        'tier': tier,
-      };
+    'type': type.name,
+    'x': x,
+    'y': y,
+    'z': z,
+    'tier': tier,
+  };
 
   static _SavedEntry fromJson(Map<String, dynamic> m) => _SavedEntry(
-        RewardType.values.byName(m['type'] as String),
-        (m['x'] as num).toDouble(),
-        (m['y'] as num).toDouble(),
-        (m['z'] as num).toDouble(),
-        tier: (m['tier'] as num?)?.toInt() ?? 1,
-      );
+    RewardType.values.byName(m['type'] as String),
+    (m['x'] as num).toDouble(),
+    (m['y'] as num).toDouble(),
+    (m['z'] as num).toDouble(),
+    tier: (m['tier'] as num?)?.toInt() ?? 1,
+  );
 }
 
 class Jannati3DScreen extends StatefulWidget {
@@ -56,7 +58,8 @@ class Jannati3DScreen extends StatefulWidget {
   State<Jannati3DScreen> createState() => _Jannati3DScreenState();
 }
 
-class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProviderStateMixin {
+class _Jannati3DScreenState extends State<Jannati3DScreen>
+    with SingleTickerProviderStateMixin {
   final StorageService _storage = StorageService();
   late FlutterGlPlugin _three3dRender;
   three.WebGLRenderer? _renderer;
@@ -96,6 +99,38 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
   final List<three.Vector3> _leafVelocities = [];
   int _frameCount = 0;
 
+  // 🌅 إضاءة اليوم (تلقائي حسب ساعة الجهاز / فجر / ظهيرة / ليل)
+  DayLightMode _lightMode = DayLightMode.auto;
+  double _starBaseOpacity = 0.0;
+  three.Fog? _fog;
+  three.Color? _bgColor;
+
+  // 🎞️ انسياب التبديل اليدوي: من اللوحة المعروضة الآن إلى اللوحة الهدف.
+  final Stopwatch _clock = Stopwatch();
+  PhaseSpec? _appliedSpec;
+  PhaseSpec? _tweenFrom;
+  PhaseSpec? _tweenTo;
+  double _tweenStartMs = 0.0;
+  final double _tweenMs = kManualTransitionSeconds * 1000.0;
+
+  // اسم الفترة على الزر: يُحدَّث عند تغيّرها فقط.
+  Timer? _periodTicker;
+  int _lastPeriodIndex = -1;
+
+  three.Mesh? _skyMesh;
+  three.MeshBasicMaterial? _skyMat;
+  three.Group? _sunGroup;
+  three.MeshBasicMaterial? _sunCoreMat;
+  three.MeshBasicMaterial? _sunCoronaMat;
+  three.MeshPhongMaterial? _cloudMat;
+  three.AmbientLight? _ambientLight;
+  three.DirectionalLight? _sunLight;
+  three.DirectionalLight? _fillLight;
+  three.Points? _starPoints;
+  three.PointsMaterial? _starMat;
+  three.Points? _starHalo;
+  three.PointsMaterial? _starHaloMat;
+
   final Random _rng = Random(42);
 
   static const double _kGroundW = 280.0;
@@ -106,8 +141,34 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
+    final int savedMode = _storage.getDayLightMode();
+    _lightMode = (savedMode >= 0 && savedMode < DayLightMode.values.length)
+        ? DayLightMode.values[savedMode]
+        : DayLightMode.auto;
+    _clock.start();
+    _lastPeriodIndex = periodIndexAtHour(_currentHour());
+
+    // اسم الفترة على الزر يبقى محدّثًا (إعادة بناء عند تغيّرها فقط).
+    _periodTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      final int p = periodIndexAtHour(_currentHour());
+      if (p != _lastPeriodIndex) {
+        _lastPeriodIndex = p;
+        setState(() {});
+      }
+    });
+
     _loadSaved();
   }
+
+  /// الوقت الحالي ككسر ساعة (14.5 = الثانية والنصف بعد الظهر).
+  double _currentHour() {
+    final DateTime now = DateTime.now();
+    return now.hour + now.minute / 60.0 + now.second / 3600.0;
+  }
+
+  /// اللوحة التي يجب أن يكون عليها المشهد الآن.
+  PhaseSpec _targetSpec() => specForMode(_lightMode, _currentHour());
 
   double _calculateGroundElevation(double x, double z) {
     // East Bluff is centered at (48, -26) with radius 33.0 and height 2.5
@@ -159,14 +220,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     debugPrint('📂 Loaded ${_savedEntries.length} 3D entries from storage');
   }
 
-  int _calculateTier(int dhikrCount) {
-    if (dhikrCount >= 10000) return 5;
-    if (dhikrCount >= 2000) return 4;
-    if (dhikrCount >= 500) return 3;
-    if (dhikrCount >= 100) return 2;
-    return 1;
-  }
-
   void _syncFromDhikrRewards() {
     if (_didSync) return;
     _didSync = true;
@@ -189,7 +242,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       final totalRewards = byType[type] ?? 0;
       if (totalRewards <= 0) continue;
 
-      final tier = _calculateTier(totalRewards);
+      final tier = TierSystem.calculate(totalRewards);
 
       int targetCount;
       if (totalRewards < 50) {
@@ -215,7 +268,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     }
 
     if (totalAdded > 0) {
-      debugPrint('🔄 Synced $totalAdded new 3D rewards according to Tier progression');
+      debugPrint(
+        '🔄 Synced $totalAdded new 3D rewards according to Tier progression',
+      );
     }
   }
 
@@ -276,38 +331,36 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
 
   void _buildAtmosphere() {
     // 1. Celestial Emerald Sky Dome
+    //    fog: false — حتى تظهر سماء الليل الكحلية بوضوح (الضباب يخصّ الأرض فقط)
     final skyGeo = three.SphereGeometry(380, 24, 16);
-    final skyMat = three.MeshBasicMaterial({
+    _skyMat = three.MeshBasicMaterial({
       "color": 0x1A543E,
       "side": three.BackSide,
+      "fog": false,
     });
-    final sky = three.Mesh(skyGeo, skyMat);
-    _scene.add(sky);
+    _skyMesh = three.Mesh(skyGeo, _skyMat!);
+    _scene.add(_skyMesh!);
 
-    // 2. Radiant Golden Sun
-    final sunGroup = three.Group();
-    sunGroup.position.set(50, 90, -90);
+    // 2. Radiant Golden Sun (يتغيّر موضعه ولونه مع طور الإضاءة)
+    _sunGroup = three.Group();
+    _sunGroup!.position.set(50, 90, -90);
 
-    final sunCore = three.Mesh(
-      three.SphereGeometry(16, 16, 16),
-      three.MeshBasicMaterial({"color": 0xFFFDF0}),
+    _sunCoreMat = three.MeshBasicMaterial({"color": 0xFFFDF0});
+    _sunGroup!.add(three.Mesh(three.SphereGeometry(16, 16, 16), _sunCoreMat!));
+
+    _sunCoronaMat = three.MeshBasicMaterial({
+      "color": 0xFFE082,
+      "transparent": true,
+      "opacity": 0.5,
+    });
+    _sunGroup!.add(
+      three.Mesh(three.SphereGeometry(32, 16, 16), _sunCoronaMat!),
     );
-    sunGroup.add(sunCore);
-
-    final sunCorona = three.Mesh(
-      three.SphereGeometry(32, 16, 16),
-      three.MeshBasicMaterial({
-        "color": 0xFFE082,
-        "transparent": true,
-        "opacity": 0.5,
-      }),
-    );
-    sunGroup.add(sunCorona);
-    _scene.add(sunGroup);
+    _scene.add(_sunGroup!);
 
     // 3. Floating Stylized Clouds
     _clouds.clear();
-    final cloudMat = three.MeshPhongMaterial({
+    _cloudMat = three.MeshPhongMaterial({
       "color": 0xFFFAF0,
       "emissive": 0x1A3A28,
       "shininess": 30,
@@ -338,7 +391,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
 
       for (int p = 0; p < puffSizes.length; p++) {
         final puffGeo = three.SphereGeometry(puffSizes[p], 7, 6);
-        final puff = three.Mesh(puffGeo, cloudMat);
+        final puff = three.Mesh(puffGeo, _cloudMat!);
         puff.position.copy(puffOffsets[p]);
         puff.scale.set(1.4, 0.7, 1.0);
         cloud.add(puff);
@@ -347,6 +400,142 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       _clouds.add(cloud);
       _scene.add(cloud);
     }
+
+    // 4. Starfield (يظهر في طور الليل الزمردي فقط)
+    _buildStarField();
+  }
+
+  /// ✨ حقل النجوم — طبقتان فقط (Points) لتفادي إثقال WebGL بمئات الأجسام.
+  /// كل الأرقام تُقرأ من [starField] في `three/day_palette.dart`.
+  void _buildStarField() {
+    final int starCount = starField.count;
+    final List<double> positions = [];
+    for (int i = 0; i < starCount; i++) {
+      final double theta = _rng.nextDouble() * pi * 2;
+      // النجوم مكثّفة نحو الأفق لأن السماء المرئية شريط ضيّق أعلى المشهد
+      final double phi = pi * (0.20 + _rng.nextDouble() * 0.30);
+      final double r = 300.0 + _rng.nextDouble() * 60.0;
+      positions.add(r * sin(phi) * cos(theta));
+      positions.add(r * cos(phi) + 20.0);
+      positions.add(r * sin(phi) * sin(theta));
+    }
+
+    // هندسة واحدة تُشارَك بين الطبقتين (بلا تكرار في الذاكرة)
+    final starGeo = three.BufferGeometry();
+    starGeo.setAttribute(
+      'position',
+      three.Float32BufferAttribute(Float32Array.from(positions), 3),
+    );
+
+    // الطبقة 1: نجوم حادّة — fog: false حتى لا تبتلعها ضبابية المشهد البعيدة
+    _starMat = three.PointsMaterial({
+      "color": 0xFFFFFF,
+      "size": starField.size,
+      "sizeAttenuation": true,
+      "transparent": true,
+      "opacity": 0.0,
+      "fog": false,
+      "depthWrite": false,
+      "blending": three.AdditiveBlending,
+    });
+    _starPoints = three.Points(starGeo, _starMat!);
+    _starPoints!.frustumCulled = false;
+    _scene.add(_starPoints!);
+
+    // الطبقة 2: هالة ناعمة حول كل نجمة (توهّج) بمزج إضافي
+    _starHaloMat = three.PointsMaterial({
+      "color": starField.haloColor,
+      "size": starField.haloSize,
+      "sizeAttenuation": true,
+      "transparent": true,
+      "opacity": 0.0,
+      "fog": false,
+      "depthWrite": false,
+      "blending": three.AdditiveBlending,
+    });
+    _starHalo = three.Points(starGeo, _starHaloMat!);
+    _starHalo!.frustumCulled = false;
+    _scene.add(_starHalo!);
+  }
+
+  /// 🎨 يطبّق لوحة إضاءة على المشهد بتعديل القيم **في مكانها** (بلا تخصيص ذاكرة).
+  /// الكلفة ~صفر: لا حذف/إضافة أضواء، ولا لمس لشجرة المشهد، ولا إعادة بناء شيدر.
+  void _applySpec(PhaseSpec spec) {
+    _appliedSpec = spec;
+
+    // قبة السماء (بلا ضباب) + أبخرة الأفق
+    _bgColor?.setHex(spec.skyColor);
+    _fog?.color.setHex(spec.fogColor);
+    _skyMat?.color.setHex(spec.skyColor);
+
+    // الإضاءة
+    _ambientLight?.color?.setHex(spec.ambient);
+    _ambientLight?.intensity = spec.ambientIntensity;
+    _sunLight?.color?.setHex(spec.sun);
+    _sunLight?.intensity = spec.sunIntensity;
+    _sunLight?.position.set(
+      spec.lightPos[0],
+      spec.lightPos[1],
+      spec.lightPos[2],
+    );
+    _fillLight?.color?.setHex(spec.fill);
+    _fillLight?.intensity = spec.fillIntensity;
+
+    // الشمس/القمر المرئي
+    _sunGroup?.position.set(spec.sunPos[0], spec.sunPos[1], spec.sunPos[2]);
+    _sunCoreMat?.color.setHex(spec.core);
+    _sunCoronaMat?.color.setHex(spec.corona);
+
+    // السحاب
+    _cloudMat?.color.setHex(spec.cloud);
+
+    // النجوم: طبقة حادّة + هالة توهّج
+    _starBaseOpacity = spec.starOpacity;
+    _starMat?.opacity = spec.starOpacity;
+    _starHaloMat?.opacity = spec.starOpacity * starField.haloOpacityRatio;
+    final bool starsOn = spec.starOpacity > 0.01;
+    _starPoints?.visible = starsOn;
+    _starHalo?.visible = starsOn;
+  }
+
+  /// 🎞️ يبدأ انسيابًا سريعًا من اللوحة المعروضة الآن إلى اللوحة الهدف.
+  void _startTransitionTo(PhaseSpec target) {
+    _tweenFrom = _appliedSpec ?? target;
+    _tweenTo = target;
+    _tweenStartMs = _clock.elapsedMilliseconds.toDouble();
+  }
+
+  /// 🎞️ يتابع انسياب التبديل اليدوي (يُنادى كل إطار ما دام الانسياب جاريًا).
+  void _advanceTransition() {
+    final PhaseSpec? from = _tweenFrom;
+    final PhaseSpec? to = _tweenTo;
+    if (from == null || to == null) return;
+
+    final double raw = (_clock.elapsedMilliseconds - _tweenStartMs) / _tweenMs;
+    final double t = raw < 0.0 ? 0.0 : (raw > 1.0 ? 1.0 : raw);
+
+    if (t >= 1.0) {
+      _applySpec(to);
+      _tweenTo = null;
+      _tweenFrom = null;
+      return;
+    }
+    _applySpec(lerpSpec(from, to, _easeInOut(t)));
+  }
+
+  /// تنعيم الحركة: هادئة في البداية والنهاية، أسرع في المنتصف.
+  double _easeInOut(double t) =>
+      t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2;
+
+  /// 🔁 يدوّر وضع الإضاءة: تلقائي ← فجر ← ظهيرة ← ليل ← تلقائي ...
+  /// التبديل يتم بانسياب سريع ([kManualTransitionSeconds]) لا بقفزة.
+  void _cycleLightMode() {
+    setState(() {
+      _lightMode = DayLightMode
+          .values[(_lightMode.index + 1) % DayLightMode.values.length];
+    });
+    _storage.setDayLightMode(_lightMode.index);
+    _startTransitionTo(_targetSpec());
   }
 
   // =========================================================================
@@ -453,17 +642,30 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     }
 
     // Organic Soil & Moss Patches for Natural Roughness
-    final mossMat = three.MeshPhongMaterial({"color": 0x175432, "shininess": 15, "flatShading": true});
-    final soilPatchMat = three.MeshPhongMaterial({"color": 0x3E2B1D, "shininess": 10, "flatShading": true});
+    final mossMat = three.MeshPhongMaterial({
+      "color": 0x175432,
+      "shininess": 15,
+      "flatShading": true,
+    });
+    final soilPatchMat = three.MeshPhongMaterial({
+      "color": 0x3E2B1D,
+      "shininess": 10,
+      "flatShading": true,
+    });
 
     for (int p = 0; p < 45; p++) {
       final isEast = p % 2 == 0;
-      final px = isEast ? 25.0 + _rng.nextDouble() * 45.0 : -25.0 - _rng.nextDouble() * 45.0;
+      final px = isEast
+          ? 25.0 + _rng.nextDouble() * 45.0
+          : -25.0 - _rng.nextDouble() * 45.0;
       final pz = (_rng.nextDouble() * 95.0) - 47.5;
       final py = _calculateGroundElevation(px, pz);
       final pr = 2.0 + _rng.nextDouble() * 4.5;
       final patchMat = (p % 3 == 0) ? soilPatchMat : mossMat;
-      final patch = three.Mesh(three.CircleGeometry(radius: pr, segments: 8), patchMat);
+      final patch = three.Mesh(
+        three.CircleGeometry(radius: pr, segments: 8),
+        patchMat,
+      );
       patch.rotation.x = -three.Math.pi / 2;
       patch.position.set(px, py + 0.01, pz);
       patch.scale.set(1.3, 1.0, 0.9);
@@ -506,13 +708,16 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       // 3 to 4 delicate, fine grass blades
       final bladeCount = 3 + (i % 2);
       for (int b = 0; b < bladeCount; b++) {
-        final bAngle = (b / bladeCount) * three.Math.pi * 2 + _rng.nextDouble() * 0.3;
-        final bHeight = 0.35 + _rng.nextDouble() * 0.35; // Finer, realistic lawn scale
-        final blade = three.Mesh(
-          three.ConeGeometry(0.08, bHeight, 4),
-          gMat,
+        final bAngle =
+            (b / bladeCount) * three.Math.pi * 2 + _rng.nextDouble() * 0.3;
+        final bHeight =
+            0.35 + _rng.nextDouble() * 0.35; // Finer, realistic lawn scale
+        final blade = three.Mesh(three.ConeGeometry(0.08, bHeight, 4), gMat);
+        blade.position.set(
+          0.12 * sin(bAngle),
+          bHeight * 0.45,
+          0.12 * cos(bAngle),
         );
-        blade.position.set(0.12 * sin(bAngle), bHeight * 0.45, 0.12 * cos(bAngle));
         blade.rotation.z = sin(bAngle) * 0.28;
         blade.rotation.x = cos(bAngle) * 0.28;
         tuftGroup.add(blade);
@@ -520,7 +725,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
 
       // Delicate Meadow Blossoms
       if (i % 4 == 0) {
-        final fMat = (i % 8 == 0) ? flowerPink : (i % 12 == 0 ? flowerGold : flowerWhite);
+        final fMat = (i % 8 == 0)
+            ? flowerPink
+            : (i % 12 == 0 ? flowerGold : flowerWhite);
         final blossom = three.Mesh(three.SphereGeometry(0.12, 4, 4), fMat);
         blossom.position.set(
           (_rng.nextDouble() - 0.5) * 0.35,
@@ -578,7 +785,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
         final angle = (c / 8) * three.Math.pi * 2;
         final h = 1.0 + _rng.nextDouble() * 1.1;
         final spike = three.Mesh(three.ConeGeometry(0.25, h, 6), cMat);
-        spike.position.set(0.55 * sin(angle), 0.85 + h * 0.45, 0.55 * cos(angle));
+        spike.position.set(
+          0.55 * sin(angle),
+          0.85 + h * 0.45,
+          0.55 * cos(angle),
+        );
         spike.rotation.z = sin(angle) * 0.35;
         spike.rotation.x = cos(angle) * 0.35;
         geodeGroup.add(spike);
@@ -668,7 +879,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       final stone = three.Mesh(three.DodecahedronGeometry(size), cMat);
       stone.position.set(x, -1.25 + size * 0.3, z);
       stone.scale.set(1.3, 0.6, 1.2);
-      stone.rotation.set(_rng.nextDouble() * 3, _rng.nextDouble() * 3, _rng.nextDouble() * 3);
+      stone.rotation.set(
+        _rng.nextDouble() * 3,
+        _rng.nextDouble() * 3,
+        _rng.nextDouble() * 3,
+      );
       _scene.add(stone);
     }
   }
@@ -733,8 +948,15 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
   }
 
   void _buildWaterLilies() {
-    final padMat = three.MeshPhongMaterial({"color": 0x2E7D32, "shininess": 40});
-    final lotusWhite = three.MeshPhongMaterial({"color": 0xFFFFFF, "emissive": 0xF48FB1, "shininess": 90});
+    final padMat = three.MeshPhongMaterial({
+      "color": 0x2E7D32,
+      "shininess": 40,
+    });
+    final lotusWhite = three.MeshPhongMaterial({
+      "color": 0xFFFFFF,
+      "emissive": 0xF48FB1,
+      "shininess": 90,
+    });
 
     for (int i = 0; i < 16; i++) {
       final z = (_rng.nextDouble() * _kGroundD * 0.8) - (_kGroundD * 0.4);
@@ -785,31 +1007,51 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     _leafVelocities.clear();
     _scene.add(_fallingLeavesGroup);
 
-    final leafMatPink = three.MeshBasicMaterial({"color": 0xF8BBD0, "side": three.DoubleSide});
-    final leafMatGold = three.MeshBasicMaterial({"color": 0xFFD54F, "side": three.DoubleSide});
-    final leafMatGreen = three.MeshBasicMaterial({"color": 0x81C784, "side": three.DoubleSide});
+    final leafMatPink = three.MeshBasicMaterial({
+      "color": 0xF8BBD0,
+      "side": three.DoubleSide,
+    });
+    final leafMatGold = three.MeshBasicMaterial({
+      "color": 0xFFD54F,
+      "side": three.DoubleSide,
+    });
+    final leafMatGreen = three.MeshBasicMaterial({
+      "color": 0x81C784,
+      "side": three.DoubleSide,
+    });
 
     final leafGeo = three.PlaneGeometry(0.45, 0.3);
 
     for (int l = 0; l < 45; l++) {
-      final mat = (l % 3 == 0) ? leafMatPink : (l % 3 == 1 ? leafMatGold : leafMatGreen);
+      final mat = (l % 3 == 0)
+          ? leafMatPink
+          : (l % 3 == 1 ? leafMatGold : leafMatGreen);
       final leaf = three.Mesh(leafGeo, mat);
       final lx = (_rng.nextDouble() * _kGroundW * 0.6) - (_kGroundW * 0.3);
       final ly = 2.0 + _rng.nextDouble() * 26.0;
       final lz = (_rng.nextDouble() * _kGroundD * 0.6) - (_kGroundD * 0.3);
       leaf.position.set(lx, ly, lz);
-      leaf.rotation.set(_rng.nextDouble() * 3, _rng.nextDouble() * 3, _rng.nextDouble() * 3);
+      leaf.rotation.set(
+        _rng.nextDouble() * 3,
+        _rng.nextDouble() * 3,
+        _rng.nextDouble() * 3,
+      );
       _fallingLeavesGroup.add(leaf);
-      _leafVelocities.add(three.Vector3(
-        0.04 + _rng.nextDouble() * 0.03, // Drift with wind along +X
-        -0.015 - _rng.nextDouble() * 0.02, // Gentle downward glide
-        0.03 + _rng.nextDouble() * 0.02, // Drift along +Z
-      ));
+      _leafVelocities.add(
+        three.Vector3(
+          0.04 + _rng.nextDouble() * 0.03, // Drift with wind along +X
+          -0.015 - _rng.nextDouble() * 0.02, // Gentle downward glide
+          0.03 + _rng.nextDouble() * 0.02, // Drift along +Z
+        ),
+      );
     }
 
     // 3. White Doves Flying
     _birdsGroup.clear();
-    final doveMat = three.MeshBasicMaterial({"color": 0xFFFFFF, "side": three.DoubleSide});
+    final doveMat = three.MeshBasicMaterial({
+      "color": 0xFFFFFF,
+      "side": three.DoubleSide,
+    });
     for (int b = 0; b < 5; b++) {
       final bird = three.Group();
       bird.position.set(-45 + b * 20.0, 42.0 + (b % 3) * 5.0, -35.0 + b * 14.0);
@@ -847,8 +1089,15 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
         "shininess": isGoldTier ? 90 : 15,
         "flatShading": true,
       });
-      final segment = three.Mesh(three.CylinderGeometry(topR, botR, 1.0, 10), mat);
-      segment.position.set(sin(s * 0.12) * 0.25, 0.5 + s * 0.95, cos(s * 0.08) * 0.1);
+      final segment = three.Mesh(
+        three.CylinderGeometry(topR, botR, 1.0, 10),
+        mat,
+      );
+      segment.position.set(
+        sin(s * 0.12) * 0.25,
+        0.5 + s * 0.95,
+        cos(s * 0.08) * 0.1,
+      );
       segment.rotation.z = -s * 0.03;
       group.add(segment);
     }
@@ -874,11 +1123,23 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
 
     final frondColorDark = isGoldTier ? 0xFFD700 : 0x1B5E20;
     final frondColorLight = isGoldTier ? 0xFFEB3B : 0x388E3C;
-    final frondDark = three.MeshPhongMaterial({"color": frondColorDark, "shininess": 30, "side": three.DoubleSide, "flatShading": true});
-    final frondLight = three.MeshPhongMaterial({"color": frondColorLight, "shininess": 35, "side": three.DoubleSide, "flatShading": true});
+    final frondDark = three.MeshPhongMaterial({
+      "color": frondColorDark,
+      "shininess": 30,
+      "side": three.DoubleSide,
+      "flatShading": true,
+    });
+    final frondLight = three.MeshPhongMaterial({
+      "color": frondColorLight,
+      "shininess": 35,
+      "side": three.DoubleSide,
+      "flatShading": true,
+    });
 
     final layers = tier == 1 ? 1 : 2;
-    final frondLen = tier == 1 ? 3.0 : (tier == 2 ? 3.8 : (tier == 3 ? 4.5 : 5.4));
+    final frondLen = tier == 1
+        ? 3.0
+        : (tier == 2 ? 3.8 : (tier == 3 ? 4.5 : 5.4));
     final frondCount = tier == 1 ? 5 : (tier == 2 ? 7 : (tier == 3 ? 10 : 14));
 
     for (int l = 0; l < layers; l++) {
@@ -888,14 +1149,20 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       for (int i = 0; i < count; i++) {
         final angle = (i / count) * three.Math.pi * 2 + l * 0.3;
         final frond = three.Mesh(three.ConeGeometry(0.85, frondLen, 5), mat);
-        frond.position.set((frondLen * 0.38) * sin(angle), yBase - 0.5, (frondLen * 0.38) * cos(angle));
+        frond.position.set(
+          (frondLen * 0.38) * sin(angle),
+          yBase - 0.5,
+          (frondLen * 0.38) * cos(angle),
+        );
         frond.rotation.z = 0.68;
         frond.rotation.y = -angle + three.Math.pi / 2;
         group.add(frond);
       }
     }
 
-    final s = tier == 1 ? 0.6 : (tier == 2 ? 0.75 : (tier == 3 ? 0.9 : (tier == 4 ? 1.05 : 1.2)));
+    final s = tier == 1
+        ? 0.6
+        : (tier == 2 ? 0.75 : (tier == 3 ? 0.9 : (tier == 4 ? 1.05 : 1.2)));
     group.scale.set(s, s, s);
     return group;
   }
@@ -910,14 +1177,20 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       "shininess": isGoldTier ? 80 : 15,
       "flatShading": true,
     });
-    final trunk = three.Mesh(three.CylinderGeometry(0.35, 0.6, 3.4, 10), trunkMat);
+    final trunk = three.Mesh(
+      three.CylinderGeometry(0.35, 0.6, 3.4, 10),
+      trunkMat,
+    );
     trunk.position.y = 1.7;
     group.add(trunk);
 
     if (tier >= 2) {
       for (int r = 0; r < 4; r++) {
         final angle = (r / 4) * three.Math.pi * 2;
-        final root = three.Mesh(three.CylinderGeometry(0.12, 0.3, 0.8, 6), trunkMat);
+        final root = three.Mesh(
+          three.CylinderGeometry(0.12, 0.3, 0.8, 6),
+          trunkMat,
+        );
         root.position.set(sin(angle) * 0.5, 0.25, cos(angle) * 0.5);
         root.rotation.z = sin(angle) * 0.45;
         root.rotation.x = cos(angle) * 0.45;
@@ -928,8 +1201,16 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     final leafColors = isGoldTier
         ? [0xFFD700, 0xFFEB3B, 0xFFF176, 0xFFD700, 0xFFC107]
         : (tier >= 4
-            ? [0x2E7D32, 0x388E3C, 0x43A047, 0xF8BBD0, 0xF48FB1, 0x388E3C, 0x2E7D32]
-            : [0x2E7D32, 0x388E3C, 0x43A047, 0x4CAF50, 0x2E7D32]);
+              ? [
+                  0x2E7D32,
+                  0x388E3C,
+                  0x43A047,
+                  0xF8BBD0,
+                  0xF48FB1,
+                  0x388E3C,
+                  0x2E7D32,
+                ]
+              : [0x2E7D32, 0x388E3C, 0x43A047, 0x4CAF50, 0x2E7D32]);
 
     final clusterConfigs = [
       [0.0, 4.8, 0.0, 2.0],
@@ -957,7 +1238,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       group.add(leaf);
     }
 
-    final s = tier == 1 ? 0.6 : (tier == 2 ? 0.75 : (tier == 3 ? 0.9 : (tier == 4 ? 1.05 : 1.2)));
+    final s = tier == 1
+        ? 0.6
+        : (tier == 2 ? 0.75 : (tier == 3 ? 0.9 : (tier == 4 ? 1.05 : 1.2)));
     group.scale.set(s, s, s);
     return group;
   }
@@ -966,9 +1249,20 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     final group = three.Group();
     final isGoldTier = tier >= 5;
 
-    final woodMat = three.MeshPhongMaterial({"color": isGoldTier ? 0x8D6E63 : 0x5D4037, "shininess": 35});
-    final goldMat = three.MeshPhongMaterial({"color": 0xFFA000, "emissive": 0x6B4B00, "shininess": 100});
-    final innerMat = three.MeshPhongMaterial({"color": 0xFFF9C4, "emissive": 0xFFA000, "shininess": 60});
+    final woodMat = three.MeshPhongMaterial({
+      "color": isGoldTier ? 0x8D6E63 : 0x5D4037,
+      "shininess": 35,
+    });
+    final goldMat = three.MeshPhongMaterial({
+      "color": 0xFFA000,
+      "emissive": 0x6B4B00,
+      "shininess": 100,
+    });
+    final innerMat = three.MeshPhongMaterial({
+      "color": 0xFFF9C4,
+      "emissive": 0xFFA000,
+      "shininess": 60,
+    });
 
     final body = three.Mesh(three.BoxGeometry(1.8, 0.9, 1.2), woodMat);
     body.position.y = 0.45;
@@ -991,8 +1285,15 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
 
     final coinCount = tier * 3;
     for (int c = 0; c < coinCount.clamp(3, 12); c++) {
-      final coin = three.Mesh(three.CylinderGeometry(0.12, 0.12, 0.04, 8), goldMat);
-      coin.position.set((_rng.nextDouble() - 0.5) * 1.0, 0.9 + _rng.nextDouble() * 0.2, (_rng.nextDouble() - 0.5) * 0.5);
+      final coin = three.Mesh(
+        three.CylinderGeometry(0.12, 0.12, 0.04, 8),
+        goldMat,
+      );
+      coin.position.set(
+        (_rng.nextDouble() - 0.5) * 1.0,
+        0.9 + _rng.nextDouble() * 0.2,
+        (_rng.nextDouble() - 0.5) * 0.5,
+      );
       coin.rotation.x = _rng.nextDouble();
       coin.rotation.z = _rng.nextDouble();
       group.add(coin);
@@ -1000,7 +1301,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
 
     final diamond = three.Mesh(
       three.OctahedronGeometry(0.25 + tier * 0.04),
-      three.MeshPhongMaterial({"color": isGoldTier ? 0xFFD700 : 0x00E5FF, "emissive": 0x0097A7, "shininess": 100}),
+      three.MeshPhongMaterial({
+        "color": isGoldTier ? 0xFFD700 : 0x00E5FF,
+        "emissive": 0x0097A7,
+        "shininess": 100,
+      }),
     );
     diamond.position.set(0, 1.2, 0);
     group.add(diamond);
@@ -1013,15 +1318,25 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     final group = three.Group();
     final isGoldTier = tier >= 5;
 
-    final wallMat = three.MeshPhongMaterial({"color": isGoldTier ? 0xFFF8E1 : 0xFFFFFF, "shininess": 20, "flatShading": true});
-    final woodMat = three.MeshPhongMaterial({"color": 0x4E342E, "shininess": 20});
+    final wallMat = three.MeshPhongMaterial({
+      "color": isGoldTier ? 0xFFF8E1 : 0xFFFFFF,
+      "shininess": 20,
+      "flatShading": true,
+    });
+    final woodMat = three.MeshPhongMaterial({
+      "color": 0x4E342E,
+      "shininess": 20,
+    });
     final roofMat = three.MeshPhongMaterial({
       "color": isGoldTier ? 0xFFA000 : (tier >= 3 ? 0x00897B : 0xBF360C),
       "emissive": isGoldTier ? 0x442200 : 0x000000,
       "shininess": 35,
       "flatShading": true,
     });
-    final goldMat = three.MeshPhongMaterial({"color": 0xFFA000, "shininess": 90});
+    final goldMat = three.MeshPhongMaterial({
+      "color": 0xFFA000,
+      "shininess": 90,
+    });
 
     final foundation = three.Mesh(three.BoxGeometry(3.8, 0.3, 3.0), woodMat);
     foundation.position.y = 0.15;
@@ -1051,7 +1366,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       group.add(window);
     }
 
-    final s = tier == 1 ? 0.75 : (tier == 2 ? 0.85 : (tier == 3 ? 0.95 : (tier == 4 ? 1.05 : 1.15)));
+    final s = tier == 1
+        ? 0.75
+        : (tier == 2 ? 0.85 : (tier == 3 ? 0.95 : (tier == 4 ? 1.05 : 1.15)));
     group.scale.set(s, s, s);
     return group;
   }
@@ -1078,7 +1395,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       "emissive": isGoldTier ? 0x553300 : 0x00332A,
       "shininess": 95,
     });
-    final darkMarble = three.MeshPhongMaterial({"color": 0xE0E0E0, "shininess": 40, "flatShading": true});
+    final darkMarble = three.MeshPhongMaterial({
+      "color": 0xE0E0E0,
+      "shininess": 40,
+      "flatShading": true,
+    });
 
     final platform = three.Mesh(three.BoxGeometry(6.6, 0.5, 5.0), darkMarble);
     platform.position.y = 0.25;
@@ -1089,7 +1410,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     group.add(hall);
 
     for (int c = -2; c <= 2; c++) {
-      final col = three.Mesh(three.CylinderGeometry(0.16, 0.2, 2.2, 10), marbleMat);
+      final col = three.Mesh(
+        three.CylinderGeometry(0.16, 0.2, 2.2, 10),
+        marbleMat,
+      );
       col.position.set(c * 1.0, 1.35, 1.95);
       group.add(col);
     }
@@ -1103,14 +1427,25 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     finial.position.y = 5.9;
     group.add(finial);
 
-    final crescent = three.Mesh(three.TorusGeometry(0.22, 0.05, 6, 12, three.Math.pi * 1.4), goldMat);
+    final crescent = three.Mesh(
+      three.TorusGeometry(0.22, 0.05, 6, 12, three.Math.pi * 1.4),
+      goldMat,
+    );
     crescent.position.set(0, 6.45, 0);
     group.add(crescent);
 
     final minaretCount = tier == 1 ? 2 : 4;
     final minaretCoords = minaretCount == 2
-        ? [[-1, 1], [1, 1]]
-        : [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+        ? [
+            [-1, 1],
+            [1, 1],
+          ]
+        : [
+            [-1, -1],
+            [1, -1],
+            [-1, 1],
+            [1, 1],
+          ];
 
     for (final mc in minaretCoords) {
       final mx = mc[0];
@@ -1118,11 +1453,17 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       final mGroup = three.Group();
       mGroup.position.set(mx * 2.9, 0, mz * 2.2);
 
-      final shaft = three.Mesh(three.CylinderGeometry(0.26, 0.36, 5.4, 12), marbleMat);
+      final shaft = three.Mesh(
+        three.CylinderGeometry(0.26, 0.36, 5.4, 12),
+        marbleMat,
+      );
       shaft.position.y = 3.0;
       mGroup.add(shaft);
 
-      final balcony1 = three.Mesh(three.TorusGeometry(0.44, 0.06, 6, 14), goldMat);
+      final balcony1 = three.Mesh(
+        three.TorusGeometry(0.44, 0.06, 6, 14),
+        goldMat,
+      );
       balcony1.position.y = 4.8;
       balcony1.rotation.x = three.Math.pi / 2;
       mGroup.add(balcony1);
@@ -1139,7 +1480,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       group.add(mGroup);
     }
 
-    final s = tier == 1 ? 0.75 : (tier == 2 ? 0.88 : (tier == 3 ? 1.0 : (tier == 4 ? 1.15 : 1.3)));
+    final s = tier == 1
+        ? 0.75
+        : (tier == 2 ? 0.88 : (tier == 3 ? 1.0 : (tier == 4 ? 1.15 : 1.3)));
     group.scale.set(s, s, s);
     return group;
   }
@@ -1160,8 +1503,16 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       "emissive": 0x6A4400,
       "shininess": 100,
     });
-    final darkMarble = three.MeshPhongMaterial({"color": 0xE0E0E0, "shininess": 40, "flatShading": true});
-    final emeraldMat = three.MeshPhongMaterial({"color": 0x00C853, "emissive": 0x004D1A, "shininess": 90});
+    final darkMarble = three.MeshPhongMaterial({
+      "color": 0xE0E0E0,
+      "shininess": 40,
+      "flatShading": true,
+    });
+    final emeraldMat = three.MeshPhongMaterial({
+      "color": 0x00C853,
+      "emissive": 0x004D1A,
+      "shininess": 90,
+    });
 
     final platform = three.Mesh(three.BoxGeometry(7.2, 0.6, 5.6), darkMarble);
     platform.position.y = 0.3;
@@ -1220,7 +1571,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     portal.position.set(0, 1.4, 2.12);
     group.add(portal);
 
-    final s = tier == 1 ? 0.75 : (tier == 2 ? 0.88 : (tier == 3 ? 1.0 : (tier == 4 ? 1.15 : 1.3)));
+    final s = tier == 1
+        ? 0.75
+        : (tier == 2 ? 0.88 : (tier == 3 ? 1.0 : (tier == 4 ? 1.15 : 1.3)));
     group.scale.set(s, s, s);
     return group;
   }
@@ -1296,7 +1649,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       case RewardType.treasure:
         do {
           final isEast = _rng.nextBool();
-          x = isEast ? 28.0 + _rng.nextDouble() * 36.0 : -28.0 - _rng.nextDouble() * 36.0;
+          x = isEast
+              ? 28.0 + _rng.nextDouble() * 36.0
+              : -28.0 - _rng.nextDouble() * 36.0;
           z = (_rng.nextDouble() * 75.0) - 37.5;
           tries++;
         } while (!_isFarEnough(x, z) && tries < 90);
@@ -1321,13 +1676,19 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
   }
 
   // ignore: unused_element
-  Future<three.Object3D?> _loadGLB(String path, RewardType type, {int tier = 1}) async {
+  Future<three.Object3D?> _loadGLB(
+    String path,
+    RewardType type, {
+    int tier = 1,
+  }) async {
     if (_glbCache.containsKey(path)) return _glbCache[path]!.clone(true);
 
     try {
       debugPrint('📥 Loading GLB: $path');
       final loader = three_jsm.GLTFLoader();
-      final gltf = await loader.loadAsync(path).timeout(const Duration(seconds: 5));
+      final gltf = await loader
+          .loadAsync(path)
+          .timeout(const Duration(seconds: 5));
 
       if (gltf == null || gltf["scene"] == null) {
         debugPrint('⚠️ GLB scene is null for $path');
@@ -1338,7 +1699,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
 
       scene.traverse((child) {
         if (child is three.Mesh) {
-          final materials = child.material is List ? child.material as List : [child.material];
+          final materials = child.material is List
+              ? child.material as List
+              : [child.material];
           for (final mat in materials) {
             if (mat != null) {
               mat.side = three.DoubleSide;
@@ -1375,7 +1738,12 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
   }
 
   // ignore: unused_element
-  Future<void> _upgradeToGLB(three.Group group, three.Object3D oldChild, RewardType type, int tier) async {
+  Future<void> _upgradeToGLB(
+    three.Group group,
+    three.Object3D oldChild,
+    RewardType type,
+    int tier,
+  ) async {
     final path = assetForRewardTypeAndTier(type, tier);
     try {
       final glb = await _loadGLB(path, type, tier: tier);
@@ -1412,7 +1780,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
 
     final calculatedPos = (x == null || z == null) && !fromStorage
         ? _nextSpawnPosForType(type)
-        : three.Vector3(x ?? 0.0, _calculateGroundElevation(x ?? 0.0, z ?? 0.0), z ?? 0.0);
+        : three.Vector3(
+            x ?? 0.0,
+            _calculateGroundElevation(x ?? 0.0, z ?? 0.0),
+            z ?? 0.0,
+          );
 
     final group = three.Group();
     group.position.set(calculatedPos.x, calculatedPos.y, calculatedPos.z);
@@ -1422,16 +1794,22 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     group.add(procedural);
 
     // 1. Soft Dark Contact Shadow Decal on the ground
-    final shadowRadius = (type == RewardType.palace || type == RewardType.mosque)
+    final shadowRadius =
+        (type == RewardType.palace || type == RewardType.mosque)
         ? 4.5
-        : (type == RewardType.house ? 2.5 : (type == RewardType.treasure ? 1.4 : 1.8));
+        : (type == RewardType.house
+              ? 2.5
+              : (type == RewardType.treasure ? 1.4 : 1.8));
     final shadowMat = three.MeshBasicMaterial({
       "color": 0x061F12,
       "transparent": true,
       "opacity": 0.42,
       "side": three.DoubleSide,
     });
-    final shadowDecal = three.Mesh(three.CircleGeometry(radius: shadowRadius, segments: 14), shadowMat);
+    final shadowDecal = three.Mesh(
+      three.CircleGeometry(radius: shadowRadius, segments: 14),
+      shadowMat,
+    );
     shadowDecal.rotation.x = -three.Math.pi / 2;
     shadowDecal.position.y = 0.02;
     group.add(shadowDecal);
@@ -1450,10 +1828,25 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     }
 
     _scene.add(group);
-    _animatedModels.add(_AnimatedModel(group, DateTime.now().millisecondsSinceEpoch, type, tier: tier));
+    _animatedModels.add(
+      _AnimatedModel(
+        group,
+        DateTime.now().millisecondsSinceEpoch,
+        type,
+        tier: tier,
+      ),
+    );
 
     if (!fromStorage) {
-      _savedEntries.add(_SavedEntry(type, calculatedPos.x, calculatedPos.y, calculatedPos.z, tier: tier));
+      _savedEntries.add(
+        _SavedEntry(
+          type,
+          calculatedPos.x,
+          calculatedPos.y,
+          calculatedPos.z,
+          tier: tier,
+        ),
+      );
       _storage.saveRewards3D(_savedEntries.map((e) => e.toJson()).toList());
     }
   }
@@ -1482,7 +1875,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
       backgroundColor: Colors.transparent,
       builder: (context) {
         final count = _storage.getTotalByType(type);
-        final tier = _calculateTier(count);
+        final tier = TierSystem.calculate(count);
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -1552,8 +1945,16 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildInfoStat('الإجمالي المغروس', NumberFormatter.toArabic(count)),
-                      _buildInfoStat('في المشهد 3D', NumberFormatter.toArabic(_animatedModels.where((m) => m.type == type).length)),
+                      _buildInfoStat(
+                        'الإجمالي المغروس',
+                        NumberFormatter.toArabic(count),
+                      ),
+                      _buildInfoStat(
+                        'في المشهد 3D',
+                        NumberFormatter.toArabic(
+                          _animatedModels.where((m) => m.type == type).length,
+                        ),
+                      ),
                       _buildInfoStat('المرتبة', 'المستوى $tier'),
                     ],
                   ),
@@ -1649,13 +2050,17 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
                     width: currentW,
                     height: currentH,
                     color: const Color(0xFF071B12),
-                    child: Builder(builder: (BuildContext context) {
-                      if (kIsWeb) {
-                        return HtmlElementView(viewType: _three3dRender.textureId!.toString());
-                      } else {
-                        return Texture(textureId: _three3dRender.textureId!);
-                      }
-                    }),
+                    child: Builder(
+                      builder: (BuildContext context) {
+                        if (kIsWeb) {
+                          return HtmlElementView(
+                            viewType: _three3dRender.textureId!.toString(),
+                          );
+                        } else {
+                          return Texture(textureId: _three3dRender.textureId!);
+                        }
+                      },
+                    ),
                   );
                 },
               ),
@@ -1666,8 +2071,22 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
               child: Align(
                 alignment: Alignment.topCenter,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: _buildTopGlassBar(),
+                ),
+              ),
+            ),
+
+            // 🌅 Day Phase Switcher (فجر / ظهيرة / ليل)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: _buildLightModePill(),
                 ),
               ),
             ),
@@ -1677,7 +2096,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: _buildBottomGlassPanel(),
                 ),
               ),
@@ -1685,6 +2107,66 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
           ],
         );
       },
+    );
+  }
+
+  /// 🌅 زر إضاءة اليوم: تلقائي (يتبع الساعة) ← فجر ← ظهيرة ← ليل.
+  Widget _buildLightModePill() {
+    final DayLightMode mode = _lightMode;
+    final double hour = _currentHour();
+    final IconData icon = mode.isAuto ? modeAtHour(hour).icon : mode.icon;
+    final Color accent = mode.isAuto ? modeAtHour(hour).accent : mode.accent;
+    final String label = mode.isAuto ? 'تلقائي' : mode.label;
+    final String? subLabel = mode.isAuto ? periodLabelAtHour(hour) : null;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: InkWell(
+        onTap: _cycleLightMode,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0D2818).withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: accent.withValues(alpha: 0.45), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 19, color: accent),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'GESSTwo',
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: accent,
+                ),
+              ),
+              if (subLabel != null) ...[
+                const SizedBox(height: 1),
+                Text(
+                  subLabel,
+                  style: TextStyle(
+                    fontFamily: 'GESSTwo',
+                    fontSize: 8.5,
+                    color: accent.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1711,7 +2193,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 18),
+              icon: const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.white70,
+                size: 18,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
             const SizedBox(width: 4),
@@ -1741,7 +2227,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
               ),
             ),
             IconButton(
-              tooltip: _soundEnabled ? 'كتم الأجواء الروحانية' : 'تشغيل الأجواء الروحانية',
+              tooltip: _soundEnabled
+                  ? 'كتم الأجواء الروحانية'
+                  : 'تشغيل الأجواء الروحانية',
               icon: Icon(
                 _soundEnabled ? Icons.volume_up : Icons.volume_off,
                 color: _soundEnabled ? const Color(0xFFFFD700) : Colors.white54,
@@ -1765,7 +2253,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
             ),
             IconButton(
               tooltip: 'إعادة ضبط المنظور الآيزومتري',
-              icon: const Icon(Icons.center_focus_strong, color: Color(0xFFFFD700), size: 20),
+              icon: const Icon(
+                Icons.center_focus_strong,
+                color: Color(0xFFFFD700),
+                size: 20,
+              ),
               onPressed: _resetCamera,
             ),
           ],
@@ -1806,7 +2298,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
                     },
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? const Color(0xFFFFD700).withValues(alpha: 0.25)
@@ -1834,8 +2329,12 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
                             style: TextStyle(
                               fontFamily: 'GESSTwo',
                               fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? const Color(0xFFFFD700) : Colors.white70,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isSelected
+                                  ? const Color(0xFFFFD700)
+                                  : Colors.white70,
                             ),
                           ),
                         ],
@@ -1879,8 +2378,13 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),
                     foregroundColor: const Color(0xFFFFD700),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                 ),
                 if (_animatedModels.isNotEmpty)
@@ -1893,7 +2397,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
                     ),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.red.shade300,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                     ),
                   ),
               ],
@@ -1952,7 +2459,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
         leaf.rotation.z += 0.015;
 
         // Reset if it hits ground or bounds
-        if (leaf.position.y < 0.2 || leaf.position.x > 80 || leaf.position.z > 60) {
+        if (leaf.position.y < 0.2 ||
+            leaf.position.x > 80 ||
+            leaf.position.z > 60) {
           leaf.position.set(
             -70 + _rng.nextDouble() * 40.0,
             18.0 + _rng.nextDouble() * 12.0,
@@ -1985,6 +2494,25 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
         bird.children[0].rotation.z = flap;
         bird.children[1].rotation.z = -flap;
       }
+    }
+
+    // 7. 🌅 دورة إضاءة اليوم: انسياب التبديل اليدوي، أو تحديث تلقائي مُخفَّف
+    //    (كل [kAutoRefreshFrames] إطارًا ≈ نصف ثانية — بلا فرق بصري وكلفة ~صفر)
+    if (_tweenTo != null) {
+      _advanceTransition();
+    } else if (_lightMode.isAuto && _frameCount % kAutoRefreshFrames == 0) {
+      _applySpec(_targetSpec());
+    }
+
+    // 8. Starfield Twinkle (يتلألأ كلما ظهرت النجوم)
+    if (_starBaseOpacity > 0.0 && _starMat != null) {
+      final double pulse =
+          starField.twinkleBase +
+          starField.twinkleAmplitude *
+              sin(_frameCount * starField.twinkleSpeed);
+      _starMat!.opacity = _starBaseOpacity * pulse;
+      _starHaloMat?.opacity =
+          _starBaseOpacity * starField.haloOpacityRatio * pulse;
     }
 
     _renderer!.render(_scene, _camera);
@@ -2031,8 +2559,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
 
   void initPage() {
     _scene = three.Scene();
-    _scene.background = three.Color(0x134C37);
-    _scene.fog = three.Fog(0x134C37, 95, 270);
+    // كائنان ثابتان تُعدَّل قيمهما مع دورة اليوم (بلا إعادة إنشاء)
+    _bgColor = three.Color(0x134C37);
+    _scene.background = _bgColor;
+    _fog = three.Fog(0x134C37, 95, 270);
+    _scene.fog = _fog;
 
     _camera = three.PerspectiveCamera(44, _width / _height, 0.1, 1000);
     _camera.position.set(38, 44, 52);
@@ -2046,21 +2577,26 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
     _controls.maxPolarAngle = three.Math.pi / 2.15;
     _controls.target.set(0, 2, 0);
 
-    final ambientLight = three.AmbientLight(0x4A6B56, 0.55);
-    _scene.add(ambientLight);
+    // مصادر الإضاءة — تُنشأ مرة واحدة (بقيم الظهيرة الأصلية) ثم تُعدَّل قيمها
+    // مع دورة اليوم في [_applySpec] بلا حذف/إضافة.
+    _ambientLight = three.AmbientLight(0x4A6B56, 0.55);
+    _scene.add(_ambientLight!);
 
-    final goldenSunLight = three.DirectionalLight(0xFFE082, 1.35);
-    goldenSunLight.position.set(55, 90, 45);
-    _scene.add(goldenSunLight);
+    _sunLight = three.DirectionalLight(0xFFE082, 1.35);
+    _sunLight!.position.set(55, 90, 45);
+    _scene.add(_sunLight!);
 
-    final fillLight = three.DirectionalLight(0x388E3C, 0.4);
-    fillLight.position.set(-50, 30, -40);
-    _scene.add(fillLight);
+    _fillLight = three.DirectionalLight(0x388E3C, 0.40);
+    _fillLight!.position.set(-50, 30, -40);
+    _scene.add(_fillLight!);
 
     _buildAtmosphere();
     _buildSculptedTerrain();
     _buildRiverAndFeatures();
     _buildLightParticlesAndWildlife();
+
+    // 🌅 إضاءة اللحظة الحالية (تلقائي حسب ساعة الجهاز، أو وضع ثابت محفوظ)
+    _applySpec(_targetSpec());
 
     for (final e in _savedEntries) {
       addModelAt(
@@ -2106,6 +2642,8 @@ class _Jannati3DScreenState extends State<Jannati3DScreen> with SingleTickerProv
   @override
   void dispose() {
     _disposed = true;
+    _periodTicker?.cancel();
+    _clock.stop();
     _three3dRender.dispose();
     super.dispose();
   }
