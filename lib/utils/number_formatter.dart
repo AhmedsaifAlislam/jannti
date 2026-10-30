@@ -1,8 +1,20 @@
 import '../models/reward_type.dart';
 
 class NumberFormatter {
+  static const arabicDigits = [
+    '٠',
+    '١',
+    '٢',
+    '٣',
+    '٤',
+    '٥',
+    '٦',
+    '٧',
+    '٨',
+    '٩',
+  ];
+
   static String toArabic(int number) {
-    const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
     return number.toString().split('').map((digit) {
       final intDigit = int.tryParse(digit);
       return intDigit != null ? arabicDigits[intDigit] : digit;
@@ -41,5 +53,21 @@ class NumberFormatter {
       return '${toArabic(count)} ${type.arabicPluralFew}';
     }
     return '${toArabic(count)} ${type.arabicSingular}';
+  }
+
+  /// Número compacto باللغة العربية (مثلاً: 14200 → ١٤٫٢ ألف).
+  static String toArabicCompact(int number) {
+    if (number >= 1000000) return '${_arabicDecimal(number / 1000000)} مليون';
+    if (number >= 1000) return '${_arabicDecimal(number / 1000)} ألف';
+    return toArabic(number);
+  }
+
+  static String _arabicDecimal(double v) {
+    final s = v >= 100 ? v.round().toString() : v.toStringAsFixed(1);
+    // تحويل كل رقم إلى عربي مع الاحتفاظ بالنقطة العشرية كما هي
+    return s.split('').map((ch) {
+      final d = int.tryParse(ch);
+      return d != null ? arabicDigits[d] : ch;
+    }).join();
   }
 }
