@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
-import 'url_launcher_stub.dart'
-    if (dart.library.html) 'url_launcher_web.dart';
+import 'url_launcher_stub.dart' if (dart.library.html) 'url_launcher_web.dart';
 
 import '../models/app_version_info.dart';
 import '../widgets/jannati_update_dialog.dart';
+import '../services/community_stats_service.dart';
 
 class AppUpdateService {
   static final AppUpdateService _instance = AppUpdateService._internal();
@@ -23,7 +23,9 @@ class AppUpdateService {
   static String updateConfigUrl =
       'https://raw.githubusercontent.com/AhmedsaifAlislam/jannti/main/version.json';
 
-  static const MethodChannel _channel = MethodChannel('com.example.jannti/audio');
+  static const MethodChannel _channel = MethodChannel(
+    'com.example.jannti/audio',
+  );
 
   bool _isChecking = false;
   bool get isChecking => _isChecking;
@@ -79,6 +81,13 @@ class AppUpdateService {
         return;
       }
 
+      // تهيئة خدمة المستخدمين النشطين من التهيئة البُعدية (بدون طلب شبكة إضافي)
+      CommunityStatsService().configure(
+        base: remoteInfo.activeUsersBase,
+        enabled: remoteInfo.activeUsersEnabled,
+        growthPerDay: remoteInfo.activeUsersGrowthPerDay,
+      );
+
       // Check if remote version is newer
       if (remoteInfo.versionCode > currentVersionCode) {
         await JannatiUpdateDialog.show(
@@ -120,7 +129,11 @@ class AppUpdateService {
     }
   }
 
-  void _showSnackBar(BuildContext context, String message, {bool isGold = false}) {
+  void _showSnackBar(
+    BuildContext context,
+    String message, {
+    bool isGold = false,
+  }) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

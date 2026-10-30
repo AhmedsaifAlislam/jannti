@@ -11,5 +11,8 @@
   ],
   "apk_url": "https://github.com/AhmedsaifAlislam/jannti/releases/download/v1.0.2/app-arm64-v8a-release.apk",
   "web_url": "https://github.com/AhmedsaifAlislam/jannti/releases/tag/v1.0.2",
-  "force_update": false
+  "force_update": false,
+  "active_users_base": 14200,
+  "active_users_enabled": true,
+  "active_users_growth_per_day": 0
 }

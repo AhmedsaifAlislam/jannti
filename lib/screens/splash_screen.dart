@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+import '../services/community_stats_service.dart';
 import '../services/storage_service.dart';
+import '../utils/number_formatter.dart';
 import '../widgets/jannati_logo.dart';
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
@@ -13,7 +15,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
@@ -52,7 +55,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         transitionDuration: const Duration(milliseconds: 800),
         pageBuilder: (ctx, animation, secondaryAnimation) => FadeTransition(
           opacity: animation,
-          child: hasSeenOnboarding ? const HomeScreen() : const OnboardingScreen(),
+          child: hasSeenOnboarding
+              ? const HomeScreen()
+              : const OnboardingScreen(),
         ),
       ),
     );
@@ -132,28 +137,49 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           fontFamily: 'GESSTwo',
                           fontSize: 14,
                           letterSpacing: 1.5,
-                          color: const Color(0xFFFFD700).withValues(alpha: 0.85),
+                          color: const Color(
+                            0xFFFFD700,
+                          ).withValues(alpha: 0.85),
                         ),
                       ),
                       const SizedBox(height: 22),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF0D2818).withValues(alpha: 0.6),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: const Color(0xFFFFD700).withValues(alpha: 0.2),
+                            color: const Color(
+                              0xFFFFD700,
+                            ).withValues(alpha: 0.2),
                           ),
                         ),
-                        child: const Text(
-                          '«أَلَا أَدُلُّكَ عَلَى غِرَاسٍ خَيْرٍ مِنْ هَذَا؟»',
-                          textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                            fontFamily: 'Amiri',
-                            fontSize: 15,
-                            fontStyle: FontStyle.italic,
-                            color: Colors.white70,
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              '«أَلَا أَدُلُّكَ عَلَى غِرَاسٍ خَيْرٍ مِنْ هَذَا؟»',
+                              textDirection: TextDirection.rtl,
+                              style: TextStyle(
+                                fontFamily: 'Amiri',
+                                fontSize: 15,
+                                fontStyle: FontStyle.italic,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              '👥 ينضم إليك الآن ${NumberFormatter.toArabicCompact(CommunityStatsService().trueBase)} يغرسون جنّتهم',
+                              style: const TextStyle(
+                                fontFamily: 'GESSTwo',
+                                fontSize: 11,
+                                color: Color(0xFFFFD700),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

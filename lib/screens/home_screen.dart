@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/adhkar_data.dart';
+import '../data/salah_nabi_data.dart';
 import '../models/dhikr.dart';
 import '../models/reward_type.dart';
 import '../services/app_update_service.dart';
+import '../services/community_stats_service.dart';
 import '../services/storage_service.dart';
 import '../utils/garden_assets.dart';
 import '../utils/number_formatter.dart';
+import '../widgets/community_stats_widgets.dart';
 import '../widgets/islamic_pattern_overlay.dart';
 import '../widgets/jannah_virtues_modal.dart';
 import '../widgets/jannati_logo.dart';
@@ -57,7 +60,8 @@ Color _rewardGradientEnd(RewardType type) {
 final List<Map<String, String>> _jannahWisdoms = [
   {
     'title': 'غراس الجنة 🌱',
-    'quote': '«الجنة قيعان، وغراسها: سبحان الله، والحمد لله، ولا إله إلا الله، والله أكبر»',
+    'quote':
+        '«الجنة قيعان، وغراسها: سبحان الله، والحمد لله، ولا إله إلا الله، والله أكبر»',
   },
   {
     'title': 'أشجار الفردوس 🌳',
@@ -65,7 +69,8 @@ final List<Map<String, String>> _jannahWisdoms = [
   },
   {
     'title': 'بنيان القصور 🏰',
-    'quote': '«لبنة من فضة ولبنة من ذهب، وملاطها المسك، وحصباؤها اللؤلؤ والياقوت»',
+    'quote':
+        '«لبنة من فضة ولبنة من ذهب، وملاطها المسك، وحصباؤها اللؤلؤ والياقوت»',
   },
   {
     'title': 'نخيل النعيم 🌴',
@@ -73,7 +78,8 @@ final List<Map<String, String>> _jannahWisdoms = [
   },
   {
     'title': 'كنوز العرش 💎',
-    'quote': '«ألا أدلك على كلمة هي كنز من كنوز الجنة؟ لا حول ولا قوة إلا بالله»',
+    'quote':
+        '«ألا أدلك على كلمة هي كنز من كنوز الجنة؟ لا حول ولا قوة إلا بالله»',
   },
   {
     'title': 'قصور الإخلاص 📖',
@@ -88,7 +94,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   final StorageService _storage = StorageService();
   final GlobalKey<GardenScreenState> _gardenKey = GlobalKey();
 
@@ -99,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   late List<Dhikr> _shuffledAdhkar;
   int _featuredDhikrIndex = 0;
+  int _salahNabiIndex = 0;
   int _wisdomIndex = 0;
 
   late AnimationController _ambientGlowController;
@@ -114,6 +122,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _featuredDhikrIndex = now.day % adhkarList.length;
     _wisdomIndex = now.day % _jannahWisdoms.length;
 
+    // 🌙 يوم الجمعة: تثبيت «ذكر اليوم» على الصلاة على النبي ﷺ، وتدوير الصيغ
+    if (now.weekday == DateTime.friday) {
+      _salahNabiIndex =
+          (_storage.getSalahNabiIndex() + 1) % salahNabiList.length;
+      _storage.setSalahNabiIndex(_salahNabiIndex);
+    }
+
     _ambientGlowController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
@@ -123,10 +138,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppUpdateService().checkAndPromptUpdate(context, isManual: false);
     });
+
+    CommunityStatsService().start();
   }
 
   @override
   void dispose() {
+    CommunityStatsService().stop();
     _ambientGlowController.dispose();
     super.dispose();
   }
@@ -169,10 +187,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
   }
 
+  bool get _isFriday => DateTime.now().weekday == DateTime.friday;
+
+  /// الذكر المعروض في البطاقة: الصلاة على النبي ﷺ يوم الجمعة، وإلا ذكر اليوم.
+  Dhikr get _featuredDhikr {
+    if (_isFriday) {
+      return salahNabiList[_salahNabiIndex % salahNabiList.length];
+    }
+    return adhkarList[_featuredDhikrIndex % adhkarList.length];
+  }
+
   void _rotateFeaturedDhikr() {
     HapticFeedback.selectionClick();
     setState(() {
-      _featuredDhikrIndex = (_featuredDhikrIndex + 1) % adhkarList.length;
+      if (_isFriday) {
+        _salahNabiIndex = (_salahNabiIndex + 1) % salahNabiList.length;
+        _storage.setSalahNabiIndex(_salahNabiIndex);
+      } else {
+        _featuredDhikrIndex = (_featuredDhikrIndex + 1) % adhkarList.length;
+      }
     });
   }
 
@@ -283,16 +316,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       onTap: _shuffleAdhkarList,
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF1B5E34).withValues(alpha: 0.4),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFFFD700,
+                            ).withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: const [
-                            Icon(Icons.shuffle, size: 13, color: Color(0xFFFFD700)),
+                            Icon(
+                              Icons.shuffle,
+                              size: 13,
+                              color: Color(0xFFFFD700),
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'خلط 🔀',
@@ -313,9 +357,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         onTap: () => setState(() => _filterType = null),
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFD700).withValues(alpha: 0.25),
+                            color: const Color(
+                              0xFFFFD700,
+                            ).withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: const Color(0xFFFFD700)),
                           ),
@@ -340,14 +389,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             SliverPadding(
               padding: EdgeInsets.fromLTRB(16, 0, 16, bottomInset + 100),
               sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final dhikr = filteredAdhkar[index];
-                    final count = _dhikrCounts[dhikr.id] ?? 0;
-                    return _buildBentoDhikrCard(dhikr, count, index);
-                  },
-                  childCount: filteredAdhkar.length,
-                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final dhikr = filteredAdhkar[index];
+                  final count = _dhikrCounts[dhikr.id] ?? 0;
+                  return _buildBentoDhikrCard(dhikr, count, index);
+                }, childCount: filteredAdhkar.length),
               ),
             ),
           ],
@@ -396,27 +442,43 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                const SizedBox(height: 5),
+                const CommunityStatsChip(),
               ],
             ),
           ),
           IconButton(
             tooltip: 'أسرار وفضائل غراس الجنة 📜',
-            icon: const Icon(Icons.auto_stories_outlined, color: Color(0xFFFFD700), size: 22),
+            icon: const Icon(
+              Icons.auto_stories_outlined,
+              color: Color(0xFFFFD700),
+              size: 22,
+            ),
             onPressed: () => JannahVirtuesModal.show(context),
           ),
           IconButton(
             tooltip: 'مركز التنبيهات والأوراد',
-            icon: const Icon(Icons.notifications_active_outlined, color: Colors.white70, size: 22),
+            icon: const Icon(
+              Icons.notifications_active_outlined,
+              color: Colors.white70,
+              size: 22,
+            ),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const NotificationSettingsScreen(),
+                ),
               );
             },
           ),
           IconButton(
             tooltip: 'الجولة الإرشادية',
-            icon: const Icon(Icons.help_outline, color: Colors.white70, size: 22),
+            icon: const Icon(
+              Icons.help_outline,
+              color: Colors.white70,
+              size: 22,
+            ),
             onPressed: () {
               Navigator.push(
                 context,
@@ -544,12 +606,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const JannatiIsometricScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const JannatiIsometricScreen(),
+                  ),
                 );
               },
               borderRadius: BorderRadius.circular(18),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0D2818).withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(18),
@@ -592,12 +659,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const AudioSanctuaryScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const AudioSanctuaryScreen(),
+                  ),
                 );
               },
               borderRadius: BorderRadius.circular(18),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0D2818).withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(18),
@@ -639,7 +711,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               },
               borderRadius: BorderRadius.circular(18),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0D2818).withValues(alpha: 0.75),
                   borderRadius: BorderRadius.circular(18),
@@ -673,8 +748,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildHeroBentoCard() {
-    final featuredDhikr = adhkarList[_featuredDhikrIndex % adhkarList.length];
+    final featuredDhikr = _featuredDhikr;
     final count = _dhikrCounts[featuredDhikr.id] ?? 0;
+    final badgeLabel = _isFriday
+        ? '🕌 صلاة الجمعة على النبي ﷺ'
+        : '⭐ ذكر اليوم المقترح';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -683,10 +761,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           color: Colors.white, // 🤍 Pure White Marble / Ceramic Card
-          border: Border.all(
-            color: const Color(0xFFFFD700),
-            width: 1.8,
-          ),
+          border: Border.all(color: const Color(0xFFFFD700), width: 1.8),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFFFFD700).withValues(alpha: 0.35),
@@ -706,119 +781,164 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             Padding(
               padding: const EdgeInsets.all(22),
               child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.4)),
-                        ),
-                        child: const Text(
-                          '⭐ ذكر اليوم المقترح',
-                          style: TextStyle(
-                            fontFamily: 'GESSTwo',
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1B5E20),
-                          ),
-                        ),
-                      ),
-                      InkWell(
-                        onTap: _rotateFeaturedDhikr,
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F8E9),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.cached, size: 13, color: Color(0xFF2E7D32)),
-                              SizedBox(width: 3),
-                              Text(
-                                'تغيير 🎲',
-                                style: TextStyle(
-                                  fontFamily: 'GESSTwo',
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF2E7D32),
+                      Expanded(
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE8F5E9),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFF2E7D32,
+                                  ).withValues(alpha: 0.4),
                                 ),
                               ),
-                            ],
+                              child: Text(
+                                badgeLabel,
+                                style: const TextStyle(
+                                  fontFamily: 'GESSTwo',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1B5E20),
+                                ),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: _rotateFeaturedDhikr,
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F8E9),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(
+                                      Icons.cached,
+                                      size: 13,
+                                      color: Color(0xFF2E7D32),
+                                    ),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      'تغيير 🎲',
+                                      style: TextStyle(
+                                        fontFamily: 'GESSTwo',
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF2E7D32),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Image.asset(
+                        GardenAssets.getIconAsset(featuredDhikr.rewardType),
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.contain,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    featuredDhikr.arabicText,
+                    style: const TextStyle(
+                      fontFamily: 'Amiri',
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0A2E18), // Deep Rich Emerald
+                      height: 1.6,
+                    ),
+                  ),
+                  if (_isFriday) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F8E9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF9CCC65).withValues(alpha: 0.6),
+                        ),
+                      ),
+                      child: Text(
+                        featuredDhikr.hadith,
+                        style: const TextStyle(
+                          fontFamily: 'GESSTwo',
+                          fontSize: 11,
+                          color: Color(0xFF33691E),
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Text(
+                        'الإجمالي: ${NumberFormatter.toArabic(count)} ${featuredDhikr.rewardType.arabicSingular}',
+                        style: const TextStyle(
+                          fontFamily: 'GESSTwo',
+                          fontSize: 13,
+                          color: Color(0xFF2E7D32),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      ElevatedButton.icon(
+                        onPressed: () => _openCounter(featuredDhikr),
+                        icon: const Icon(Icons.touch_app, size: 18),
+                        label: const Text(
+                          'ابدأ التسبيح',
+                          style: TextStyle(
+                            fontFamily: 'GESSTwo',
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B5E20),
+                          foregroundColor: const Color(0xFFFFD700),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 11,
+                          ),
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                Image.asset(
-                  GardenAssets.getIconAsset(featuredDhikr.rewardType),
-                  width: 36,
-                  height: 36,
-                  fit: BoxFit.contain,
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              featuredDhikr.arabicText,
-              style: const TextStyle(
-                fontFamily: 'Amiri',
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0A2E18), // Deep Rich Emerald
-                height: 1.6,
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Text(
-                  'الإجمالي: ${NumberFormatter.toArabic(count)} ${featuredDhikr.rewardType.arabicSingular}',
-                  style: const TextStyle(
-                    fontFamily: 'GESSTwo',
-                    fontSize: 13,
-                    color: Color(0xFF2E7D32),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                ElevatedButton.icon(
-                  onPressed: () => _openCounter(featuredDhikr),
-                  icon: const Icon(Icons.touch_app, size: 18),
-                  label: const Text(
-                    'ابدأ التسبيح',
-                    style: TextStyle(
-                      fontFamily: 'GESSTwo',
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B5E20),
-                    foregroundColor: const Color(0xFFFFD700),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-                    elevation: 3,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
             ), // Padding
           ], // Stack children
         ), // Stack
@@ -859,7 +979,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   shape: BoxShape.circle,
                   color: const Color(0xFF827717).withValues(alpha: 0.15),
                 ),
-                child: const Icon(Icons.refresh, color: Color(0xFF827717), size: 24),
+                child: const Icon(
+                  Icons.refresh,
+                  color: Color(0xFF827717),
+                  size: 24,
+                ),
               ),
             ),
             const SizedBox(width: 14),
@@ -883,10 +1007,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ),
                       ),
                       const SizedBox(width: 6),
-                      const Text(
-                        '✨',
-                        style: TextStyle(fontSize: 14),
-                      ),
+                      const Text('✨', style: TextStyle(fontSize: 14)),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -1001,7 +1122,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.black.withValues(alpha: 0.25),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: const Icon(
                   Icons.arrow_back_ios_new,
