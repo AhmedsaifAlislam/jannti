@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/spiritual_audio_service.dart';
+import '../services/storage_service.dart';
+import '../utils/number_formatter.dart';
 import '../widgets/islamic_pattern_overlay.dart';
 
 class AudioSanctuaryScreen extends StatefulWidget {
@@ -19,17 +21,24 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
 
   int _selectedTab = 0; // 0 = Nature, 1 = Quran
   AudioItem? _activeItem;
-  bool _isPlaying = false;
   int _sleepTimerMinutes = 0;
   Timer? _sleepTimer;
+  double _volume = 0.5;
 
   late AnimationController _rippleController;
 
   @override
   void initState() {
     super.initState();
-    _isPlaying = _audioService.isPlaying;
+    _audioService.syncFromStorage();
     _activeItem = SpiritualAudioService.natureTracks.first;
+
+    try {
+      _volume = StorageService().getAudioVolume().clamp(0.0, 1.0).toDouble();
+    } catch (_) {
+      _volume = 0.5;
+    }
+    _audioService.setVolume(_volume);
 
     _rippleController = AnimationController(
       vsync: this,
@@ -44,17 +53,72 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
     super.dispose();
   }
 
-  void _togglePlay(AudioItem item) async {
+  /// 🌿 صوت طبيعة: إضافة/إزالة من المزيج.
+  Future<void> _toggleNature(AudioItem item) async {
     HapticFeedback.mediumImpact();
     setState(() {
       _activeItem = item;
     });
 
-    await _audioService.toggle(item);
-    if (mounted) {
-      setState(() {
-        _isPlaying = _audioService.isPlaying;
-      });
+    await _audioService.toggleLayer(item);
+    if (!mounted) return;
+    setState(() {});
+    if (_audioService.isLayerActive(item.id) && !_audioService.isMixPlaying) {
+      _showSpiritualSnackbar('تعذّر تشغيل الصوت، جرّب مرة أخرى 🎧');
+    }
+  }
+
+  /// 📖 تلاوة: قناة مستقلة تعمل مع طبقات الطبيعة.
+  Future<void> _toggleQuran(AudioItem item) async {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _activeItem = item;
+    });
+
+    await _audioService.toggleQuran(item);
+    if (!mounted) return;
+    setState(() {});
+    if (!_audioService.isQuranPlaying && _audioService.quranId == item.id) {
+      _showSpiritualSnackbar('تعذّر تشغيل التلاوة، تأكد من الاتصال 🌐');
+    }
+  }
+
+  /// زر البطاقة الكبيرة: يشغّل/يوقف المزيج أو التلاوة الحالية.
+  Future<void> _toggleHero() async {
+    HapticFeedback.mediumImpact();
+
+    if (_selectedTab == 1) {
+      final item =
+          (_activeItem != null &&
+              SpiritualAudioService.quranTracks.any(
+                (t) => t.id == _activeItem!.id,
+              ))
+          ? _activeItem!
+          : SpiritualAudioService.quranTracks.first;
+      await _toggleQuran(item);
+      return;
+    }
+
+    if (_audioService.isMixPlaying) {
+      await _audioService.stopMix();
+      if (!mounted) return;
+      setState(() {});
+      _showSpiritualSnackbar('توقّف المزيج 🍃');
+      return;
+    }
+
+    if (_audioService.activeLayers.isEmpty) {
+      await _audioService.toggleLayer(
+        _activeItem ?? SpiritualAudioService.natureTracks.first,
+      );
+    } else {
+      await _audioService.startMix();
+    }
+
+    if (!mounted) return;
+    setState(() {});
+    if (!_audioService.isMixPlaying) {
+      _showSpiritualSnackbar('تعذّر تشغيل الصوت، جرّب مرة أخرى 🎧');
     }
   }
 
@@ -70,7 +134,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
       _sleepTimer = Timer(Duration(minutes: minutes), () {
         if (mounted) {
           setState(() {
-            _isPlaying = false;
             _sleepTimerMinutes = 0;
           });
           _audioService.stop();
@@ -110,7 +173,20 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
     final currentList = _selectedTab == 0
         ? SpiritualAudioService.natureTracks
         : SpiritualAudioService.quranTracks;
-    final displayItem = _activeItem ?? currentList.first;
+    final layers = _audioService.activeLayers;
+    final displayItem = _selectedTab == 0
+        ? (_activeItem ??
+              (layers.isEmpty
+                  ? SpiritualAudioService.natureTracks.first
+                  : SpiritualAudioService.natureTracks.firstWhere(
+                      (t) => layers.contains(t.id),
+                    )))
+        : ((_activeItem != null &&
+                  SpiritualAudioService.quranTracks.any(
+                    (t) => t.id == _activeItem!.id,
+                  ))
+              ? _activeItem!
+              : SpiritualAudioService.quranTracks.first);
 
     return Scaffold(
       backgroundColor: const Color(0xFF03140C),
@@ -141,40 +217,67 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
             // 2. Sleep Timer Strip
             _buildSleepTimerStrip(),
 
+            const SizedBox(height: 10),
+
+            // 3. Volume Strip (الجهارة)
+            _buildVolumeStrip(),
+
             const SizedBox(height: 18),
 
-            // 3. Tab Selector (أصوات الجنة vs التلاوات القرآنية)
+            // 4. Tab Selector (أصوات الجنة vs التلاوات القرآنية)
             _buildCategoryTabs(),
+
+            if (_selectedTab == 0) ...[
+              const SizedBox(height: 8),
+              Text(
+                'اضغط أكثر من صوت لتشغيلها معًا — ويتبادل أحدها البروز كل حين 🌿',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'GESSTwo',
+                  fontSize: 10,
+                  color: Colors.white.withValues(alpha: 0.55),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 14),
 
-            // 4. Tracks List
+            // 5. Tracks List
             ...currentList.map((item) {
-              final isCurrent = _activeItem?.id == item.id;
-              final isThisPlaying = isCurrent && _isPlaying;
+              final isNatureTab = _selectedTab == 0;
+              final isSelected = isNatureTab
+                  ? _audioService.isLayerActive(item.id)
+                  : _audioService.quranId == item.id;
+              final isThisPlaying = isNatureTab
+                  ? (isSelected && _audioService.isMixPlaying)
+                  : (_audioService.isQuranPlaying &&
+                        _audioService.quranId == item.id);
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: InkWell(
-                  onTap: () => _togglePlay(item),
+                  onTap: () =>
+                      isNatureTab ? _toggleNature(item) : _toggleQuran(item),
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: isCurrent
+                      color: isSelected
                           ? const Color(0xFF0D2818)
                           : Colors.black.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isCurrent
+                        color: isSelected
                             ? const Color(0xFFFFD700)
                             : Colors.white.withValues(alpha: 0.15),
-                        width: isCurrent ? 1.8 : 1.0,
+                        width: isSelected ? 1.8 : 1.0,
                       ),
-                      boxShadow: isCurrent
+                      boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: const Color(0xFFFFD700).withValues(alpha: 0.2),
+                                color: const Color(
+                                  0xFFFFD700,
+                                ).withValues(alpha: 0.2),
                                 blurRadius: 12,
                               ),
                             ]
@@ -187,17 +290,20 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
                           height: 44,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isCurrent
+                            color: isSelected
                                 ? const Color(0xFF1B5E20)
                                 : Colors.white.withValues(alpha: 0.1),
                             border: Border.all(
-                              color: isCurrent
+                              color: isSelected
                                   ? const Color(0xFFFFD700)
                                   : Colors.white24,
                             ),
                           ),
                           child: Center(
-                            child: Text(item.icon, style: const TextStyle(fontSize: 20)),
+                            child: Text(
+                              item.icon,
+                              style: const TextStyle(fontSize: 20),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -213,7 +319,9 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
                                   fontFamily: 'Amiri',
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: isCurrent ? const Color(0xFFFFD700) : Colors.white,
+                                  color: isSelected
+                                      ? const Color(0xFFFFD700)
+                                      : Colors.white,
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -227,6 +335,10 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
                                   color: Colors.white.withValues(alpha: 0.75),
                                 ),
                               ),
+                              if (isNatureTab && isSelected) ...[
+                                const SizedBox(height: 7),
+                                _buildLayerMeter(item, isThisPlaying),
+                              ],
                             ],
                           ),
                         ),
@@ -238,11 +350,25 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
                             shape: BoxShape.circle,
                             color: isThisPlaying
                                 ? const Color(0xFFFFD700)
-                                : Colors.white.withValues(alpha: 0.1),
+                                : (isSelected
+                                      ? const Color(
+                                          0xFFFFD700,
+                                        ).withValues(alpha: 0.22)
+                                      : Colors.white.withValues(alpha: 0.1)),
                           ),
                           child: Icon(
-                            isThisPlaying ? Icons.pause : Icons.play_arrow,
-                            color: isThisPlaying ? Colors.black : Colors.white,
+                            isNatureTab
+                                ? (isThisPlaying
+                                      ? Icons.graphic_eq
+                                      : (isSelected ? Icons.check : Icons.add))
+                                : (isThisPlaying
+                                      ? Icons.pause
+                                      : Icons.play_arrow),
+                            color: isThisPlaying
+                                ? Colors.black
+                                : (isSelected
+                                      ? const Color(0xFFFFD700)
+                                      : Colors.white),
                             size: 20,
                           ),
                         ),
@@ -260,6 +386,51 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
     );
   }
 
+  /// شريط مستوى الطبقة الحيّ + علامة الصوت البارز.
+  Widget _buildLayerMeter(AudioItem item, bool isThisPlaying) {
+    return ValueListenableBuilder<int>(
+      valueListenable: _audioService.mixerTick,
+      builder: (context, _, _) {
+        final ceiling = _audioService.mixCeiling;
+        final gain = _audioService.layerGain(item.id);
+        final fraction = (ceiling <= 0 || !isThisPlaying)
+            ? 0.0
+            : (gain / ceiling).clamp(0.0, 1.0).toDouble();
+        final isLeader = _audioService.isLeader(item.id);
+
+        return Row(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: fraction,
+                  minHeight: 4,
+                  backgroundColor: Colors.white12,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isLeader
+                        ? const Color(0xFFFFD700)
+                        : const Color(0xFF4CAF50),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 7),
+            Text(
+              isLeader ? 'البارز' : '',
+              style: const TextStyle(
+                fontFamily: 'GESSTwo',
+                fontSize: 9,
+                color: Color(0xFFFFD700),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildCategoryTabs() {
     return Container(
       padding: const EdgeInsets.all(4),
@@ -270,12 +441,8 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
       ),
       child: Row(
         children: [
-          Expanded(
-            child: _buildTabButton(0, '🌿 أصوات رياض الجنة'),
-          ),
-          Expanded(
-            child: _buildTabButton(1, '📖 تلاوات القرآن الكريم'),
-          ),
+          Expanded(child: _buildTabButton(0, '🌿 أصوات رياض الجنة')),
+          Expanded(child: _buildTabButton(1, '📖 تلاوات القرآن الكريم')),
         ],
       ),
     );
@@ -312,7 +479,29 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
     );
   }
 
+  String _layerIcons(Set<String> layers) => SpiritualAudioService.natureTracks
+      .where((t) => layers.contains(t.id))
+      .map((t) => t.icon)
+      .join(' • ');
+
   Widget _buildVisualizerCard(AudioItem item) {
+    final layers = _audioService.activeLayers;
+    final isNatureTab = _selectedTab == 0;
+    final mixing = isNatureTab && layers.isNotEmpty;
+    final mixedCount = layers.length;
+    final heroIcon = mixing && mixedCount > 1 ? '🎚️' : item.icon;
+    final heroTitle = mixing && mixedCount > 1
+        ? 'مزيج رياض الجنة 🌿'
+        : item.title;
+    final heroSubtitle = mixing
+        ? (mixedCount > 1
+              ? '${NumberFormatter.toArabic(mixedCount)} أصوات معًا  ${_layerIcons(layers)}'
+              : 'أضف صوتًا آخر ليبدأ المزج 🎚️')
+        : item.subtitle;
+    final heroPlaying = isNatureTab
+        ? _audioService.isMixPlaying
+        : (_audioService.isQuranPlaying && _audioService.quranId == item.id);
+
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -339,117 +528,193 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 18),
             child: Column(
               children: [
-          // Animated Ripple Disc
-          SizedBox(
-            width: 140,
-            height: 140,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (_isPlaying)
-                  AnimatedBuilder(
-                    animation: _rippleController,
-                    builder: (context, _) {
-                      final wave = _rippleController.value;
-                      return Container(
-                        width: 90 + wave * 50,
-                        height: 90 + wave * 50,
+                // Animated Ripple Disc
+                SizedBox(
+                  width: 140,
+                  height: 140,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (heroPlaying)
+                        AnimatedBuilder(
+                          animation: _rippleController,
+                          builder: (context, _) {
+                            final wave = _rippleController.value;
+                            return Container(
+                              width: 90 + wave * 50,
+                              height: 90 + wave * 50,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFF2E7D32,
+                                  ).withValues(alpha: 1.0 - wave),
+                                  width: 2.0,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      Container(
+                        width: 94,
+                        height: 94,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF1B5E20), Color(0xFF0C301A)],
+                          ),
                           border: Border.all(
-                            color: const Color(0xFF2E7D32).withValues(alpha: 1.0 - wave),
+                            color: const Color(0xFFFFD700),
                             width: 2.0,
                           ),
                         ),
-                      );
-                    },
+                        child: Center(
+                          child: Text(
+                            heroIcon,
+                            style: const TextStyle(fontSize: 38),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                Container(
-                  width: 94,
-                  height: 94,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF1B5E20),
-                        Color(0xFF0C301A),
+                ),
+
+                const SizedBox(height: 14),
+
+                Text(
+                  heroTitle,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Amiri',
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0A2E18),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  heroSubtitle,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'GESSTwo',
+                    fontSize: 11,
+                    color: Color(0xFF2E7D32),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // Main Play / Pause Button
+                GestureDetector(
+                  onTap: _toggleHero,
+                  child: Container(
+                    width: 66,
+                    height: 66,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+                      ),
+                      border: Border.all(
+                        color: const Color(0xFFFFD700),
+                        width: 2.0,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2E7D32).withValues(alpha: 0.4),
+                          blurRadius: 16,
+                          spreadRadius: 2,
+                        ),
                       ],
                     ),
-                    border: Border.all(color: const Color(0xFFFFD700), width: 2.0),
-                  ),
-                  child: Center(
-                    child: Text(item.icon, style: const TextStyle(fontSize: 38)),
+                    child: Icon(
+                      heroPlaying ? Icons.pause : Icons.play_arrow,
+                      color: const Color(0xFFFFD700),
+                      size: 36,
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
+          ), // Padding
+        ], // Stack
+      ),
+    );
+  }
 
-          const SizedBox(height: 14),
+  Widget _buildVolumeStrip() {
+    final percent = NumberFormatter.toArabic((_volume * 100).round());
 
-          Text(
-            item.title,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: 'Amiri',
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0A2E18),
-            ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D2818).withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFFFFD700).withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _volume == 0 ? Icons.volume_off_outlined : Icons.volume_up_outlined,
+            color: const Color(0xFFFFD700),
+            size: 18,
           ),
-          const SizedBox(height: 3),
-          Text(
-            item.subtitle,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+          const SizedBox(width: 6),
+          const Text(
+            'الجهارة',
+            style: TextStyle(
               fontFamily: 'GESSTwo',
               fontSize: 11,
-              color: Color(0xFF2E7D32),
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
             ),
           ),
-
-          const SizedBox(height: 18),
-
-          // Main Play / Pause Button
-          GestureDetector(
-            onTap: () => _togglePlay(item),
-            child: Container(
-              width: 66,
-              height: 66,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFF1B5E20),
-                    Color(0xFF2E7D32),
-                  ],
-                ),
-                border: Border.all(color: const Color(0xFFFFD700), width: 2.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF2E7D32).withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    spreadRadius: 2,
-                  ),
-                ],
+          Expanded(
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 3,
+                activeTrackColor: const Color(0xFFFFD700),
+                inactiveTrackColor: Colors.white24,
+                thumbColor: const Color(0xFFFFD700),
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                overlayColor: const Color(0xFFFFD700).withValues(alpha: 0.15),
               ),
-              child: Icon(
-                _isPlaying ? Icons.pause : Icons.play_arrow,
-                color: const Color(0xFFFFD700),
-                size: 36,
+              child: Slider(
+                value: _volume,
+                onChanged: (value) {
+                  setState(() => _volume = value);
+                  _audioService.setVolume(value);
+                },
+                onChangeEnd: (value) {
+                  HapticFeedback.selectionClick();
+                  _audioService.setVolume(value, persist: true);
+                },
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 34,
+            child: Text(
+              '$percent٪',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'GESSTwo',
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFFFD700),
               ),
             ),
           ),
         ],
-      ),
-          ), // Padding
-        ], // Stack
       ),
     );
   }
@@ -460,7 +725,9 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF0D2818).withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.25)),
+        border: Border.all(
+          color: const Color(0xFFFFD700).withValues(alpha: 0.25),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -491,7 +758,10 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
                   onTap: () => _setSleepTimer(mins),
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: isSel
                           ? const Color(0xFFFFD700)

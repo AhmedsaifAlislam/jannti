@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 // Conditional import: real web impl on web, stub on other platforms
-import 'audio_web_stub.dart'
-    if (dart.library.html) 'audio_web_impl.dart';
+import 'audio_web_stub.dart' if (dart.library.html) 'audio_web_impl.dart';
+import 'storage_service.dart';
 
 class AudioItem {
   final String id;
@@ -25,21 +28,111 @@ class AudioItem {
   });
 }
 
+/// 🎚️ مدير الصوت: مزج طبقات الطبيعة + تلاوات القرآن في قناة مستقلة.
+///
+/// قواعد المزيج:
+/// - سقف المزيج = الجهارة ÷ √(عدد الطبقات) حتى لا يتجاوز الصوت الكلي الجهارة أبدًا.
+/// - طبقة واحدة فقط (الرائدة) على السقف، والباقي على سلّم نسب عشوائي أدنى منه.
+/// - كل ٢٠–٤٠ ثانية يتبادل الدور رائد جديد بانتقال ناعم ~٥ ثوانٍ.
+/// - تذبذب خفيف عشوائي للطبقات غير الرائدة.
 class SpiritualAudioService {
-  static final SpiritualAudioService _instance = SpiritualAudioService._internal();
+  static final SpiritualAudioService _instance =
+      SpiritualAudioService._internal();
   factory SpiritualAudioService() => _instance;
   SpiritualAudioService._internal();
 
-  static const MethodChannel _channel = MethodChannel('com.example.jannti/audio');
+  static const MethodChannel _channel = MethodChannel(
+    'com.example.jannti/audio',
+  );
 
-  bool _isPlaying = false;
-  String? _currentAudioId;
-
-  bool get isPlaying => _isPlaying;
-  String? get currentAudioId => _currentAudioId;
+  /// مفتاح مشغّل القرآن (قناة مستقلة عن طبقات الطبيعة).
+  static const String quranKey = 'quran';
 
   // =========================================================================
-  // 🌿 أصوات الطبيعة ورياض الجنة (تسجيلات طبيعية حقيقية 100% بدون أي موسيقى أو آلات)
+  // حالة المزيج
+  // =========================================================================
+  final Set<String> _layers = <String>{};
+  final Map<String, double> _gain = <String, double>{};
+  final Map<String, double> _target = <String, double>{};
+  String? _leader;
+  double _master = 0.5;
+  bool _mixPlaying = false;
+
+  Timer? _rotationTimer;
+  Timer? _nudgeTimer;
+  Timer? _rampTimer;
+
+  final math.Random _rnd = math.Random();
+
+  /// نبضة تُشعِر الواجهة بتغيّر مستويات الطبقات (لرسم المؤشرات فقط).
+  final ValueNotifier<int> mixerTick = ValueNotifier<int>(0);
+
+  // =========================================================================
+  // حالة القرآن
+  // =========================================================================
+  String? _quranId;
+  bool _quranPlaying = false;
+
+  String? get quranId => _quranId;
+  bool get isQuranPlaying => _quranPlaying;
+
+  // =========================================================================
+  // واجهة القراءة
+  // =========================================================================
+  bool get isMixPlaying => _mixPlaying && _layers.isNotEmpty;
+  bool get isPlaying => isMixPlaying || _quranPlaying;
+
+  Set<String> get activeLayers => Set<String>.unmodifiable(_layers);
+  bool isLayerActive(String id) => _layers.contains(id);
+  bool isLeader(String id) => _layers.length > 1 && _leader == id;
+  double layerGain(String id) => _gain[id] ?? 0.0;
+
+  /// سقف الجهارة الحالي (أعلى قيمة يمكن أن تصلها أي طبقة).
+  double get mixCeiling => _ceiling;
+
+  double get masterVolume => _master;
+
+  /// يقرأ القيم المحفوظة (يُستدعى عند بدء الشاشات).
+  void syncFromStorage() {
+    _master = _savedVolume();
+    if (_layers.isEmpty) {
+      _layers.addAll(_savedLayers());
+    }
+    mixerTick.value++;
+  }
+
+  double _savedVolume() {
+    try {
+      return StorageService().getAudioVolume().clamp(0.0, 1.0).toDouble();
+    } catch (_) {
+      return _master;
+    }
+  }
+
+  List<String> _savedLayers() {
+    try {
+      return StorageService()
+          .getMixLayers()
+          .where((id) => natureTracks.any((t) => t.id == id))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _persistLayers() async {
+    try {
+      await StorageService().setMixLayers(_layers.toList());
+    } catch (e) {
+      debugPrint('⚠️ persist mix layers: $e');
+    }
+  }
+
+  // =========================================================================
+  // 🌿 أصوات الطبيعة ورياض الجنة (تسجيلات طبيعية حقيقية 100% بدون موسيقى)
+  //    الملفات محليّة في assets/audio/ وموحّدة الجهارة على -24 LUFS
+  //    (الماء والرياح من مكتبة أصوات Google، والعصافير والليل من مشروع
+  //    radio aporee عبر Internet Archive برخصة Public Domain Mark 1.0).
   // =========================================================================
   static const List<AudioItem> natureTracks = [
     AudioItem(
@@ -47,7 +140,7 @@ class SpiritualAudioService {
       title: 'خرير أنهار الفردوس 🌊',
       subtitle: 'صوت ماء نقي طبيعي يتدفق في جدول عذب',
       icon: '🌊',
-      url: 'https://actions.google.com/sounds/v1/water/water_running_by.ogg',
+      url: 'assets/audio/nature_water.ogg',
       isStream: false,
       loop: true,
     ),
@@ -56,7 +149,7 @@ class SpiritualAudioService {
       title: 'حفيف أشجار ورياح الجنان 🍃',
       subtitle: 'صوت حفيف نسيم الرياح الحقيقي بين أوراق الشجر',
       icon: '🍃',
-      url: 'https://actions.google.com/sounds/v1/weather/wind_in_leaves_on_porch.ogg',
+      url: 'assets/audio/nature_wind.ogg',
       isStream: false,
       loop: true,
     ),
@@ -65,7 +158,7 @@ class SpiritualAudioService {
       title: 'تغريد عصافير الفجر والروضة 🕊️',
       subtitle: 'أصوات عصافير وطيور برية مغردة في الغابة',
       icon: '🕊️',
-      url: 'https://actions.google.com/sounds/v1/animals/june_songbirds.ogg',
+      url: 'assets/audio/nature_birds.ogg',
       isStream: false,
       loop: true,
     ),
@@ -74,7 +167,7 @@ class SpiritualAudioService {
       title: 'سكون ليل الطبيعة والتهجد 🌌',
       subtitle: 'أجواء ليلية طبيعية هادئة تملأ القلب سكينة وخشوعاً',
       icon: '🌌',
-      url: 'https://actions.google.com/sounds/v1/ambiences/night_crickets.ogg',
+      url: 'assets/audio/nature_night.ogg',
       isStream: false,
       loop: true,
     ),
@@ -135,72 +228,346 @@ class SpiritualAudioService {
     ),
   ];
 
-  Future<void> playAudioItem(AudioItem item) async {
-    try {
-      _currentAudioId = item.id;
+  // =========================================================================
+  // المحرّك: السقف والسلّم والتبادل
+  // =========================================================================
 
-      if (kIsWeb) {
-        // ✅ تشغيل HTML5 Audio حقيقي في المتصفح عبر conditional import
-        playSoundWeb(item.url, item.loop);
-        // نعطي المتصفح 300ms ثم نتحقق من الحالة الفعلية
-        await Future.delayed(const Duration(milliseconds: 300));
-        _isPlaying = !isWebAudioPaused();
-        if (_isPlaying) {
-          debugPrint('🎵 Web Audio playing: ${item.title} → ${item.url}');
-        } else {
-          debugPrint('⚠️ Web Audio paused or blocked after play(): ${item.url}');
-        }
-      } else {
-        // ✅ تشغيل عبر MethodChannel على أندرويد
-        await _channel.invokeMethod('play', {
-          'url': item.url,
-          'isStream': item.isStream,
-          'loop': item.loop,
-        });
-        _isPlaying = true;
-        debugPrint('🎵 Native Audio playing: ${item.title}');
-      }
-    } catch (e) {
-      debugPrint('⚠️ Audio play error: $e');
-      _isPlaying = false;
-    }
+  /// نسبة خفض المزيج أثناء التلاوة حتى لا يتجاوز مجموعهما الجهارة.
+  double get _duck => _quranPlaying ? 0.5 : 1.0;
+
+  /// جهارة التلاوة (٩٢٪ من الجهارة تترك هامشًا آمنًا لطبقات الطبيعة).
+  double get _quranGain => (_master * 0.92).clamp(0.0, 1.0).toDouble();
+
+  double get _ceiling {
+    final n = _layers.length;
+    if (n <= 1) return (_master * _duck).clamp(0.0, 1.0).toDouble();
+    return (_master * _duck / math.sqrt(n.toDouble()))
+        .clamp(0.0, 1.0)
+        .toDouble();
   }
 
-  Future<void> toggle([AudioItem? item]) async {
-    final target = item ?? natureTracks.first;
-    if (_currentAudioId == target.id && _isPlaying) {
-      await stop();
+  /// نسب الطبقات غير الرائدة (أعلى من أدناها تضمن ترتيبًا واضحًا).
+  static const List<double> _ladder = [0.72, 0.58, 0.45, 0.34];
+
+  Future<void> toggleLayer(AudioItem item) async {
+    _master = _savedVolume();
+    if (_layers.contains(item.id)) {
+      _layers.remove(item.id);
+      _gain.remove(item.id);
+      _target.remove(item.id);
+      if (_leader == item.id) _leader = null;
+      await _stopPlayer(item.id);
+      if (_layers.isEmpty) {
+        await stopMix();
+      } else {
+        _rebalance(keepLeader: _leader != null);
+        _scheduleTimers();
+      }
     } else {
-      await playAudioItem(target);
-    }
-  }
-
-  Future<void> stop() async {
-    try {
-      if (kIsWeb) {
-        stopSoundWeb();
+      _layers.add(item.id);
+      _gain[item.id] = 0;
+      _target[item.id] = 0;
+      if (_mixPlaying) {
+        await _startPlayer(item.id, item.url, item.loop, 0);
+        _rebalance(keepLeader: true);
+        _scheduleTimers();
       } else {
-        await _channel.invokeMethod('stop');
+        await startMix();
       }
-      _isPlaying = false;
-      _currentAudioId = null;
-      debugPrint('🔇 Audio stopped');
-    } catch (e) {
-      debugPrint('⚠️ Audio stop error: $e');
     }
+    await _persistLayers();
+    mixerTick.value++;
   }
 
-  Future<void> setVolume(double volume) async {
+  Future<void> startMix() async {
+    if (_layers.isEmpty) return;
+    _master = _savedVolume();
+    for (final track in natureTracks) {
+      if (!_layers.contains(track.id)) continue;
+      _gain[track.id] = 0;
+      await _startPlayer(track.id, track.url, track.loop, 0);
+    }
+    _mixPlaying = true;
+    _rebalance();
+    _scheduleTimers();
+    mixerTick.value++;
+  }
+
+  Future<void> stopMix() async {
+    final ids = _layers.toList();
+    _mixPlaying = false;
+    _cancelTimers();
+    for (final id in ids) {
+      await _stopPlayer(id);
+    }
+    mixerTick.value++;
+  }
+
+  /// يضبط جهارة الماستر لكل شيء (المزيج + التلاوة).
+  Future<void> setVolume(double volume, {bool persist = false}) async {
+    _master = volume.clamp(0.0, 1.0).toDouble();
     try {
+      // التلاوة تأخذ الجهارة كاملة
       if (kIsWeb) {
-        setVolumeWeb(volume.clamp(0.0, 1.0));
+        setVolumeWeb(quranKey, _quranGain);
       } else {
         await _channel.invokeMethod('setVolume', {
-          'volume': volume.clamp(0.0, 1.0),
+          'id': quranKey,
+          'volume': _quranGain,
         });
+      }
+      if (persist) {
+        await StorageService().setAudioVolume(_master);
       }
     } catch (e) {
       debugPrint('⚠️ Audio setVolume error: $e');
     }
+    // المزيج يُعاد توزيعه على السقف الجديد
+    if (_layers.isNotEmpty) {
+      _rebalance(keepLeader: _leader != null);
+    }
+    mixerTick.value++;
+  }
+
+  /// يوقف كل شيء (مؤقت السكون).
+  Future<void> stop() async {
+    await stopMix();
+    await stopQuran();
+  }
+
+  // =========================================================================
+  // القرآن (قناة مستقلة: يمكن أن يعمل مع طبقات الطبيعة)
+  // =========================================================================
+
+  Future<void> playAudioItem(AudioItem item) async {
+    try {
+      _master = _savedVolume();
+      _quranId = item.id;
+      if (kIsWeb) {
+        playSoundWeb(quranKey, item.url, item.loop, _quranGain);
+        await Future.delayed(const Duration(milliseconds: 300));
+        _quranPlaying = !isPausedWeb(quranKey);
+        if (_quranPlaying) {
+          debugPrint('🎵 Web Audio playing: ${item.title} → ${item.url}');
+        } else {
+          debugPrint('⚠️ Web Audio paused or blocked: ${item.url}');
+        }
+      } else {
+        await _channel.invokeMethod('play', {
+          'id': quranKey,
+          'url': item.url,
+          'isStream': item.isStream,
+          'loop': item.loop,
+          'volume': _quranGain,
+        });
+        _quranPlaying = true;
+        debugPrint('🎵 Native Audio playing: ${item.title}');
+      }
+      // خفض المزيج تحت التلاوة
+      if (_layers.isNotEmpty) {
+        _rebalance(keepLeader: _leader != null);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Audio play error: $e');
+      _quranPlaying = false;
+    }
+    mixerTick.value++;
+  }
+
+  Future<void> toggleQuran(AudioItem item) async {
+    if (_quranId == item.id && _quranPlaying) {
+      await stopQuran();
+    } else {
+      await playAudioItem(item);
+    }
+  }
+
+  Future<void> stopQuran() async {
+    try {
+      await _stopPlayer(quranKey);
+      _quranId = null;
+      _quranPlaying = false;
+      if (_layers.isNotEmpty) {
+        _rebalance(keepLeader: _leader != null);
+      }
+      debugPrint('🔇 Quran stopped');
+    } catch (e) {
+      debugPrint('⚠️ Audio stop error: $e');
+    }
+    mixerTick.value++;
+  }
+
+  /// زر الصوت في العالم ثلاثي الأبعاد: تشغيل/إيقاف المزيج.
+  Future<void> toggle([AudioItem? item]) async {
+    if (isMixPlaying) {
+      await stopMix();
+      return;
+    }
+    if (_layers.isEmpty) {
+      syncFromStorage();
+      if (_layers.isEmpty) {
+        _layers.add((item ?? natureTracks.first).id);
+      }
+    }
+    await startMix();
+    await _persistLayers();
+  }
+
+  // =========================================================================
+  // المشغّلات (ويب/أندرويد)
+  // =========================================================================
+
+  Future<void> _startPlayer(
+    String key,
+    String url,
+    bool loop,
+    double volume,
+  ) async {
+    try {
+      if (kIsWeb) {
+        playSoundWeb(key, url, loop, volume);
+      } else {
+        await _channel.invokeMethod('play', {
+          'id': key,
+          'url': url,
+          'isStream': false,
+          'loop': loop,
+          'volume': volume,
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ start player $key: $e');
+    }
+  }
+
+  Future<void> _stopPlayer(String key) async {
+    try {
+      if (kIsWeb) {
+        stopSoundWeb(key);
+      } else {
+        await _channel.invokeMethod('stop', {'id': key});
+      }
+    } catch (e) {
+      debugPrint('⚠️ stop player $key: $e');
+    }
+  }
+
+  void _applyGain(String key, double value) {
+    final v = value.clamp(0.0, 1.0).toDouble();
+    try {
+      if (kIsWeb) {
+        setVolumeWeb(key, v);
+      } else {
+        _channel.invokeMethod('setVolume', {'id': key, 'volume': v});
+      }
+    } catch (e) {
+      debugPrint('⚠️ gain $key: $e');
+    }
+  }
+
+  // =========================================================================
+  // الخوارزمية
+  // =========================================================================
+
+  /// يعيد توزيع النسب: رائد على السقف، والباقي على سلّم أدنى.
+  void _rebalance({bool keepLeader = false}) {
+    if (_layers.isEmpty) {
+      _leader = null;
+      return;
+    }
+    final ids = _layers.toList();
+    String leader;
+    if (keepLeader && _leader != null && ids.contains(_leader)) {
+      leader = _leader!;
+    } else if (ids.length == 1) {
+      leader = ids.first;
+    } else {
+      final pool = ids.where((id) => id != _leader).toList();
+      leader = pool.isEmpty ? ids.first : pool[_rnd.nextInt(pool.length)];
+    }
+
+    final ceiling = _ceiling;
+    final ratios = List<double>.from(_ladder)..shuffle(_rnd);
+    _target[leader] = ceiling;
+    var i = 0;
+    for (final id in ids) {
+      if (id == leader) continue;
+      _target[id] = ceiling * ratios[i % ratios.length];
+      i++;
+    }
+    _leader = leader;
+  }
+
+  void _scheduleTimers() {
+    _ensureRamp();
+    _scheduleRotation();
+    _scheduleNudge();
+  }
+
+  void _cancelTimers() {
+    _rotationTimer?.cancel();
+    _rotationTimer = null;
+    _nudgeTimer?.cancel();
+    _nudgeTimer = null;
+    _rampTimer?.cancel();
+    _rampTimer = null;
+  }
+
+  /// الانتقال الناعم: يقرّب الكسب الحقيقي من الهدف كل ١٨٠ مللي (~٥ ثوانٍ).
+  void _ensureRamp() {
+    _rampTimer ??= Timer.periodic(const Duration(milliseconds: 180), (_) {
+      var moved = false;
+      for (final id in _layers) {
+        final current = _gain[id] ?? 0.0;
+        final target = _target[id] ?? 0.0;
+        if ((current - target).abs() < 0.005) {
+          if (current != target) {
+            _gain[id] = target;
+            _applyGain(id, target);
+            moved = true;
+          }
+          continue;
+        }
+        final next = current + (target - current) * 0.12;
+        _gain[id] = next;
+        _applyGain(id, next);
+        moved = true;
+      }
+      if (moved) mixerTick.value++;
+    });
+  }
+
+  /// تبادل القيادة كل ٢٠–٤٠ ثانية.
+  void _scheduleRotation() {
+    _rotationTimer?.cancel();
+    if (_layers.length < 2) return;
+    final seconds = 20 + _rnd.nextInt(21);
+    _rotationTimer = Timer(Duration(seconds: seconds), () {
+      if (_layers.length < 2 || !_mixPlaying) return;
+      _rebalance();
+      mixerTick.value++;
+      _scheduleRotation();
+    });
+  }
+
+  /// تذبذب خفيف للطبقات غير الرائدة (بين ٣٠٪ و٩٠٪ من السقف).
+  void _scheduleNudge() {
+    _nudgeTimer?.cancel();
+    if (_layers.length < 2) return;
+    final seconds = 5 + _rnd.nextInt(5);
+    _nudgeTimer = Timer(Duration(seconds: seconds), () {
+      if (_layers.length < 2 || !_mixPlaying) return;
+      final others = _layers.where((id) => id != _leader).toList();
+      if (others.isNotEmpty) {
+        final id = others[_rnd.nextInt(others.length)];
+        final ceiling = _ceiling;
+        final current = _target[id] ?? ceiling * 0.6;
+        final delta = ceiling * 0.1 * (_rnd.nextBool() ? 1 : -1);
+        _target[id] = (current + delta)
+            .clamp(ceiling * 0.30, ceiling * 0.90)
+            .toDouble();
+      }
+      _scheduleNudge();
+    });
   }
 }

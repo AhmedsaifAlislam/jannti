@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.net.Uri
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.content.res.AssetFileDescriptor
 import android.os.Build
 import android.os.Environment
 import android.util.Log
@@ -20,7 +21,9 @@ import java.io.File
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.jannti/audio"
     private val TAG = "JannatiAudio"
-    private var mediaPlayer: MediaPlayer? = null
+    // مشغّل مستقل لكل طبقة صوتية (طبقات الطبيعة + قناة القرآن) حتى تعمل معًا.
+    private val players = mutableMapOf<String, MediaPlayer>()
+    private val assetDescriptors = mutableMapOf<String, AssetFileDescriptor>()
 
     // APK download tracking
     private var apkDownloadId: Long = -1L
@@ -32,18 +35,21 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "play" -> {
+                    val id = call.argument<String>("id") ?: "main"
                     val url = call.argument<String>("url")
                     val isStream = call.argument<Boolean>("isStream") ?: false
                     val loop = call.argument<Boolean>("loop") ?: false
+                    val volume = call.argument<Double>("volume")?.toFloat() ?: 1.0f
                     if (url != null) {
-                        playUrl(url, isStream, loop)
+                        playUrl(id, url, isStream, loop, volume)
                         result.success(true)
                     } else {
                         result.error("INVALID_URL", "URL cannot be null", null)
                     }
                 }
                 "stop" -> {
-                    stopAudio()
+                    val id = call.argument<String>("id")
+                    if (id != null) stopAudio(id) else stopAllAudio()
                     result.success(true)
                 }
                 "pause" -> {
@@ -51,8 +57,13 @@ class MainActivity : FlutterActivity() {
                     result.success(true)
                 }
                 "setVolume" -> {
+                    val id = call.argument<String>("id")
                     val volume = call.argument<Double>("volume")?.toFloat() ?: 1.0f
-                    mediaPlayer?.setVolume(volume, volume)
+                    if (id != null) {
+                        players[id]?.setVolume(volume, volume)
+                    } else {
+                        players.values.forEach { it.setVolume(volume, volume) }
+                    }
                     result.success(true)
                 }
                 "openUrl" -> {
@@ -190,78 +201,96 @@ class MainActivity : FlutterActivity() {
 
     // --- Audio methods ---
 
-    private fun playUrl(url: String, isStream: Boolean, loop: Boolean = false) {
+    private fun playUrl(
+        id: String,
+        url: String,
+        isStream: Boolean,
+        loop: Boolean = false,
+        volume: Float = 1.0f
+    ) {
         try {
-            Log.d(TAG, "Playing URL: $url (isStream=$isStream, loop=$loop)")
-            stopAudio()
+            Log.d(TAG, "Playing [$id]: $url (isStream=$isStream, loop=$loop, vol=$volume)")
+            stopAudio(id)
 
-            mediaPlayer = MediaPlayer().apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .build()
-                )
+            val player = MediaPlayer()
+            players[id] = player
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .build()
+            )
 
-                setDataSource(url)
-                isLooping = loop
-
-                setOnPreparedListener { mp ->
-                    Log.d(TAG, "MediaPlayer prepared, starting playback")
-                    mp.start()
-                }
-
-                setOnErrorListener { _, what, extra ->
-                    Log.e(TAG, "MediaPlayer error: what=$what, extra=$extra, url=$url")
-                    true
-                }
-
-                setOnBufferingUpdateListener { _, percent ->
-                    if (percent % 25 == 0) Log.d(TAG, "Buffering: $percent%")
-                }
-
-                setOnCompletionListener {
-                    Log.d(TAG, "Playback completed for: $url")
-                }
-
-                prepareAsync()
+            if (url.startsWith("http://") || url.startsWith("https://")) {
+                player.setDataSource(url)
+            } else {
+                // أصل صوتي محلي داخل التطبيق (Flutter assets)
+                val afd = assets.openFd("flutter_assets/$url")
+                assetDescriptors[id] = afd
+                player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
             }
+            player.isLooping = loop
+            player.setVolume(volume, volume)
+
+            player.setOnPreparedListener { mp ->
+                Log.d(TAG, "MediaPlayer [$id] prepared, starting playback")
+                mp.start()
+            }
+
+            player.setOnErrorListener { _, what, extra ->
+                Log.e(TAG, "MediaPlayer [$id] error: what=$what, extra=$extra, url=$url")
+                true
+            }
+
+            player.setOnCompletionListener {
+                Log.d(TAG, "Playback completed for [$id]: $url")
+            }
+
+            player.prepareAsync()
         } catch (e: Exception) {
-            Log.e(TAG, "Exception playing audio: ${e.message}", e)
+            Log.e(TAG, "Exception playing audio [$id]: ${e.message}", e)
+            stopAudio(id)
         }
     }
 
     private fun pauseAudio() {
         try {
-            mediaPlayer?.let {
-                if (it.isPlaying) {
-                    it.pause()
-                    Log.d(TAG, "Audio paused")
-                }
+            players.values.forEach {
+                if (it.isPlaying) it.pause()
             }
+            Log.d(TAG, "Audio paused")
         } catch (e: Exception) {
             Log.e(TAG, "Exception pausing audio: ${e.message}", e)
         }
     }
 
-    private fun stopAudio() {
+    private fun stopAudio(id: String) {
         try {
-            mediaPlayer?.let {
+            players.remove(id)?.let {
                 if (it.isPlaying) it.stop()
                 it.reset()
                 it.release()
-                Log.d(TAG, "Audio stopped and released")
+                Log.d(TAG, "Audio [$id] stopped and released")
             }
-            mediaPlayer = null
         } catch (e: Exception) {
-            Log.e(TAG, "Exception stopping audio: ${e.message}", e)
-            mediaPlayer = null
+            Log.e(TAG, "Exception stopping audio [$id]: ${e.message}", e)
+            players.remove(id)
+        }
+        try {
+            assetDescriptors.remove(id)?.close()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun stopAllAudio() {
+        for (id in players.keys.toList()) {
+            stopAudio(id)
         }
     }
 
     override fun onDestroy() {
         unregisterApkReceiver()
-        stopAudio()
+        stopAllAudio()
         super.onDestroy()
     }
 }
