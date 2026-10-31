@@ -205,7 +205,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 Text(
                   'اضبط تنبيهاتك لتكون من الذاكرين الله كثيراً والذاكرات',
                   style: TextStyle(
-                    fontFamily: 'GESSTwo',
+                    fontFamily: 'Cairo',
                     fontSize: 11,
                     color: Color(0xFF2E7D32),
                   ),
@@ -277,7 +277,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontFamily: 'GESSTwo',
+                          fontFamily: 'Cairo',
                           fontSize: 11,
                           color: const Color(0xFFFFD700).withValues(alpha: 0.9),
                         ),
@@ -341,7 +341,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 Text(
                   subtitle,
                   style: TextStyle(
-                    fontFamily: 'GESSTwo',
+                    fontFamily: 'Cairo',
                     fontSize: 11,
                     color: Colors.white.withValues(alpha: 0.65),
                   ),
@@ -406,7 +406,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                     Text(
                       'الإصدار: v${AppUpdateService.currentVersionName} (بناء ${AppUpdateService.currentVersionCode})',
                       style: TextStyle(
-                        fontFamily: 'GESSTwo',
+                        fontFamily: 'Cairo',
                         fontSize: 12,
                         color: const Color(0xFFFFD700).withValues(alpha: 0.85),
                       ),
@@ -429,7 +429,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               label: const Text(
                 'التحقق من وجود تحديثات الآن 🔄',
                 style: TextStyle(
-                  fontFamily: 'GESSTwo',
+                  fontFamily: 'Cairo',
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF03140C),
@@ -503,7 +503,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                           ? 'تتمتع الآن بأعلى درجات التفاصيل للمجسمات الملكية'
                           : 'تحميل نماذج النخيل والقصور الواقعية دون زيادة حجم التطبيق الأساسي',
                       style: TextStyle(
-                        fontFamily: 'GESSTwo',
+                        fontFamily: 'Cairo',
                         fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.65),
                       ),
@@ -528,7 +528,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             Text(
               'جارٍ التحميل والتثبيت: ${(_assetDownloadProgress * 100).toInt()}%',
               style: const TextStyle(
-                fontFamily: 'GESSTwo',
+                fontFamily: 'Cairo',
                 fontSize: 11,
                 color: Color(0xFFFFD700),
               ),
@@ -545,7 +545,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 label: const Text(
                   'تحميل الحزمة الفائقة الآن 🏛️✨',
                   style: TextStyle(
-                    fontFamily: 'GESSTwo',
+                    fontFamily: 'Cairo',
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF03140C),

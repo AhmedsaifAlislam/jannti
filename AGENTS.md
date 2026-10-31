@@ -42,7 +42,7 @@
 - **2D World**: GardenWorldManager + InteractiveViewer (5000×2000) - **FROZEN**
 - **3D World**: three_dart_flutterflow + flutter_gl_flutterflow + HUD - **ACTIVE DEV**
 - **Audio**: `SpiritualAudioService` + platform players (one `MediaPlayer` / `AudioElement` per key) - **ACTIVE DEV**
-- **UI**: Glassmorphism + Luxury Spiritual Aesthetic (Amiri + GESSTwo)
+- **UI**: Glassmorphism + Luxury Spiritual Aesthetic (Amiri + Cairo)
 
 ---
 

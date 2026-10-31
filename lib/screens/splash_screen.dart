@@ -134,7 +134,7 @@ class _SplashScreenState extends State<SplashScreen>
                       Text(
                         'وَاحَةُ الذِّكْرِ وَغِرَاسُ الجَنَّة',
                         style: TextStyle(
-                          fontFamily: 'GESSTwo',
+                          fontFamily: 'Cairo',
                           fontSize: 14,
                           letterSpacing: 1.5,
                           color: const Color(
@@ -174,7 +174,7 @@ class _SplashScreenState extends State<SplashScreen>
                             Text(
                               '👥 ينضم إليك الآن ${NumberFormatter.toArabicCompact(CommunityStatsService().trueBase)} يغرسون جنّتهم',
                               style: const TextStyle(
-                                fontFamily: 'GESSTwo',
+                                fontFamily: 'Cairo',
                                 fontSize: 11,
                                 color: Color(0xFFFFD700),
                               ),

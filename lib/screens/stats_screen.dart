@@ -131,7 +131,7 @@ class _StatsScreenState extends State<StatsScreen>
               Text(
                 'كلما زادت تسبيحاتك وأذكارك ارتقيت في مراتب الجنان وتفتحت لك أبواب النعيم',
                 style: TextStyle(
-                  fontFamily: 'GESSTwo',
+                  fontFamily: 'Cairo',
                   fontSize: 11,
                   color: Colors.white.withValues(alpha: 0.75),
                 ),
@@ -237,7 +237,7 @@ class _StatsScreenState extends State<StatsScreen>
                                         child: const Text(
                                           'رتبتك الحالية',
                                           style: TextStyle(
-                                            fontFamily: 'GESSTwo',
+                                            fontFamily: 'Cairo',
                                             fontSize: 9,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.black,
@@ -251,7 +251,7 @@ class _StatsScreenState extends State<StatsScreen>
                                 Text(
                                   rank.description,
                                   style: TextStyle(
-                                    fontFamily: 'GESSTwo',
+                                    fontFamily: 'Cairo',
                                     fontSize: 10,
                                     color: isUnlocked
                                         ? Colors.white.withValues(alpha: 0.8)
@@ -264,7 +264,7 @@ class _StatsScreenState extends State<StatsScreen>
                                 Text(
                                   'المطلوب: ${NumberFormatter.toArabic(rank.minDhikr)} تسبيحة',
                                   style: TextStyle(
-                                    fontFamily: 'GESSTwo',
+                                    fontFamily: 'Cairo',
                                     fontSize: 10,
                                     color: isCurrent
                                         ? const Color(0xFFFFD700)
@@ -313,7 +313,7 @@ class _StatsScreenState extends State<StatsScreen>
                   child: const Text(
                     'إغلاق',
                     style: TextStyle(
-                      fontFamily: 'GESSTwo',
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -521,7 +521,7 @@ class _StatsScreenState extends State<StatsScreen>
                       child: Text(
                         'الرتبة ${currentRank.level} من 14',
                         style: const TextStyle(
-                          fontFamily: 'GESSTwo',
+                          fontFamily: 'Cairo',
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1B5E20),
@@ -597,7 +597,7 @@ class _StatsScreenState extends State<StatsScreen>
                               const Text(
                                 'المس هنا لاستعراض سلم الألقاب الـ 14 ✨',
                                 style: TextStyle(
-                                  fontFamily: 'GESSTwo',
+                                  fontFamily: 'Cairo',
                                   fontSize: 10,
                                   color: Color(0xFF2E7D32),
                                   fontWeight: FontWeight.bold,
@@ -693,7 +693,7 @@ class _StatsScreenState extends State<StatsScreen>
           Text(
             title,
             style: TextStyle(
-              fontFamily: 'GESSTwo',
+              fontFamily: 'Cairo',
               fontSize: 10,
               fontWeight: FontWeight.bold,
               color: color.withValues(alpha: 0.8),
@@ -782,7 +782,7 @@ class _StatsScreenState extends State<StatsScreen>
                     Text(
                       TierSystem.title(tier),
                       style: TextStyle(
-                        fontFamily: 'GESSTwo',
+                        fontFamily: 'Cairo',
                         fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.85),
                       ),
@@ -835,7 +835,7 @@ class _StatsScreenState extends State<StatsScreen>
               Text(
                 'التقدم نحو المستوى التالي',
                 style: TextStyle(
-                  fontFamily: 'GESSTwo',
+                  fontFamily: 'Cairo',
                   fontSize: 10,
                   color: Colors.white.withValues(alpha: 0.75),
                 ),
@@ -843,7 +843,7 @@ class _StatsScreenState extends State<StatsScreen>
               Text(
                 '${NumberFormatter.toArabic(count)} / ${NumberFormatter.toArabic(nextThreshold)}',
                 style: const TextStyle(
-                  fontFamily: 'GESSTwo',
+                  fontFamily: 'Cairo',
                   fontSize: 11,
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -1128,7 +1128,7 @@ class _StatsScreenState extends State<StatsScreen>
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'GESSTwo',
+                  fontFamily: 'Cairo',
                   fontSize: 10,
                   color: b.unlocked
                       ? Colors.white.withValues(alpha: 0.9)

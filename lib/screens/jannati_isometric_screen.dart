@@ -437,7 +437,7 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                         Text(
                           'مرتبة النماء: المستوى ${building.tier} (مساحة البناء ${building.sizeW}×${building.sizeH})',
                           style: const TextStyle(
-                            fontFamily: 'GESSTwo',
+                            fontFamily: 'Cairo',
                             fontSize: 12,
                             color: Colors.white70,
                           ),
@@ -483,7 +483,7 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                   child: const Text(
                     'تم',
                     style: TextStyle(
-                      fontFamily: 'GESSTwo',
+                      fontFamily: 'Cairo',
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
@@ -513,7 +513,7 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
         Text(
           title,
           style: const TextStyle(
-            fontFamily: 'GESSTwo',
+            fontFamily: 'Cairo',
             fontSize: 11,
             color: Colors.white60,
           ),
@@ -747,7 +747,7 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                   Text(
                     '${NumberFormatter.toArabic(_buildings.length)} معالم وغراس (شبكة آيزومترية 120 FPS)',
                     style: TextStyle(
-                      fontFamily: 'GESSTwo',
+                      fontFamily: 'Cairo',
                       fontSize: 11,
                       color: Colors.white.withValues(alpha: 0.75),
                     ),
@@ -792,7 +792,7 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                 child: const Text(
                   '3D',
                   style: TextStyle(
-                    fontFamily: 'GESSTwo',
+                    fontFamily: 'Cairo',
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFFFD700),
@@ -870,7 +870,7 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                           Text(
                             '${type.displayName} (${NumberFormatter.toArabic(count)})',
                             style: TextStyle(
-                              fontFamily: 'GESSTwo',
+                              fontFamily: 'Cairo',
                               fontSize: 11,
                               fontWeight: isSelected
                                   ? FontWeight.bold
@@ -925,7 +925,7 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                   icon: const Icon(Icons.add, size: 16),
                   label: Text(
                     'اغرس ${_selectedFilter?.displayName ?? "نخلة"}',
-                    style: const TextStyle(fontFamily: 'GESSTwo', fontSize: 12),
+                    style: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),
@@ -945,7 +945,7 @@ class _JannatiIsometricScreenState extends State<JannatiIsometricScreen>
                     icon: const Icon(Icons.undo, size: 16),
                     label: const Text(
                       'تراجع',
-                      style: TextStyle(fontFamily: 'GESSTwo', fontSize: 12),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                     ),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.red.shade300,

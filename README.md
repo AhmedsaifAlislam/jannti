@@ -96,7 +96,7 @@ lib/
 assets/
 ├── 3d/               # GLB models (5 files, CC0)
 ├── images/           # 2D sprites
-└── fonts/            # Amiri + GESSTwo
+└── fonts/            # Amiri + Cairo
 🎯 Current Status
 ✅ Stable:
 Storage system (SharedPreferences)
@@ -162,7 +162,7 @@ TBD - Project under active development.
 
 🙏 Acknowledgments
 3D models from Quaternius via Poly Pizza (CC0)
-Arabic fonts: Amiri & GESSTwo
+Arabic fonts: Amiri & Cairo
 Built with Flutter & love ❤️
 text
 

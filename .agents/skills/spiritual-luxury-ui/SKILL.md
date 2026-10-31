@@ -16,7 +16,7 @@ description: Design system and UX guidelines for luxury spiritual & Islamic mind
 
 ## 2. Arabic Typography Mastery
 - **Quranic & Sacred Adhkar**: Always use `fontFamily: 'Amiri'` with generous line height (`1.5 - 1.8`) and bold weights for sacred texts and numerical values.
-- **UI Elements, Labels & Subtitles**: Use `fontFamily: 'GESSTwo'` (weights: Light 300, Medium 500, Bold 700) for UI navigation, subtitles, and buttons.
+- **UI Elements, Labels & Subtitles**: Use `fontFamily: 'Cairo'` (weights: Light 300, Medium 500, Bold 700) for UI navigation, subtitles, and buttons.
 - **Numerals**: Always format numbers to Arabic digits (`NumberFormatter.toArabic(n)`) in religious contexts or use bold stylized golden counters.
 
 ## 3. Glassmorphism & Double-Bezel Architecture

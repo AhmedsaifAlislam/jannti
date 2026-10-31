@@ -1925,7 +1925,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                           Text(
                             'المستوى الحالي: مرتبة النماء (Tier $tier)',
                             style: const TextStyle(
-                              fontFamily: 'GESSTwo',
+                              fontFamily: 'Cairo',
                               fontSize: 12,
                               color: Colors.white70,
                             ),
@@ -1984,7 +1984,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         Text(
           title,
           style: const TextStyle(
-            fontFamily: 'GESSTwo',
+            fontFamily: 'Cairo',
             fontSize: 11,
             color: Colors.white60,
           ),
@@ -2146,7 +2146,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
               Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'GESSTwo',
+                  fontFamily: 'Cairo',
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   color: accent,
@@ -2157,7 +2157,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                 Text(
                   subLabel,
                   style: TextStyle(
-                    fontFamily: 'GESSTwo',
+                    fontFamily: 'Cairo',
                     fontSize: 8.5,
                     color: accent.withValues(alpha: 0.8),
                   ),
@@ -2218,7 +2218,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                   Text(
                     '${NumberFormatter.toArabic(_animatedModels.length)} غرسة مزروعة في رياض الجنة',
                     style: TextStyle(
-                      fontFamily: 'GESSTwo',
+                      fontFamily: 'Cairo',
                       fontSize: 11,
                       color: Colors.white.withValues(alpha: 0.75),
                     ),
@@ -2327,7 +2327,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                           Text(
                             '${type.displayName} (${NumberFormatter.toArabic(count)})',
                             style: TextStyle(
-                              fontFamily: 'GESSTwo',
+                              fontFamily: 'Cairo',
                               fontSize: 11,
                               fontWeight: isSelected
                                   ? FontWeight.bold
@@ -2373,7 +2373,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                   icon: const Icon(Icons.add, size: 16),
                   label: Text(
                     'اغرس ${_selectedFilter?.displayName ?? "نخلة"}',
-                    style: const TextStyle(fontFamily: 'GESSTwo', fontSize: 12),
+                    style: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),
@@ -2393,7 +2393,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                     icon: const Icon(Icons.undo, size: 16),
                     label: const Text(
                       'تراجع عن آخر غرسة',
-                      style: TextStyle(fontFamily: 'GESSTwo', fontSize: 12),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                     ),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.red.shade300,
