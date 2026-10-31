@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// - مجموع الطبقات لا يتجاوز الجهارة.
 /// - تبادل البروز: بعد فترة يصعد صوت آخر إلى السقف.
 /// - الإيقاف يوقف كل الطبقات.
+/// - تتابع المقاطع داخل الطبقة: تبادل ناعم (٦ ثوانٍ) ثم إغلاق المقطع السابق.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -141,5 +142,101 @@ void main() {
       3,
       reason: 'الاختيار يبقى محفوظًا بعد الإيقاف',
     );
+  });
+
+  testWidgets('تتابع المقاطع: تبادل ناعم داخل الطبقة', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    await StorageService().init();
+
+    final played = <String, double>{};
+    final started = <String, String>{};
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          final args = (call.arguments as Map?) ?? const <String, Object?>{};
+          final id = args['id'] as String?;
+          final volume = (args['volume'] as num?)?.toDouble();
+          if (id != null) {
+            switch (call.method) {
+              case 'play':
+                started[id] = (args['url'] as String?) ?? '';
+                played[id] = volume ?? 1.0;
+              case 'setVolume':
+                played[id] = volume ?? 1.0;
+              case 'stop':
+                played.remove(id);
+                started.remove(id);
+            }
+          }
+          return true;
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    final service = SpiritualAudioService();
+    // تنظيف حالة الاختبار السابق (الخدمة Singleton).
+    await service.stopMix();
+    for (final track in SpiritualAudioService.natureTracks) {
+      if (service.isLayerActive(track.id)) await service.toggleLayer(track);
+    }
+    played.clear();
+    started.clear();
+
+    final water = SpiritualAudioService.natureTracks[0];
+    final secondKey = '${water.id}#1';
+    expect(water.segments.length, 3, reason: 'الماء ثلاثة مقاطع متتابعة');
+
+    await service.toggleLayer(water);
+    await tester.pump(const Duration(seconds: 6));
+
+    expect(started[water.id], water.segments.first.url);
+    expect(played[water.id], closeTo(0.5, 0.02));
+
+    // --- قبل نهاية المقطع بـ٦ ثوانٍ يبدأ التبادل ---
+    await tester.pump(const Duration(milliseconds: 48600)); // ~٥٤٫٦ ث
+    expect(
+      played.containsKey(secondKey),
+      isTrue,
+      reason: 'المقطع التالي بدأ قبل انتهاء الحالي',
+    );
+    expect(started[secondKey], water.segments[1].url);
+
+    final base = service.layerGain(water.id);
+    final out = played[water.id] ?? 0;
+    final inn = played[secondKey] ?? 0;
+    expect(
+      out + inn,
+      closeTo(base, 0.03),
+      reason: 'منحنى التبادل يحفظ جهارة الطبقة',
+    );
+    expect(
+      out,
+      greaterThan(inn),
+      reason: 'الخارج ما زال أعلى في بداية التبادل',
+    );
+    expect(math.max(out, inn), lessThanOrEqualTo(0.501));
+
+    // --- بعد ٦ ثوانٍ يُغلق المقطع السابق ويبقى الجديد ---
+    await tester.pump(const Duration(seconds: 6));
+    expect(played.containsKey(water.id), isFalse);
+    expect(played[secondKey], closeTo(0.5, 0.03));
+
+    // --- الدورة تكتمل: المقطع الثالث يعود إلى الخانة الأولى ---
+    await tester.pump(const Duration(seconds: 49)); // ~١٠٩٫٦ ث
+    expect(
+      played.containsKey(water.id),
+      isTrue,
+      reason: 'المقطع الثالث يعود إلى الخانة الأساسية',
+    );
+    expect(started[water.id], water.segments[2].url);
+    await tester.pump(const Duration(seconds: 6));
+    expect(played.containsKey(secondKey), isFalse);
+    expect(played[water.id], closeTo(0.5, 0.03));
+
+    await service.stopMix();
+    await tester.pump(const Duration(seconds: 1));
+    expect(played, isEmpty);
+    expect(started, isEmpty);
   });
 }

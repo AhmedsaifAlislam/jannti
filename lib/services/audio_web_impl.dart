@@ -5,8 +5,8 @@ import 'dart:html' as html;
 /// فيمكن تشغيل عدة أصوات معًا مع ضبط جهارة كل واحد على حدة.
 final Map<String, html.AudioElement> _players = <String, html.AudioElement>{};
 
-/// يحوّل مسار أصل محلي (مثل `assets/audio/nature_water.ogg`) إلى الرابط
-/// الذي يخدمه Flutter Web فعليًا (`assets/assets/audio/nature_water.ogg`).
+/// يحوّل مسار أصل محلي (مثل `assets/audio/nature_water_a.ogg`) إلى الرابط
+/// الذي يخدمه Flutter Web فعليًا (`assets/assets/audio/nature_water_a.ogg`).
 String _resolveSource(String url) {
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   return Uri.base.resolve('assets/$url').toString();

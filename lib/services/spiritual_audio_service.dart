@@ -8,6 +8,15 @@ import 'package:flutter/services.dart';
 import 'audio_web_stub.dart' if (dart.library.html) 'audio_web_impl.dart';
 import 'storage_service.dart';
 
+class AudioSegment {
+  final String url;
+
+  /// مدة المقطع بالمللي ثانية (نعرفها من الملف نفسه، فلا حاجة لسؤال المشغّل).
+  final int durationMs;
+
+  const AudioSegment({required this.url, required this.durationMs});
+}
+
 class AudioItem {
   final String id;
   final String title;
@@ -17,6 +26,10 @@ class AudioItem {
   final bool isStream;
   final bool loop;
 
+  /// مقاطع تتناوب داخل الطبقة الواحدة مع تبادل ناعم.
+  /// فارغة = مقطع واحد فقط (تُستخدم [url] كما هي).
+  final List<AudioSegment> segments;
+
   const AudioItem({
     required this.id,
     required this.title,
@@ -25,6 +38,7 @@ class AudioItem {
     required this.url,
     this.isStream = false,
     this.loop = false,
+    this.segments = const <AudioSegment>[],
   });
 }
 
@@ -63,6 +77,40 @@ class SpiritualAudioService {
   Timer? _rampTimer;
 
   final math.Random _rnd = math.Random();
+
+  // =========================================================================
+  // حالة تتابع المقاطع داخل كل طبقة
+  //   - خانة ٠ تستخدم مفتاح الطبقة نفسه (توافق مع الواجهة والمشغّلات).
+  //   - خانة ١ تستخدم مفتاحًا مشتقًّا `layer#1` وتُشغّل فقط أثناء التبادل.
+  // =========================================================================
+  /// مدة التبادل الناعم بين مقطعين متتاليين.
+  static const int crossfadeMs = 6000;
+
+  /// ساعة داخلية تتحرك مع نبضة المُنحدر (١٨٠ مللي) — حتمية في الاختبارات.
+  int _clockMs = 0;
+
+  /// فهرس المقطع الحالي لكل طبقة.
+  final Map<String, int> _segIndex = <String, int>{};
+
+  /// الخانة النشطة (٠ أو ١) لكل طبقة.
+  final Map<String, int> _segSlot = <String, int>{};
+
+  /// لحظة بدء المقطع الحالي (بالساعة الداخلية).
+  final Map<String, int> _segStartedAt = <String, int>{};
+
+  /// لحظة بدء التبادل — وجوده يعني أن تبادلًا جارٍ الآن.
+  final Map<String, int> _fadeStartAt = <String, int>{};
+
+  /// آخر جهارة أُرسلت لكل مشغّل (لتجنّب نداءات منصة زائدة).
+  final Map<String, double> _appliedVolume = <String, double>{};
+
+  /// يمنع تداخل نبضتين إذا تأخّر نداء المنصة.
+  bool _ticking = false;
+
+  static final Map<String, List<AudioSegment>> _segmentsById =
+      <String, List<AudioSegment>>{
+        for (final track in natureTracks) track.id: track.segments,
+      };
 
   /// نبضة تُشعِر الواجهة بتغيّر مستويات الطبقات (لرسم المؤشرات فقط).
   final ValueNotifier<int> mixerTick = ValueNotifier<int>(0);
@@ -130,46 +178,65 @@ class SpiritualAudioService {
 
   // =========================================================================
   // 🌿 أصوات الطبيعة ورياض الجنة (تسجيلات طبيعية حقيقية 100% بدون موسيقى)
-  //    الملفات محليّة في assets/audio/ وموحّدة الجهارة على -24 LUFS
-  //    (الماء والرياح من مكتبة أصوات Google، والعصافير والليل من مشروع
-  //    radio aporee عبر Internet Archive برخصة Public Domain Mark 1.0).
+  //    كل طبقة قائمة مقاطع ٦٠ ثانية تتناوب بتبادل ناعم (٦ ثوانٍ)،
+  //    والملفات محليّة في assets/audio/ وموحّدة الجهارة على -24 LUFS.
+  //    المصادر: مكتبة أصوات Google (ريح الخلفية) + radio aporee ::: maps
+  //    (ترخيص Public Domain).
   // =========================================================================
   static const List<AudioItem> natureTracks = [
     AudioItem(
       id: 'river_pure',
       title: 'خرير أنهار الفردوس 🌊',
-      subtitle: 'صوت ماء نقي طبيعي يتدفق في جدول عذب',
+      subtitle: 'ثلاثة جداول تتناوب بتبادل ناعم — ماء نقي بلا انقطاع',
       icon: '🌊',
-      url: 'assets/audio/nature_water.ogg',
+      url: 'assets/audio/nature_water_a.ogg',
       isStream: false,
       loop: true,
+      segments: [
+        AudioSegment(url: 'assets/audio/nature_water_a.ogg', durationMs: 60000),
+        AudioSegment(url: 'assets/audio/nature_water_b.ogg', durationMs: 60000),
+        AudioSegment(url: 'assets/audio/nature_water_c.ogg', durationMs: 60000),
+      ],
     ),
     AudioItem(
       id: 'leaves_pure',
       title: 'حفيف أشجار ورياح الجنان 🍃',
-      subtitle: 'صوت حفيف نسيم الرياح الحقيقي بين أوراق الشجر',
+      subtitle: 'نسيم الغابة يتبدّل بين ثلاثة مشاهد بلا قطع',
       icon: '🍃',
       url: 'assets/audio/nature_wind.ogg',
       isStream: false,
       loop: true,
+      segments: [
+        AudioSegment(url: 'assets/audio/nature_wind.ogg', durationMs: 100000),
+        AudioSegment(url: 'assets/audio/nature_wind_a.ogg', durationMs: 60000),
+        AudioSegment(url: 'assets/audio/nature_wind_b.ogg', durationMs: 60000),
+      ],
     ),
     AudioItem(
       id: 'birds_pure',
       title: 'تغريد عصافير الفجر والروضة 🕊️',
-      subtitle: 'أصوات عصافير وطيور برية مغردة في الغابة',
+      subtitle: 'فجران طبيعيان يتعاقبان — تغريد حقيقي بلا موسيقى',
       icon: '🕊️',
-      url: 'assets/audio/nature_birds.ogg',
+      url: 'assets/audio/nature_birds_a.ogg',
       isStream: false,
       loop: true,
+      segments: [
+        AudioSegment(url: 'assets/audio/nature_birds_a.ogg', durationMs: 60000),
+        AudioSegment(url: 'assets/audio/nature_birds_b.ogg', durationMs: 60000),
+      ],
     ),
     AudioItem(
       id: 'night_pure',
       title: 'سكون ليل الطبيعة والتهجد 🌌',
-      subtitle: 'أجواء ليلية طبيعية هادئة تملأ القلب سكينة وخشوعاً',
+      subtitle: 'ليلان طبيعيان يتناوبان — سكون يملأ القلب خشوعاً',
       icon: '🌌',
       url: 'assets/audio/nature_night.ogg',
       isStream: false,
       loop: true,
+      segments: [
+        AudioSegment(url: 'assets/audio/nature_night.ogg', durationMs: 45000),
+        AudioSegment(url: 'assets/audio/nature_night_b.ogg', durationMs: 60000),
+      ],
     ),
   ];
 
@@ -256,7 +323,7 @@ class SpiritualAudioService {
       _gain.remove(item.id);
       _target.remove(item.id);
       if (_leader == item.id) _leader = null;
-      await _stopPlayer(item.id);
+      await _stopLayerPlayers(item.id);
       if (_layers.isEmpty) {
         await stopMix();
       } else {
@@ -268,7 +335,7 @@ class SpiritualAudioService {
       _gain[item.id] = 0;
       _target[item.id] = 0;
       if (_mixPlaying) {
-        await _startPlayer(item.id, item.url, item.loop, 0);
+        await _startLayerSequence(item.id, 0);
         _rebalance(keepLeader: true);
         _scheduleTimers();
       } else {
@@ -285,7 +352,7 @@ class SpiritualAudioService {
     for (final track in natureTracks) {
       if (!_layers.contains(track.id)) continue;
       _gain[track.id] = 0;
-      await _startPlayer(track.id, track.url, track.loop, 0);
+      await _startLayerSequence(track.id, 0);
     }
     _mixPlaying = true;
     _rebalance();
@@ -298,7 +365,7 @@ class SpiritualAudioService {
     _mixPlaying = false;
     _cancelTimers();
     for (final id in ids) {
-      await _stopPlayer(id);
+      await _stopLayerPlayers(id);
     }
     mixerTick.value++;
   }
@@ -423,6 +490,7 @@ class SpiritualAudioService {
     bool loop,
     double volume,
   ) async {
+    _appliedVolume.remove(key);
     try {
       if (kIsWeb) {
         playSoundWeb(key, url, loop, volume);
@@ -441,6 +509,7 @@ class SpiritualAudioService {
   }
 
   Future<void> _stopPlayer(String key) async {
+    _appliedVolume.remove(key);
     try {
       if (kIsWeb) {
         stopSoundWeb(key);
@@ -454,6 +523,10 @@ class SpiritualAudioService {
 
   void _applyGain(String key, double value) {
     final v = value.clamp(0.0, 1.0).toDouble();
+    final last = _appliedVolume[key];
+    // توفير نداءات المنصة: لا نرسل قيمة لم تتغير فعليًا.
+    if (last != null && (last - v).abs() < 0.002) return;
+    _appliedVolume[key] = v;
     try {
       if (kIsWeb) {
         setVolumeWeb(key, v);
@@ -463,6 +536,101 @@ class SpiritualAudioService {
     } catch (e) {
       debugPrint('⚠️ gain $key: $e');
     }
+  }
+
+  // =========================================================================
+  // تتابع المقاطع داخل الطبقة (تبادل ناعم)
+  // =========================================================================
+
+  /// مفتاح مشغّل خانة معيّنة داخل الطبقة.
+  /// الخانة ٠ تستخدم معرّف الطبقة نفسه (يبقي الواجهة والاختبارات كما هي).
+  static String _slotKey(String layerId, int slot) =>
+      slot == 0 ? layerId : '$layerId#1';
+
+  int _slotOf(String id) => _segSlot[id] ?? 0;
+
+  /// يبدأ تتابع الطبقة من مقطعها الأول على الخانة ٠.
+  Future<void> _startLayerSequence(String id, double volume) async {
+    final segs = _segmentsById[id] ?? const <AudioSegment>[];
+    _segIndex[id] = 0;
+    _segSlot[id] = 0;
+    _segStartedAt[id] = _clockMs;
+    _fadeStartAt.remove(id);
+    if (segs.isEmpty) {
+      // احتياط: طبقة بلا مقاطع (لا يحدث مع natureTracks).
+      return;
+    }
+    await _startPlayer(_slotKey(id, 0), segs.first.url, true, volume);
+  }
+
+  /// يوقف خانات الطبقة (أثناء التبادل تكون هناك خانتان).
+  Future<void> _stopLayerPlayers(String id) async {
+    _fadeStartAt.remove(id);
+    _segStartedAt.remove(id);
+    _segIndex.remove(id);
+    _segSlot.remove(id);
+    await _stopPlayer(_slotKey(id, 0));
+    await _stopPlayer(_slotKey(id, 1));
+  }
+
+  /// يبدأ المقطع التالي على الخانة الأخرى من الصفر ثم يتقاطعان.
+  Future<void> _beginCrossfade(String id) async {
+    final segs = _segmentsById[id] ?? const <AudioSegment>[];
+    if (segs.length < 2) return;
+    final next = ((_segIndex[id] ?? 0) + 1) % segs.length;
+    final newSlot = 1 - _slotOf(id);
+    _segIndex[id] = next;
+    _segSlot[id] = newSlot;
+    _segStartedAt[id] = _clockMs;
+    _fadeStartAt[id] = _clockMs;
+    await _startPlayer(_slotKey(id, newSlot), segs[next].url, true, 0);
+    _applyLayerVolume(id);
+  }
+
+  /// ينهي التبادل: يغلق الخانة الخارجة ويُبقي الداخلة.
+  void _finishCrossfade(String id) {
+    final slot = _slotOf(id);
+    _fadeStartAt.remove(id);
+    _stopPlayer(_slotKey(id, 1 - slot));
+    _applyLayerVolume(id);
+  }
+
+  /// يوزّع جهارة الطبقة على خاناتها حسب منحنى التبادل.
+  void _applyLayerVolume(String id) {
+    final base = _gain[id] ?? 0.0;
+    final slot = _slotOf(id);
+    final fadeStart = _fadeStartAt[id];
+    if (fadeStart == null) {
+      _applyGain(_slotKey(id, slot), base);
+      return;
+    }
+    final p = ((_clockMs - fadeStart) / crossfadeMs).clamp(0.0, 1.0).toDouble();
+    _applyGain(_slotKey(id, slot), base * p);
+    _applyGain(_slotKey(id, 1 - slot), base * (1 - p));
+  }
+
+  /// يفحص مواعيد التبديل لكل طبقة (يُستدعى مع كل نبضة).
+  Future<bool> _advanceSequences() async {
+    if (!_mixPlaying) return false;
+    var changed = false;
+    for (final id in _layers.toList()) {
+      final segs = _segmentsById[id] ?? const <AudioSegment>[];
+      if (segs.length < 2) continue;
+      final fadeStart = _fadeStartAt[id];
+      if (fadeStart == null) {
+        final started = _segStartedAt[id] ?? _clockMs;
+        final dur = segs[_segIndex[id] ?? 0].durationMs;
+        final fadeAt = started + math.max(dur - crossfadeMs, 12000);
+        if (_clockMs >= fadeAt) {
+          await _beginCrossfade(id);
+          changed = true;
+        }
+      } else if (_clockMs - fadeStart >= crossfadeMs) {
+        _finishCrossfade(id);
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   // =========================================================================
@@ -513,28 +681,42 @@ class SpiritualAudioService {
     _rampTimer = null;
   }
 
-  /// الانتقال الناعم: يقرّب الكسب الحقيقي من الهدف كل ١٨٠ مللي (~٥ ثوانٍ).
+  /// الانتقال الناعم: يقرّب الكسب الحقيقي من الهدف كل ١٨٠ مللي (~٥ ثوانٍ)،
+  /// ويُدير في نفس النبضة تتابع المقاطع وتبادلها.
   void _ensureRamp() {
-    _rampTimer ??= Timer.periodic(const Duration(milliseconds: 180), (_) {
+    _rampTimer ??= Timer.periodic(
+      const Duration(milliseconds: 180),
+      (_) => _onRampTick(),
+    );
+  }
+
+  Future<void> _onRampTick() async {
+    if (_ticking) return;
+    _ticking = true;
+    try {
+      _clockMs += 180;
       var moved = false;
-      for (final id in _layers) {
+      for (final id in _layers.toList()) {
         final current = _gain[id] ?? 0.0;
         final target = _target[id] ?? 0.0;
         if ((current - target).abs() < 0.005) {
           if (current != target) {
             _gain[id] = target;
-            _applyGain(id, target);
             moved = true;
           }
           continue;
         }
-        final next = current + (target - current) * 0.12;
-        _gain[id] = next;
-        _applyGain(id, next);
+        _gain[id] = current + (target - current) * 0.12;
         moved = true;
       }
-      if (moved) mixerTick.value++;
-    });
+      final sequenced = await _advanceSequences();
+      for (final id in _layers.toList()) {
+        _applyLayerVolume(id);
+      }
+      if (moved || sequenced) mixerTick.value++;
+    } finally {
+      _ticking = false;
+    }
   }
 
   /// تبادل القيادة كل ٢٠–٤٠ ثانية.

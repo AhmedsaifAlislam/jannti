@@ -80,6 +80,8 @@
 
 ### 🔊 Audio invariants (do not break):
 - 4 nature layers: water / wind / birds / night. Default app volume **50%** (`audio_volume`, key `mix_layers` holds the selection).
+- Every layer is a **playlist of ~60 s segments** (wind keeps its 100 s original, night its 45 s one) that crossfade into the next over **6 s**; slot 0 uses the layer id as its player key, slot 1 uses `id#1`.
+- Crossfade envelope: incoming = `base × p`, outgoing = `base × (1 − p)` → their sum is exactly the layer gain, so `max ≤ master` still holds at every instant.
 - Ceiling per layer = `master / sqrt(n)`; **exactly one** layer sits on the ceiling, the others on a shuffled `0.72 / 0.58 / 0.45 / 0.34` ladder.
 - Leader rotates every 20–40 s with a ~5 s ramp; one random nudge every 5–9 s.
 - `max layer ≤ master` and `sqrt(Σg²) ≤ master` — the **gain sum may exceed** master (that is expected, don't assert it).
