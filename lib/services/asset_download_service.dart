@@ -5,12 +5,16 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 class AssetDownloadService {
-  static final AssetDownloadService _instance = AssetDownloadService._internal();
+  static final AssetDownloadService _instance =
+      AssetDownloadService._internal();
   factory AssetDownloadService() => _instance;
   AssetDownloadService._internal();
 
+  /// ملف الـ zip صار خارج المستودع (كان 18 ميجا داخل التاريخ).
+  /// يُرفع مرة واحدة كـ Release asset على وسم `models-v1` ولا يُحذف أبدًا،
+  /// لأن تطبيقات المستخدمين المثبّتة تنزّله من هذا الرابط بالحرف.
   static const String remoteZipUrl =
-      'https://raw.githubusercontent.com/AhmedsaifAlislam/jannti/main/jannati_tier_models.zip';
+      'https://github.com/AhmedsaifAlislam/jannti/releases/download/models-v1/jannati_tier_models.zip';
 
   bool _isDownloading = false;
   bool get isDownloading => _isDownloading;
