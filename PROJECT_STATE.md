@@ -83,3 +83,39 @@
 - **2D Garden**: مجمّد - لا تعديل
 - **3D Scene**: ✅ مكتمل ومفحوص بـ `flutter analyze` دون أي أخطاء (0 issues).
 - **Stats Screen**: ✅ مكتملة ومتصلة مع بيانات الـ Storage الحقيقية.
+
+---
+
+## 7) 🧹 نظافة المستودع والتوزيع (Repo Hygiene)
+
+آخر تنظيف شامل: **2026-11-01** (المستودع العام `AhmedsaifAlislam/jannti`).
+
+### ما تم حذفه من كل التاريخ (كان ~60 MB)
+| المحذوف | السبب |
+|---|---|
+| `jannati_tier_models.zip` (18 MB) | انتقل إلى Release asset |
+| `lib/3d/` (glb + blend + textures) | نسخ مصدرية غير مستخدمة |
+| `assets/3d/mosque/source/model.glb` (24 MB) | ملف مصدر، المشهد يستعمل `palace.glb` |
+| `*.blend` / `*.blend1` | ملفات Blender مصدرية |
+| خطوط `GE_SS_Two_*` | خط تجاري (Monotype) |
+
+### النتيجة
+- حجم `.git` من **133.7 MB** إلى **52.6 MB**، والملفات المتتبَّعة من 474 إلى **317**.
+- نسخة نظيفة (`git clone` من GitHub) → `dart analyze`: 0 issues، `flutter test`: **16/16**.
+
+### ⚠️ قواعد لا تُكسر
+1. **وسم Release باسم `models-v1` لازم يبقى موجودًا** في المستودع، ومعه الملف
+   `jannati_tier_models.zip`، لأن `AssetDownloadService.remoteZipUrl` يشير إليه بالحرف.
+   حذف الـ Release = كسر زر «تحميل النماذج عالية الجودة» في كل نسخة مثبَّتة.
+2. **الخط الآن Cairo (OFL 1.1)**، والترخيص في `assets/fonts/Cairo-OFL.txt`.
+   اسم العائلة `GESSTwo` بقي **مرادفًا فقط** على ملفات Cairo، لأن الشاشة 2D المجمّدة تطلبه.
+   ممنوع إعادة أي خط تجاري إلى المشروع.
+3. **مفتاح التوقيع (keystore) لا يُرفع أبدًا** — الـ release الحالي موقّع بمفتاح debug فقط.
+4. أرشيف الملفات المحذوفة محفوظ محليًا في
+   `C:\Users\Zain\AppData\Local\Temp\opencode\jannti-archive` و
+   `...\jannti-release-assets` و`...\jannti-git-backup` (خارج المستودع).
+
+### ملاحظة عن الوسوم
+وسوم `v1.0.1` و`v1.0.2` أُعيد توجيهها إلى الـ commits الجديدة (نفس الأسماء) حتى تبقى
+الـ Releases وملفات APK قابلة للتنزيل. الكوميتات القديمة قد تظل قابلة للوصول عبر SHA
+لفترة حتى يمسحها GitHub من تلقاء نفسه.

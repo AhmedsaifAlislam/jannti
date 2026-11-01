@@ -98,6 +98,15 @@
 4. Celestial river
 5. Gentle terrains (optional, highest risk)
 
+### 📦 Repo invariants (after the 2026-11-01 history rewrite):
+- The public repo no longer carries the tier-models zip, `.blend` sources or `lib/3d/`.
+  `AssetDownloadService.remoteZipUrl` points at the **`models-v1` Release asset** — that
+  Release must never be deleted, or the download button breaks in already-installed apps.
+- Fonts are **Cairo (OFL 1.1)** + Amiri. `GESSTwo` survives only as an alias to the same
+  Cairo files for the frozen 2D screen. Never add a commercial font back to the repo.
+- **Never commit a keystore / `key.properties`** — releases are still signed with debug keys.
+- Details and archive locations: `PROJECT_STATE.md` §7.
+
 ---
 
 ## See Also
