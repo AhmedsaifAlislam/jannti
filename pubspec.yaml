@@ -64,4 +64,15 @@ flutter:
     - assets/fonts/
     - assets/images/
     - assets/3d/
+    # Directory entries are not recursive in Flutter, so every staged model the
+    # 3D scene can load is listed by hand. Keep this list in step with
+    # kBundledModelAssets in lib/three/asset_map.dart.
+    - assets/3d/tier1/palm_seedling.glb
+    - assets/3d/tier1/green_tree_seedling.glb
+    - assets/3d/tier2/palm_small.glb
+    - assets/3d/tier2/green_tree_small.glb
+    - assets/3d/tier3/palm_medium.glb
+    - assets/3d/tier3/green_tree_medium.glb
+    - assets/3d/tier4/palm_large.glb
+    - assets/3d/tier5/fantasy_tree.glb
     - assets/audio/

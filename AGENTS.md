@@ -54,8 +54,10 @@
 
 ### Active Development:
 - `lib/screens/jannati_3d_screen.dart` - 3D scene (Tiers + Biomes + HUD)
-- `lib/three/asset_map.dart` - GLB mapping
-- `assets/3d/` - Model directories (tier1, tier2, root models)
+- `lib/three/asset_map.dart` - GLB mapping + staged-model table
+- `lib/three/model_fit.dart` - per-tier height and pivot correction
+- `tool/assets/repack_glb.py` - GLB repack/downscale pipeline
+- `assets/3d/` - Model directories (tier1…tier5, root models)
 - `lib/screens/stats_screen.dart` - Statistics & Achievements Dashboard
 - `lib/screens/dhikr_counter_screen.dart` - Counter UI & Haptics
 - `lib/services/spiritual_audio_service.dart` - layered nature mixer + Quran channel
@@ -89,6 +91,16 @@
 - `stopMix()` keeps the selection; `syncFromStorage()` restores it without auto-play.
 - Nature stays pure nature — no music, no instruments.
 - All assets are normalized to **−24 LUFS** with static gain only (no dynamic processing).
+
+### 🗿 Model invariants (do not break):
+- `pubspec.yaml` lists every staged GLB **by hand**: a directory entry in Flutter is **not** recursive, so `assets/3d/` only bundles the five root models. That is why the tier folders never reached the APK before.
+- `kBundledModelAssets` in `lib/three/asset_map.dart` mirrors those entries; `test/asset_map_test.dart` fails when the two drift apart.
+- Only `palmTree` and `tree` have staged lineages. Buildings (house / palace / mosque / treasure) keep their procedural meshes on purpose — the GLB house and palace are lower fidelity than what the scene draws.
+- Pivot correction lives in `lib/three/model_fit.dart`. The exports do not share a pivot: `palm_medium` reaches **y = −2.58** before scaling. Never scale a model without `fitModelToGround`.
+- Stage heights are `7 / 9 / 11 / 14 / 18` (`tierHeight`); the cap at tier 5 is what makes a reused stage-4 file still read as a bigger tree.
+- The GLB cache key is `path#tier`, not `path` — the same file can serve two stages at two heights.
+- New or re-shrunk models go through `tool/assets/repack_glb.py` (512 px textures). It verifies geometry is bit-identical, so a repack that changes a vertex fails the run.
+- Unused on purpose: `tier1/pine_seedling.glb`, `tier2/pine_small.glb`, `tier1/sakura_seedling.glb` — there is no `pine` or `sakura` reward type yet, so they are **not** bundled.
 
 ### 🎯 Active Next Phase:
 **Phase 9: Paradise Environment & Models Upgrade** (in this order):

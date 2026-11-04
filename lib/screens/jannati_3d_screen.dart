@@ -14,6 +14,7 @@ import '../services/spiritual_audio_service.dart';
 import '../services/storage_service.dart';
 import '../three/asset_map.dart';
 import '../three/day_palette.dart';
+import '../three/model_fit.dart';
 import '../utils/garden_assets.dart';
 import '../utils/number_formatter.dart';
 
@@ -86,6 +87,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   final List<_AnimatedModel> _animatedModels = [];
   final List<_SavedEntry> _savedEntries = [];
   final Map<String, three.Object3D> _glbCache = {};
+  // Staged models are swapped in one at a time. The GLTF loader shares the GL
+  // context with the render loop, so a burst of concurrent parses stalls the
+  // first frames of the scene.
+  Future<void> _glbQueue = Future<void>.value();
 
   // Environment & Atmosphere Elements
   three.Mesh? _waterMesh;
@@ -1662,33 +1667,25 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     return three.Vector3(x, y, z);
   }
 
-  // ignore: unused_element
-  void _normalizeScale(three.Object3D obj, double targetHeight) {
-    try {
-      final box = three.Box3().setFromObject(obj);
-      final size = box.getSize(three.Vector3());
-      final h = size.y.abs();
-      if (h > 0.001) {
-        final s = targetHeight / h;
-        obj.scale.set(s, s, s);
-      }
-    } catch (_) {}
-  }
-
-  // ignore: unused_element
   Future<three.Object3D?> _loadGLB(
     String path,
     RewardType type, {
     int tier = 1,
   }) async {
-    if (_glbCache.containsKey(path)) return _glbCache[path]!.clone(true);
+    // The same file can serve two tiers (e.g. the palm reuses the tier-4 model
+    // for tier 5), and the cached copy is already scaled for its tier, so the
+    // tier has to be part of the key.
+    final cacheKey = '$path#$tier';
+    if (_glbCache.containsKey(cacheKey)) {
+      return _glbCache[cacheKey]!.clone(true);
+    }
 
     try {
-      debugPrint('📥 Loading GLB: $path');
+      debugPrint('📥 Loading GLB: $path (tier $tier)');
       final loader = three_jsm.GLTFLoader();
       final gltf = await loader
           .loadAsync(path)
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 15));
 
       if (gltf == null || gltf["scene"] == null) {
         debugPrint('⚠️ GLB scene is null for $path');
@@ -1720,16 +1717,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         }
       });
 
-      double baseTargetHeight = 10.0;
-      if (tier == 1) baseTargetHeight = 7.0;
-      if (tier == 2) baseTargetHeight = 9.0;
-      if (tier == 3) baseTargetHeight = 11.0;
-      if (tier == 4) baseTargetHeight = 14.0;
-      if (tier == 5) baseTargetHeight = 18.0;
-
-      _normalizeScale(scene, baseTargetHeight);
-      _glbCache[path] = scene;
-      debugPrint('✅ GLB cached: $path (Tier: $tier)');
+      fitModelToGround(scene, tierHeight(tier));
+      _glbCache[cacheKey] = scene;
+      debugPrint('✅ GLB cached: $cacheKey');
       return scene.clone(true);
     } catch (e) {
       debugPrint('⚠️ GLB failed for $path: $e');
@@ -1737,22 +1727,46 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     }
   }
 
-  // ignore: unused_element
+  /// Replaces the procedural mesh of [group] with the staged GLB, when the type
+  /// and tier have one. Runs through [_glbQueue] so only one model parses at a
+  /// time.
   Future<void> _upgradeToGLB(
     three.Group group,
     three.Object3D oldChild,
     RewardType type,
     int tier,
   ) async {
-    final path = assetForRewardTypeAndTier(type, tier);
+    final path = resolveTierModelPath(type, tier);
+    if (path == null) return;
+
     try {
       final glb = await _loadGLB(path, type, tier: tier);
-      if (glb != null && !_disposed && group.parent != null) {
-        group.remove(oldChild);
-        group.add(glb);
-        debugPrint('⬆️ Model active: $type (Tier $tier)');
-      }
-    } catch (_) {}
+      if (glb == null || _disposed) return;
+      // The entry may have been undone, or the screen rebuilt, while the model
+      // was parsing.
+      if (group.parent == null) return;
+      group.remove(oldChild);
+      group.add(glb);
+      debugPrint('⬆️ Model active: $type (Tier $tier)');
+    } catch (e) {
+      debugPrint('⚠️ Upgrade failed for $type (Tier $tier): $e');
+    }
+  }
+
+  void _enqueueUpgrade(
+    three.Group group,
+    three.Object3D oldChild,
+    RewardType type,
+    int tier,
+  ) {
+    _glbQueue = _glbQueue
+        .then((_) async {
+          if (_disposed) return;
+          await _upgradeToGLB(group, oldChild, type, tier);
+        })
+        .catchError((Object e) {
+          debugPrint('⚠️ GLB queue: $e');
+        });
   }
 
   void addModelAt({
@@ -1836,6 +1850,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         tier: tier,
       ),
     );
+
+    // The procedural mesh above is what appears immediately; the staged GLB is
+    // swapped in asynchronously once it parses, so a slow device never waits on
+    // the model before the garden grows.
+    _enqueueUpgrade(group, procedural, type, tier);
 
     if (!fromStorage) {
       _savedEntries.add(
@@ -2642,6 +2661,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   @override
   void dispose() {
     _disposed = true;
+    _glbCache.clear();
     _periodTicker?.cancel();
     _clock.stop();
     _three3dRender.dispose();
