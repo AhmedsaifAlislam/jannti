@@ -15,6 +15,7 @@ import '../services/storage_service.dart';
 import '../three/asset_map.dart';
 import '../three/day_palette.dart';
 import '../three/model_fit.dart';
+import '../three/model_texture.dart';
 import '../utils/garden_assets.dart';
 import '../utils/number_formatter.dart';
 
@@ -1702,21 +1703,46 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
           for (final mat in materials) {
             if (mat != null) {
               mat.side = three.DoubleSide;
+
+              // The exports ship metallicFactor 1.0, and this scene has no
+              // environment map. A fully metallic surface reflects only its
+              // environment, so it renders pure black — which is exactly how
+              // every tree arrived on screen the first time the models loaded.
+              // Leaves and bark are dielectric anyway.
+              mat.metalness = 0.0;
+
               if (mat.map != null) {
-                mat.transparent = true;
-                mat.alphaTest = 0.4;
+                // glTF declares alphaMode MASK for every staged model. The old
+                // code forced alpha blending on top of the cutout, which makes
+                // leaf cards fight over draw order; a plain cutout is what the
+                // file asks for, and it is cheaper.
+                mat.transparent = false;
+                mat.alphaTest = 0.5;
               }
+
               if (tier == 5) {
+                // Gold without an environment map has to come from the base
+                // colour and a little self-illumination, not from metalness —
+                // metalness here would swing straight back to black.
                 mat.color.setHex(0xFFD700);
-                mat.roughness = 0.25;
-                mat.metalness = 0.85;
+                mat.roughness = 0.35;
+                mat.emissive.setHex(0x2A1E00);
               }
+
               mat.needsUpdate = true;
             }
           }
         }
       });
 
+      // The loader's image object cannot be uploaded as it is, so the texture
+      // pixels are handed over as raw bytes. Without this every model renders
+      // as a black silhouette.
+      makeTexturesUploadable(scene);
+
+      // three_dart cannot clone 32-bit index buffers, and every instance after
+      // the first is a clone — so this has to run before the model is cached.
+      makeModelCloneable(scene);
       fitModelToGround(scene, tierHeight(tier));
       _glbCache[cacheKey] = scene;
       debugPrint('✅ GLB cached: $cacheKey');

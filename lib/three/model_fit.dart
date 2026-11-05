@@ -22,6 +22,47 @@ double tierHeight(int tier) {
   }
 }
 
+/// Narrows 32-bit index buffers to 16 bits so the model can be duplicated.
+///
+/// `Mesh.clone()` clones the geometry, and `BufferAttribute.clone()` in
+/// three_dart only knows `Float32`, `Uint8` and `Uint16` — anything else throws
+/// `BufferAttribute type: … clone need support`. The exports index with 32-bit
+/// values, so the scene cached a model and then failed on `scene.clone(true)`,
+/// leaving the procedural mesh on screen with no visible error.
+///
+/// Every model we ship indexes at most a few thousand vertices, so 16 bits is
+/// lossless — and `setIndex` picks the narrowest buffer itself. A model that
+/// genuinely needs more than 65535 indices is left untouched rather than
+/// corrupted; it simply keeps the procedural mesh.
+void makeModelCloneable(three.Object3D root) {
+  try {
+    root.traverse((child) {
+      if (child is! three.Mesh) return;
+      final geometry = child.geometry;
+      if (geometry == null) return;
+
+      final index = geometry.index;
+      if (index == null || index.type != 'Uint32BufferAttribute') return;
+
+      final count = index.count;
+      final values = List<int>.generate(
+        count,
+        (i) => index.array[i].toInt(),
+        growable: false,
+      );
+      final maxIndex = values.isEmpty
+          ? 0
+          : values.reduce((a, b) => a > b ? a : b);
+      if (maxIndex > 65535) return;
+
+      geometry.setIndex(values);
+    });
+  } catch (_) {
+    // Nothing here is worth losing a model over; the worst case is that the
+    // clone fails and the scene keeps the mesh it already has.
+  }
+}
+
 /// Scales [obj] to [targetHeight] and seats it on its own origin.
 ///
 /// The exports do not share a pivot. Some models, like the house, sit on

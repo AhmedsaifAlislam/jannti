@@ -20,6 +20,9 @@ dependencies:
   archive: ^3.6.1
   path_provider_foundation: 2.4.0
   wakelock_plus: ^1.5.2
+  # Model textures are re-encoded from the decoded image so the GL layer gets
+  # the raw pixels it expects (see lib/three/model_texture.dart).
+  image: ^3.3.0
 
 dependency_overrides:
   shared_preferences_android: 2.3.4
