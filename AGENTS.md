@@ -100,6 +100,9 @@
 - Stage heights are `7 / 9 / 11 / 14 / 18` (`tierHeight`); the cap at tier 5 is what makes a reused stage-4 file still read as a bigger tree.
 - The GLB cache key is `path#tier`, not `path` — the same file can serve two stages at two heights.
 - New or re-shrunk models go through `tool/assets/repack_glb.py` (512 px textures). It verifies geometry is bit-identical, so a repack that changes a vertex fails the run.
+- **A cached model is cloned on every use, and `BufferAttribute.clone()` only knows Float32/Uint8/Uint16.** Every export indexes with 32 bits, so `makeModelCloneable` narrows the index to 16 bits *before* the model is cached; without it `scene.clone(true)` throws and the procedural mesh silently stays.
+- **`metalness` is forced to 0 at load.** The exports ship `metallicFactor: 1.0` and the scene has no environment map, so a fully metallic material renders black.
+- **Textures are re-encoded as raw RGBA and handed over as a `DataTexture`** (`lib/three/model_texture.dart`). The plain-texture upload reads `image.data`, which a browser image element does not have, so WebGL received an incomplete texture and sampled it as opaque black. Tier-5 gold uses base colour + a little emissive for the same no-env-map reason.
 - Unused on purpose: `tier1/pine_seedling.glb`, `tier2/pine_small.glb`, `tier1/sakura_seedling.glb` — there is no `pine` or `sakura` reward type yet, so they are **not** bundled.
 
 ### 🎯 Active Next Phase:
