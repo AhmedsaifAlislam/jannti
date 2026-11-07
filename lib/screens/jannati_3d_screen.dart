@@ -130,7 +130,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   three.MeshBasicMaterial? _sunCoronaMat;
   three.MeshPhongMaterial? _cloudMat;
   three.AmbientLight? _ambientLight;
-  three.HemisphereLight? _skyLight;
   three.DirectionalLight? _sunLight;
   three.DirectionalLight? _fillLight;
   three.Points? _starPoints;
@@ -487,12 +486,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     );
     _fillLight?.color?.setHex(spec.fill);
     _fillLight?.intensity = spec.fillIntensity;
-
-    // ضوء القبة: لون السماء من فوق ولون التعبئة من تحت، وشدّته تتبع اللحظة
-    // نفسها حتى لا يبدو الليل نهارًا.
-    _skyLight?.color?.setHex(spec.cloud);
-    _skyLight?.groundColor?.setHex(spec.fill);
-    _skyLight?.intensity = spec.ambientIntensity;
 
     // الشمس/القمر المرئي
     _sunGroup?.position.set(spec.sunPos[0], spec.sunPos[1], spec.sunPos[2]);
@@ -2641,13 +2634,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     // مع دورة اليوم في [_applySpec] بلا حذف/إضافة.
     _ambientLight = three.AmbientLight(0x4A6B56, 0.55);
     _scene.add(_ambientLight!);
-
-    // ضوء قبة نصف كروي: سماء من فوق وأرض من تحت. الإضاءة المحيطة وحدها تُسطّح
-    // النماذج المجسّمة — ولأن النخيل والشجر مجسّمات حقيقية وسط أرض مسطّحة
-    // المادة (MeshBasicMaterial)، كانا يظهران داكنين بلا لون. هذا الضوء يعيد
-    // لهما لونهما الحقيقي دون أن يغيّر مظهر الأرض الثابت.
-    _skyLight = three.HemisphereLight(0xCFE8DA, 0x1B3A2A, 0.55);
-    _scene.add(_skyLight!);
 
     _sunLight = three.DirectionalLight(0xFFE082, 1.35);
     _sunLight!.position.set(55, 90, 45);
