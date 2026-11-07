@@ -825,7 +825,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       "specular": 0xFFFFFF,
       "shininess": 160,
       "transparent": true,
-      "opacity": 0.82,
+      // أقل عتامة = عمق حقيقي: قاع النهر والحصى يظهران تحت السطح بدل سائل
+      // مصمت يغطيهما. القاع موجود فعلًا على y = -1.3.
+      "opacity": 0.58,
       "side": three.DoubleSide,
     });
     _waterMesh = three.Mesh(waterGeo, waterMat);
@@ -2471,8 +2473,14 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     // 1. Model Growth Animation
     for (final am in _animatedModels) {
       final elapsed = now - am.bornAt;
-      final t = (elapsed / 450.0).clamp(0.0, 1.0);
-      final s = 0.2 + t * 0.8;
+      final t = (elapsed / 620.0).clamp(0.0, 1.0);
+      // نمو مرن (easeOutBack): يتجاوز الحجم النهائي قليلًا ثم يستقر عليه،
+      // فيبدو كأن الغرسة «تنبت» بدل أن تتمدد بخط مستقيم.
+      const c1 = 1.70158;
+      const c3 = c1 + 1.0;
+      final u = t - 1.0;
+      final eased = 1.0 + c3 * u * u * u + c1 * u * u;
+      final s = 0.2 + eased * 0.8;
       am.mesh.scale.set(s, s, s);
     }
 
