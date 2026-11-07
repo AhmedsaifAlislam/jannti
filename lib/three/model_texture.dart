@@ -58,10 +58,22 @@ int makeTexturesUploadable(three.Object3D root) {
             ..wrapS = texture.wrapS
             ..wrapT = texture.wrapT
             ..magFilter = texture.magFilter
-            ..minFilter = texture.minFilter
+            // No mip chain: the uploader allocates the levels through
+            // `texStorage2D` but only ever fills level 0, and WebGL zero-fills
+            // the rest. Anything drawn smaller than its texture — which is every
+            // tree in this garden — samples a black, fully transparent mip and
+            // the cutout throws it away. A single-level texture samples the
+            // pixels we actually uploaded.
+            ..minFilter = three.LinearFilter
             ..anisotropy = texture.anisotropy
             ..encoding = texture.encoding
-            ..generateMipmaps = texture.generateMipmaps;
+            ..generateMipmaps = false
+            // three_dart's DataTexture omits the `needsUpdate = true` that
+            // three.js sets in its own constructor. Without it `version` stays
+            // zero, the renderer never uploads the texture, and every model
+            // samples an incomplete texture and draws black — no matter how
+            // correct the pixels we just decoded are.
+            ..needsUpdate = true;
 
       replaced[texture] = copy;
       mat.map = copy;
