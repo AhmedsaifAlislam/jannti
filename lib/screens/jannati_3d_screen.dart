@@ -79,6 +79,16 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   bool _soundEnabled = true;
   RewardType? _selectedFilter;
 
+  // تحليق الكاميرا إلى الغرسة الجديدة: يُشغَّل من زر الغرس فقط، وعندما تقع
+  // الغرسة خارج الكادر الآمن. نُزيح الهدف والكاميرا بنفس المقدار فتبقى
+  // المسافة والاتجاه كما هما، ويتغيّر موقع النظر وحده.
+  static const int _kFlyMs = 900;
+  three.Vector3? _flyTarget;
+  three.Vector3? _flyOriginTarget;
+  three.Vector3? _flyCameraFrom;
+  int _flyStartMs = 0;
+  bool get _isFlying => _flyTarget != null;
+
   // ignore: unused_field
   late three.WebGLRenderTarget _renderTarget;
   dynamic _sourceTexture;
@@ -1670,6 +1680,94 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     return three.Vector3(x, y, z);
   }
 
+  /// هل تصلح ([x], [z]) لغرسة؟ أرض جافة بين الضفتين، داخل حدود الأرض، وبعيدة
+  /// عن كل موديل قائم بمسافة [_kMinSpacing] على الأقل.
+  bool _hasRoomAt(double x, double z) {
+    if (x.abs() < 24.0 || x.abs() > 108.0) return false; // النهر والضفة
+    if (z.abs() > 62.0) return false;
+    for (final e in _savedEntries) {
+      final dx = x - e.x;
+      final dz = z - e.z;
+      if (dx * dx + dz * dz < _kMinSpacing * _kMinSpacing) return false;
+    }
+    return true;
+  }
+
+  /// يحاول إيجاد موقع في حلقة حول ما تنظر إليه الكاميرا الآن. النخيل والكنز
+  /// في نصفها الشرقي، والشجر والبيوت في نصفها الغربي — نفس تمييز المناطق
+  /// القديم، لكن بالنسبة للكاميرا بدل مركز العالم.
+  three.Vector3? _tryPlantRing(
+    double inner,
+    double outer,
+    RewardType type,
+    int tries, {
+    bool biased = true,
+  }) {
+    final cx = _controls.target.x;
+    final cz = _controls.target.z;
+    final bool east =
+        biased && (type == RewardType.palmTree || type == RewardType.treasure);
+    final bool west =
+        biased && (type == RewardType.tree || type == RewardType.house);
+
+    for (var i = 0; i < tries; i++) {
+      final r = inner + _rng.nextDouble() * (outer - inner);
+      double a = _rng.nextDouble() * pi * 2;
+      if (east) {
+        a = (_rng.nextDouble() - 0.5) * pi;
+      } else if (west) {
+        a = (_rng.nextDouble() - 0.5) * pi + pi;
+      }
+      final x = cx + r * cos(a);
+      final z = cz + r * sin(a);
+      if (_hasRoomAt(x, z)) {
+        return three.Vector3(x, _calculateGroundElevation(x, z), z);
+      }
+    }
+    return null;
+  }
+
+  /// موقع الغرس اليدوي: حول الكاميرا أولًا، ثم دوائر أوسع إن كانت المنطقة
+  /// مزدحمة، ثم مناطق العالم القديمة كملاذ أخير.
+  three.Vector3 _nextPlantPosForType(RewardType type) {
+    const rings = [
+      [10.0, 22.0],
+      [22.0, 34.0],
+      [34.0, 48.0],
+    ];
+    // أولًا الجهة المفضّلة: النخيل شرقًا والشجر غربًا.
+    for (final ring in rings) {
+      final pos = _tryPlantRing(ring[0], ring[1], type, 30);
+      if (pos != null) return pos;
+    }
+    // ثم الحلقة كاملة بلا تمييز جهة، حتى لا يقفز الهدف إلى طرف الأرض حين
+    // تمتلئ الجهة المفضّلة.
+    for (final ring in rings) {
+      final pos = _tryPlantRing(ring[0], ring[1], type, 24, biased: false);
+      if (pos != null) return pos;
+    }
+    return _nextSpawnPosForType(type);
+  }
+
+  /// هل تقع [p] داخل الكادر بهامش مريح؟ تُحسب إحداثيات NDC من مصفوفتَي العرض
+  /// والإسقاط، فلا حاجة لاستنتاج fov أو aspect يدويًا.
+  bool _isInSafeFrame(three.Vector3 p, {double margin = 0.8}) {
+    _camera.updateMatrixWorld(true);
+    final view = p.clone().applyMatrix4(_camera.matrixWorldInverse);
+    if (view.z > -0.5) return false; // خلف الكاميرا
+    final ndc = view.applyMatrix4(_camera.projectionMatrix);
+    return ndc.x.abs() <= margin && ndc.y.abs() <= margin;
+  }
+
+  /// يُنعّم الكاميرا نحو الغرسة الجديدة عند الحاجة فقط.
+  void _revealPlant(three.Vector3 p) {
+    if (_isInSafeFrame(p)) return; // ظاهرة أصلًا — لا نُحرّك شيئًا
+    _flyCameraFrom = _camera.position.clone();
+    _flyOriginTarget = _controls.target.clone();
+    _flyTarget = three.Vector3(p.x, p.y + 1.6, p.z);
+    _flyStartMs = DateTime.now().millisecondsSinceEpoch;
+  }
+
   Future<three.Object3D?> _loadGLB(
     String path,
     RewardType type, {
@@ -1804,6 +1902,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     double? z,
     double? y,
     bool fromStorage = false,
+    bool reveal = false,
   }) {
     if (_animatedModels.length >= _kMaxSceneModels && !fromStorage) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1821,7 +1920,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     }
 
     final calculatedPos = (x == null || z == null) && !fromStorage
-        ? _nextSpawnPosForType(type)
+        ? (reveal ? _nextPlantPosForType(type) : _nextSpawnPosForType(type))
         : three.Vector3(
             x ?? 0.0,
             _calculateGroundElevation(x ?? 0.0, z ?? 0.0),
@@ -1896,6 +1995,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       );
       _storage.saveRewards3D(_savedEntries.map((e) => e.toJson()).toList());
     }
+
+    // الغرسة اليدوية وحدها تُحرّك الكاميرا: المزامنة والاسترجاع لا يقفزان
+    // بالمستخدم إلى مكان آخر.
+    if (reveal) _revealPlant(calculatedPos);
   }
 
   void _undoLast() {
@@ -2414,7 +2517,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                 ElevatedButton.icon(
                   onPressed: () {
                     final targetType = _selectedFilter ?? RewardType.palmTree;
-                    addModelAt(type: targetType, tier: 1);
+                    addModelAt(type: targetType, tier: 1, reveal: true);
                     setState(() {});
                   },
                   icon: const Icon(Icons.add, size: 16),
@@ -2462,6 +2565,31 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     final gl = _three3dRender.gl;
     final now = DateTime.now().millisecondsSinceEpoch;
     _frameCount++;
+
+    // 0. تحليق الكاميرا إلى غرسة غُرست خارج الكادر. الهدف والكاميرا يُزاحان
+    //    بنفس المقدار، فتبقى المسافة والاتجاه كما هما وينتقل النظر وحده.
+    if (_flyTarget != null &&
+        _flyOriginTarget != null &&
+        _flyCameraFrom != null) {
+      final t = ((now - _flyStartMs) / _kFlyMs).clamp(0.0, 1.0);
+      final double ease = t < 0.5
+          ? 2 * t * t
+          : 1 - 2 * (1 - t) * (1 - t); // easeInOutQuad
+      final from = _flyOriginTarget!;
+      final to = _flyTarget!;
+      final cam = _flyCameraFrom!;
+      final dx = (to.x - from.x) * ease;
+      final dy = (to.y - from.y) * ease;
+      final dz = (to.z - from.z) * ease;
+      _controls.target.set(from.x + dx, from.y + dy, from.z + dz);
+      _camera.position.set(cam.x + dx, cam.y + dy, cam.z + dz);
+      _camera.lookAt(_controls.target);
+      if (t >= 1.0) {
+        _flyTarget = null;
+        _flyOriginTarget = null;
+        _flyCameraFrom = null;
+      }
+    }
 
     // 1. Model Growth Animation
     for (final am in _animatedModels) {
@@ -2679,10 +2807,12 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     if (!mounted || _disposed) return;
 
     if (_loaded) {
-      if (_autoRotate) {
+      if (_autoRotate && !_isFlying) {
         _controls.autoRotate = true;
         _controls.autoRotateSpeed = 0.4;
       } else {
+        // التدوير التلقائي يدور حول الهدف، فلا يجوز أن يعمل أثناء التحليق
+        // إلى غرسة جديدة وإلا انحرف مسار الكاميرا.
         _controls.autoRotate = false;
       }
       _controls.update();
