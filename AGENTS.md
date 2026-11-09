@@ -97,7 +97,12 @@
 - `kBundledModelAssets` in `lib/three/asset_map.dart` mirrors those entries; `test/asset_map_test.dart` fails when the two drift apart.
 - Only `palmTree` and `tree` have staged lineages. Buildings (house / palace / mosque / treasure) keep their procedural meshes on purpose — the GLB house and palace are lower fidelity than what the scene draws.
 - Pivot correction lives in `lib/three/model_fit.dart`. The exports do not share a pivot: `palm_medium` reaches **y = −2.58** before scaling. Never scale a model without `fitModelToGround`.
-- Stage heights are `7 / 9 / 11 / 14 / 18` (`tierHeight`); the cap at tier 5 is what makes a reused stage-4 file still read as a bigger tree.
+- Stage heights are `3 / 4.2 / 6 / 9 / 13` (`tierHeight`). One world unit is a
+  metre (the bridge deck is 1.2 thick, its lanterns 3.3 high), so the old
+  `7 / 9 / 11 / 14 / 18` made the tier-1 *seedling* a seven-metre tree that
+  dwarfed the river and the bridge; the new ladder matches the procedural
+  seedlings it replaces. The cap at tier 5 is what makes a reused stage-4 file
+  still read as a bigger tree.
 - The GLB cache key is `path#tier`, not `path` — the same file can serve two stages at two heights.
 - New or re-shrunk models go through `tool/assets/repack_glb.py` (512 px textures). It verifies geometry is bit-identical, so a repack that changes a vertex fails the run.
 - **A cached model is cloned on every use, and `BufferAttribute.clone()` only knows Float32/Uint8/Uint16.** Every export indexes with 32 bits, so `makeModelCloneable` narrows the index to 16 bits *before* the model is cached; without it `scene.clone(true)` throws and the procedural mesh silently stays.
@@ -105,9 +110,24 @@
 - **Textures are re-encoded as raw RGBA and handed over as a `DataTexture`** (`lib/three/model_texture.dart`). The plain-texture upload reads `image.data`, which a browser image element does not have, so WebGL received an incomplete texture and sampled it as opaque black. Tier-5 gold uses base colour + a little emissive for the same no-env-map reason.
 - Unused on purpose: `tier1/pine_seedling.glb`, `tier2/pine_small.glb`, `tier1/sakura_seedling.glb` — there is no `pine` or `sakura` reward type yet, so they are **not** bundled.
 
+### 🖐 Interaction invariants (do not break):
+- لمس الموديل يمرّ عبر `DomLikeListenable` لا عبر `GestureDetector`: على الويب يُرسم
+  المشهد في `HtmlElementView` فلا تدخل اللمسات في نظام إيماءات Flutter أصلًا.
+  الربط في `_bindScenePointer()` يُعاد المحاولة كل إطار حتى ينجح (بعد بناء العنصر)؛
+  الاعتماد على `addPostFrameCallback` وحده فشل مرة.
+- اللمسة تُفرَّق عن السحب بالزمن (≤ 450ms) والمسافة (≤ 14px)، فلا تُفتح بطاقة أثناء
+  تدوير الكاميرا.
+- بطاقة الفحص **داخل `Stack` المشهد**، لا `showModalBottomSheet`: الفتح من حدث
+  المؤشر كان يُغلق الشيت في نفس النقرة (نقرة المتصفح التالية تصيب الحاجز).
+- الشريط السفلي في `home_screen.dart` زجاج حقيقي: `ClipRRect` → `BackdropFilter`
+  (sigma 12) → خلفية `Colors.black.withAlpha(40)` وحد `Colors.white.withAlpha(30)`.
+  لا ترجع إلى لون معتم `0.95`.
+- `io.flutter.embedding.android.EnableImpeller = true` في `AndroidManifest.xml`
+  مفعّل إجباريًا — لا تحذفه.
+
 ### 🎯 Active Next Phase:
 **Phase 9: Paradise Environment & Models Upgrade** (in this order):
-1. Model tap inspection (`Raycaster` + glass card) — lowest risk
+1. ~~Model tap inspection~~ ✅ (لمسة → بطاقة زجاجية داخل المشهد)
 2. Palm frond sway in the render loop
 3. Floating light particles
 4. Celestial river
@@ -121,6 +141,17 @@
   Cairo files for the frozen 2D screen. Never add a commercial font back to the repo.
 - **Never commit a keystore / `key.properties`** — releases are still signed with debug keys.
 - Details and archive locations: `PROJECT_STATE.md` §7.
+
+### 🧱 Build environment notes:
+- **بعد `flutter clean` على هذا الجهاز**: `flutter run -d chrome` يفشل بـ
+  «Building with plugins requires symlink support» لأن وضع المطوّر (Developer Mode)
+  مغلق والحساب ليس مديرًا. الحل المؤقت المستخدم: إنشاء **junctions** يدويًا في
+  `windows/flutter/ephemeral/.plugin_symlinks/` (لا تحتاج صلاحيات):
+  `cmd /c mklink /J "<dest>" "<pub-cache plugin path>"` لكل إضافة في
+  `.flutter-plugins-dependencies` § `plugins.windows`. الحل الدائم:
+  `start ms-settings:developers` ثم تفعيل Developer Mode.
+- Impeller إعداد **أندرويد فقط**؛ تشغيل Chrome لا يختبره. للتحقق منه يلزم
+  بناء/تشغيل على جهاز أندرويد.
 
 ---
 

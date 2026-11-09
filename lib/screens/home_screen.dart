@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -1148,34 +1150,45 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildLuxuryBottomNav() {
+    // زجاج حقيقي: ما تحت الشريط يُموَّه بـ BackdropFilter، والطبقة السوداء
+    // الخفيفة جدًا تعطي الزجاج عمقه بدل أن تحجبه. الحد الرفيع الفاتح هو ما
+    // يجعل الحافة تُقرأ كزجاج لا كبقعة داكنة.
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D2818).withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: const Color(0xFFFFD700).withValues(alpha: 0.35),
-          width: 1,
-        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 22,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(0, 'الأذكار', Icons.auto_stories),
-            _buildNavItem(1, 'الواحة 2.5D', Icons.park_outlined),
-            _buildNavItem(2, 'السكينة 🎵', Icons.graphic_eq),
-            _buildNavItem(3, 'الإحصائيات', Icons.military_tech_outlined),
-          ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.black.withAlpha(40),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: Colors.white.withAlpha(30), width: 1),
+            ),
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem(0, 'الأذكار', Icons.auto_stories),
+                  _buildNavItem(1, 'الواحة 2.5D', Icons.park_outlined),
+                  _buildNavItem(2, 'السكينة 🎵', Icons.graphic_eq),
+                  _buildNavItem(3, 'الإحصائيات', Icons.military_tech_outlined),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

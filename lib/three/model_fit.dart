@@ -5,20 +5,29 @@ import 'package:three_dart_flutterflow/three_dart.dart' as three;
 /// A model is scaled so its own height matches the stage, which keeps a palm
 /// and a tree of the same tier the same size even though the source files are
 /// modelled at wildly different scales.
+///
+/// One unit is roughly one metre: the marble bridge has a 1.2-thick deck, a
+/// 7.5-wide walkway and 3.3-high lanterns, so a person standing on it would be
+/// about 1.7. The first ladder (7 / 9 / 11 / 14 / 18) therefore made the
+/// *seedling* files — tier 1 is a nursery sapling — seven metres tall, which
+/// is what made every new planting dwarf the bridge and the river. The stages
+/// now follow the procedural seedlings they replace (the tier-1 palm is about
+/// 2.4 units high before the GLB swap) and only the mature stages reach tree
+/// size.
 double tierHeight(int tier) {
   switch (tier) {
     case 1:
-      return 7;
+      return 3.0;
     case 2:
-      return 9;
+      return 4.2;
     case 3:
-      return 11;
+      return 6.0;
     case 4:
-      return 14;
+      return 9.0;
     case 5:
-      return 18;
+      return 13.0;
     default:
-      return 10;
+      return 7.0;
   }
 }
 

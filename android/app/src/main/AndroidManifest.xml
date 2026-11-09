@@ -10,6 +10,11 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         tools:replace="android:label">
+        <!-- Impeller مفعّل إجبارياً: محرك Flutter الجديد بدل Skia على أندرويد.
+             وجود الوسم بقيمة true يمنع أي إعداد أو تفريغ يطفئه على مستوى الجهاز. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="true" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

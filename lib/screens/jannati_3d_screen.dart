@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +26,16 @@ class _AnimatedModel {
   final RewardType type;
   final int tier;
   _AnimatedModel(this.mesh, this.bornAt, this.type, {this.tier = 1});
+}
+
+/// وميض ذهبي قصير يُطلق عند ارتقاء نوع من المكافآت إلى مرحلة أعلى.
+/// الجزيئات تشترك في مادة واحدة، فتخفت كلها معًا — وهي كل ما نحتاجه هنا.
+class _GoldBurst {
+  final three.Group group;
+  final List<three.Vector3> velocities;
+  final three.MeshBasicMaterial material;
+  final int bornAt;
+  _GoldBurst(this.group, this.velocities, this.material, this.bornAt);
 }
 
 class _SavedEntry {
@@ -97,6 +108,22 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   late three_jsm.OrbitControls _controls;
   final List<_AnimatedModel> _animatedModels = [];
   final List<_SavedEntry> _savedEntries = [];
+  final List<_GoldBurst> _goldBursts = [];
+
+  /// آخر مرحلة بلغها كل نوع، لمعرفة متى «ترتقّي» الشجرة فنُطلق وميضًا ذهبيًا.
+  final Map<RewardType, int> _tierByType = {};
+
+  /// لمسة المشهد تُقرأ من أحداث [DomLikeListenable] لا من GestureDetector:
+  /// على الويب يرسم المشهد داخل HtmlElementView، فلا تدخل اللمسات في نظام
+  /// إيماءات Flutter أصلًا. الأحداث التي تُحرّك الكاميرا هي نفسها التي تصل
+  /// إلينا هنا، فنتفرّق بين اللمسة والسحبة بالمسافة والزمن.
+  bool _scenePointerBound = false;
+  Offset? _sceneTapDown;
+  int _sceneTapDownMs = 0;
+
+  /// الموديل المفحوص حاليًا (لمسة على شجرة تفتح بطاقته الزجاجية).
+  RewardType? _inspectedType;
+  int _inspectedTier = 1;
   final Map<String, three.Object3D> _glbCache = {};
   // Staged models are swapped in one at a time. The GLTF loader shares the GL
   // context with the render loop, so a burst of concurrent parses stalls the
@@ -251,6 +278,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     final current3D = <RewardType, int>{};
     for (final e in _savedEntries) {
       current3D[e.type] = (current3D[e.type] ?? 0) + 1;
+      // مرحلة الحديقة كما هي محفوظة الآن — بها نعرف هل ارتقى النوع فعلًا.
+      final known = _tierByType[e.type];
+      if (known == null || e.tier > known) _tierByType[e.type] = e.tier;
     }
 
     int totalAdded = 0;
@@ -259,6 +289,8 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       if (totalRewards <= 0) continue;
 
       final tier = TierSystem.calculate(totalRewards);
+      final previousTier = _tierByType[type];
+      _tierByType[type] = tier;
 
       int targetCount;
       if (totalRewards < 50) {
@@ -276,10 +308,17 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       final currentCount = current3D[type] ?? 0;
       final missing = targetCount - currentCount;
 
+      three.Vector3? lastAdded;
       for (var i = 0; i < missing; i++) {
         if (_animatedModels.length >= _kMaxSceneModels) break;
-        addModelAt(type: type, tier: tier);
+        lastAdded = addModelAt(type: type, tier: tier);
         totalAdded++;
+      }
+
+      // ارتقاء النوع: وميض ذهبي عند آخر غرسة أُضيفت. أول مزامنة لا تُومض
+      // لأن `previousTier` يكون فارغًا — الوميض لمن ارتقى أمامه لا لمن فتح.
+      if (previousTier != null && tier > previousTier && lastAdded != null) {
+        _spawnGoldBurst(lastAdded);
       }
     }
 
@@ -657,34 +696,42 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       terrainGroup.add(cone);
     }
 
-    // Organic Soil & Moss Patches for Natural Roughness
+    // Organic Soil & Moss Patches for Natural Roughness.
+    // These are tonal variation, not holes: a disc drawn at full opacity in a
+    // near-black brown reads as a pit in the lawn, and eight segments make the
+    // edge visibly polygonal. Softer colour, half opacity and a rounder disc
+    // let the meadow show through the patch.
     final mossMat = three.MeshPhongMaterial({
-      "color": 0x175432,
-      "shininess": 15,
-      "flatShading": true,
+      "color": 0x1E5E38,
+      "opacity": 0.55,
+      "transparent": true,
+      "depthWrite": false,
+      "shininess": 12,
     });
     final soilPatchMat = three.MeshPhongMaterial({
-      "color": 0x3E2B1D,
-      "shininess": 10,
-      "flatShading": true,
+      "color": 0x4A3A28,
+      "opacity": 0.45,
+      "transparent": true,
+      "depthWrite": false,
+      "shininess": 8,
     });
 
-    for (int p = 0; p < 45; p++) {
+    for (int p = 0; p < 26; p++) {
       final isEast = p % 2 == 0;
       final px = isEast
           ? 25.0 + _rng.nextDouble() * 45.0
           : -25.0 - _rng.nextDouble() * 45.0;
       final pz = (_rng.nextDouble() * 95.0) - 47.5;
       final py = _calculateGroundElevation(px, pz);
-      final pr = 2.0 + _rng.nextDouble() * 4.5;
+      final pr = 1.6 + _rng.nextDouble() * 3.2;
       final patchMat = (p % 3 == 0) ? soilPatchMat : mossMat;
       final patch = three.Mesh(
-        three.CircleGeometry(radius: pr, segments: 8),
+        three.CircleGeometry(radius: pr, segments: 24),
         patchMat,
       );
       patch.rotation.x = -three.Math.pi / 2;
-      patch.position.set(px, py + 0.01, pz);
-      patch.scale.set(1.3, 1.0, 0.9);
+      patch.position.set(px, py + 0.02, pz);
+      patch.scale.set(1.25, 1.0, 0.85);
       terrainGroup.add(patch);
     }
 
@@ -1768,6 +1815,49 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     _flyStartMs = DateTime.now().millisecondsSinceEpoch;
   }
 
+  /// وميض ذهبي قصير عند ارتقاء نوع إلى مرحلة أعلى: جزيئات صغيرة تتصاعد
+  /// وتخفت معًا. الجزيئات تُزال من المشهد بعد ١٫٤ ثانية، فلا تتراكم.
+  void _spawnGoldBurst(three.Vector3 at) {
+    final group = three.Group();
+    group.position.set(at.x, at.y + 0.25, at.z);
+
+    // مادة واحدة لكل الوميض: الخفوت جماعي، وهو المطلوب بصريًا، وأرخص بكثير
+    // من مادة لكل جزيء.
+    final material = three.MeshBasicMaterial({
+      "color": 0xFFD54F,
+      "transparent": true,
+      "opacity": 0.95,
+      "blending": three.AdditiveBlending,
+      "depthWrite": false,
+    });
+    final geometry = three.SphereGeometry(1, 6, 6);
+
+    final velocities = <three.Vector3>[];
+    for (var i = 0; i < 20; i++) {
+      final size = 0.06 + _rng.nextDouble() * 0.07;
+      final particle = three.Mesh(geometry, material);
+      particle.scale.set(size, size, size);
+      group.add(particle);
+      velocities.add(
+        three.Vector3(
+          (_rng.nextDouble() - 0.5) * 0.18,
+          0.16 + _rng.nextDouble() * 0.22,
+          (_rng.nextDouble() - 0.5) * 0.18,
+        ),
+      );
+    }
+
+    _scene.add(group);
+    _goldBursts.add(
+      _GoldBurst(
+        group,
+        velocities,
+        material,
+        DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+  }
+
   Future<three.Object3D?> _loadGLB(
     String path,
     RewardType type, {
@@ -1895,7 +1985,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         });
   }
 
-  void addModelAt({
+  three.Vector3? addModelAt({
     RewardType type = RewardType.palmTree,
     int tier = 1,
     double? x,
@@ -1916,7 +2006,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
           duration: Duration(seconds: 2),
         ),
       );
-      return;
+      return null;
     }
 
     final calculatedPos = (x == null || z == null) && !fromStorage
@@ -1963,8 +2053,8 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         "flatShading": true,
       });
       final soilMound = three.Mesh(three.DodecahedronGeometry(0.65), soilMat);
-      soilMound.scale.set(1.4, 0.22, 1.4);
-      soilMound.position.y = 0.06;
+      soilMound.scale.set(1.0, 0.18, 1.0);
+      soilMound.position.y = 0.04;
       group.add(soilMound);
     }
 
@@ -1999,6 +2089,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     // الغرسة اليدوية وحدها تُحرّك الكاميرا: المزامنة والاسترجاع لا يقفزان
     // بالمستخدم إلى مكان آخر.
     if (reveal) _revealPlant(calculatedPos);
+    return calculatedPos;
   }
 
   void _undoLast() {
@@ -2019,13 +2110,234 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     _controls.update();
   }
 
-  void _showRewardInfoModal(RewardType type) {
+  /// يُربط بمصدر أحداث المشهد ([DomLikeListenable]) — نفس المصدر الذي يحرّك
+  /// الكاميرا. يُستدعى مرة واحدة فقط؛ التكرار محمي بالعلم.
+  void _bindScenePointer() {
+    if (_scenePointerBound) return;
+    final state = _globalKey.currentState;
+    if (state == null) return;
+    _scenePointerBound = true;
+    debugPrint('👆 scene pointer bound');
+
+    state.addEventListener('pointerdown', (dynamic e) {
+      _sceneTapDown = Offset(
+        (e.clientX as num).toDouble(),
+        (e.clientY as num).toDouble(),
+      );
+      _sceneTapDownMs = DateTime.now().millisecondsSinceEpoch;
+    });
+
+    state.addEventListener('pointerup', (dynamic e) {
+      final down = _sceneTapDown;
+      _sceneTapDown = null;
+      if (down == null) return;
+      final up = Offset(
+        (e.clientX as num).toDouble(),
+        (e.clientY as num).toDouble(),
+      );
+      final elapsed = DateTime.now().millisecondsSinceEpoch - _sceneTapDownMs;
+      // السحبة تدير الكاميرا، فلا تُفتح بها بطاقة.
+      if (elapsed > 450 || (up - down).distance > 14) return;
+      _handleSceneTap(up);
+    });
+  }
+
+  /// لمسة على المشهد: شعاع من الكاميرا عبر نقطة اللمس، وأول موديل يصيبه
+  /// يفتح بطاقته. نتسلّق من الجسم المصاب إلى جذر الغرسة، فتصلح الظلال
+  /// وأكوام التراب كأهداف لمس أيضًا.
+  ///
+  /// البطاقة تُرسم داخل المشهد لا كـ bottom sheet: الفتح من حدث المؤشر
+  /// كان يُغلق الشيت في نفس النقرة (نقرة المتصفح التالية تصيب الحاجز)،
+  /// وبطاقة داخلية أيضًا أقرب لروح «فحص الموديل».
+  void _handleSceneTap(Offset local) {
+    if (_animatedModels.isEmpty || _width <= 0 || _height <= 0) return;
+
+    final ray = three.Raycaster();
+    ray.setFromCamera(
+      three.Vector2((local.dx / _width) * 2 - 1, -(local.dy / _height) * 2 + 1),
+      _camera,
+    );
+
+    // نجمع الـMeshes نفسها ونمرّرها بلا تكرار: `intersectObjects(roots, true)`
+    // يمرّ على كل Group في ثلاثي الأبعاد، و`Object3D.raycast` يطبع
+    // «Object3D raycast todo» لكل واحد منها — مئات الأسطر في كل لمسة.
+    final targets = <three.Object3D>[];
+    final owner = <three.Object3D, _AnimatedModel>{};
+    for (final m in _animatedModels) {
+      m.mesh.traverse((child) {
+        if (child is three.Mesh) {
+          targets.add(child);
+          owner[child] = m;
+        }
+      });
+    }
+
+    for (final hit in ray.intersectObjects(targets, false)) {
+      final m = owner[hit.object];
+      if (m != null) {
+        debugPrint('🎯 Model tapped: ${m.type.name} (Tier ${m.tier})');
+        setState(() {
+          _inspectedType = m.type;
+          _inspectedTier = m.tier;
+        });
+        return;
+      }
+    }
+
+    // لمسة على أرض فارغة تطوي البطاقة.
+    if (_inspectedType != null) setState(() => _inspectedType = null);
+  }
+
+  /// بطاقة زجاجية صغيرة تصف الغرسة الملموسة: النوع، مرتبة النماء، وعدد
+  /// المغروس منها هنا وفي الحديقة كلها.
+  Widget _buildInspectCard({required RewardType type, required int tier}) {
+    final total = _storage.getTotalByType(type);
+    final inScene = _animatedModels.where((m) => m.type == type).length;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOut,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, (1 - t) * -10),
+          child: child,
+        ),
+      ),
+      child: GestureDetector(
+        // يبتلع اللمسة كي لا تصل إلى الكانفس تحته.
+        behavior: HitTestBehavior.opaque,
+        onTap: () {},
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D2818).withValues(alpha: 0.62),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.35),
+                ),
+              ),
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Image.asset(
+                          GardenAssets.getIconAsset(type),
+                          width: 30,
+                          height: 30,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                type.displayName,
+                                style: const TextStyle(
+                                  fontFamily: 'Amiri',
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFFFD700),
+                                ),
+                              ),
+                              Text(
+                                'مرتبة النماء · المستوى '
+                                '${NumberFormatter.toArabic(tier)}',
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () =>
+                              setState(() => _inspectedType = null),
+                          icon: const Icon(
+                            Icons.close,
+                            size: 18,
+                            color: Colors.white54,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        _buildInspectStat(
+                          'في هذا المشهد',
+                          NumberFormatter.toArabic(inScene),
+                        ),
+                        const SizedBox(width: 20),
+                        _buildInspectStat(
+                          'إجمالي المغروس',
+                          NumberFormatter.toArabic(total),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInspectStat(String label, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 10,
+            color: Colors.white54,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// بطاقة المكافأة. تُفتح من شريط الفلاتر، أو بلمس موديل في المشهد —
+  /// وفي الحالة الثانية نمرّر مرحلته هو (لا أعلى مرحلة في الحديقة).
+  void _showRewardInfoModal(RewardType type, {int? tier, int? count}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        final count = _storage.getTotalByType(type);
-        final tier = TierSystem.calculate(count);
+        final total = count ?? _storage.getTotalByType(type);
+        final level = tier ?? TierSystem.calculate(total);
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -2073,7 +2385,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                             ),
                           ),
                           Text(
-                            'المستوى الحالي: مرتبة النماء (Tier $tier)',
+                            'المستوى الحالي: مرتبة النماء (Tier $level)',
                             style: const TextStyle(
                               fontFamily: 'Cairo',
                               fontSize: 12,
@@ -2097,7 +2409,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                     children: [
                       _buildInfoStat(
                         'الإجمالي المغروس',
-                        NumberFormatter.toArabic(count),
+                        NumberFormatter.toArabic(total),
                       ),
                       _buildInfoStat(
                         'في المشهد 3D',
@@ -2105,7 +2417,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                           _animatedModels.where((m) => m.type == type).length,
                         ),
                       ),
-                      _buildInfoStat('المرتبة', 'المستوى $tier'),
+                      _buildInfoStat('المرتبة', 'المستوى $level'),
                     ],
                   ),
                 ),
@@ -2229,6 +2541,24 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                 ),
               ),
             ),
+
+            // 🧾 بطاقة فحص الموديل — تنزل من تحت الشريط العلوي
+            if (_inspectedType != null)
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 88, 16, 0),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: _buildInspectCard(
+                        type: _inspectedType!,
+                        tier: _inspectedTier,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
             // 🌅 Day Phase Switcher (فجر / ظهيرة / ليل)
             SafeArea(
@@ -2696,6 +3026,30 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
           _starBaseOpacity * starField.haloOpacityRatio * pulse;
     }
 
+    // 9. وميض الترقية الذهبي
+    for (var i = _goldBursts.length - 1; i >= 0; i--) {
+      final burst = _goldBursts[i];
+      final t = (now - burst.bornAt) / 1400.0;
+      if (t >= 1.0) {
+        _scene.remove(burst.group);
+        _goldBursts.removeAt(i);
+        continue;
+      }
+      for (var k = 0; k < burst.group.children.length; k++) {
+        final particle = burst.group.children[k];
+        final v = burst.velocities[k];
+        particle.position.x += v.x;
+        particle.position.y += v.y;
+        particle.position.z += v.z;
+        // جذب خفيف يُبطئ الصعود، وتباعد يمنع التكتل في خط واحد.
+        v.y -= 0.004;
+        v.x *= 0.985;
+        v.z *= 0.985;
+      }
+      final fade = 1.0 - t;
+      burst.material.opacity = 0.95 * fade * fade;
+    }
+
     _renderer!.render(_scene, _camera);
     gl.flush();
     if (!kIsWeb) {
@@ -2800,6 +3154,8 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
 
     _loaded = true;
     setState(() {});
+    // بعد أول إطار يكون [DomLikeListenable] قد بُني، فتصبح أحداثه متاحة.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bindScenePointer());
     animate();
   }
 
@@ -2807,6 +3163,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     if (!mounted || _disposed) return;
 
     if (_loaded) {
+      // الربط ينتظر بناء [DomLikeListenable]؛ نُعيد المحاولة حتى ينجح بدل
+      // الاعتماد على توقيت إطار واحد.
+      if (!_scenePointerBound) _bindScenePointer();
       if (_autoRotate && !_isFlying) {
         _controls.autoRotate = true;
         _controls.autoRotateSpeed = 0.4;

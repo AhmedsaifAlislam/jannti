@@ -13,10 +13,13 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ارتفاع المراحل', () {
-    test('المراحل ١..٥ ترتفع ٧/٩/١١/١٤/١٨، وأي قيمة غريبة ترجع ١٠', () {
-      expect([for (var t = 1; t <= 5; t++) tierHeight(t)], [7, 9, 11, 14, 18]);
-      expect(tierHeight(0), 10);
-      expect(tierHeight(9), 10);
+    test('المراحل ١..٥ ترتفع ٣/٤٫٢/٦/٩/١٣، وأي قيمة غريبة ترجع ٧', () {
+      expect(
+        [for (var t = 1; t <= 5; t++) tierHeight(t)],
+        [3.0, 4.2, 6.0, 9.0, 13.0],
+      );
+      expect(tierHeight(0), 7.0);
+      expect(tierHeight(9), 7.0);
     });
   });
 
