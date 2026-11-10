@@ -24,8 +24,19 @@ class _AnimatedModel {
   final three.Object3D mesh;
   final int bornAt;
   final RewardType type;
-  final int tier;
-  _AnimatedModel(this.mesh, this.bornAt, this.type, {this.tier = 1});
+  int tier;
+
+  /// الطفل الذي يحمل الموديل نفسه (إجرائي ثم GLB). للمجموعة أطفال آخرون
+  /// (الظل وكومة التراب)، فنحتاج مرجعًا مباشرًا لنعرف ما نستبدله عند الترقية.
+  three.Object3D? modelChild;
+
+  _AnimatedModel(
+    this.mesh,
+    this.bornAt,
+    this.type, {
+    this.tier = 1,
+    this.modelChild,
+  });
 }
 
 /// وميض ذهبي قصير يُطلق عند ارتقاء نوع من المكافآت إلى مرحلة أعلى.
@@ -43,7 +54,7 @@ class _SavedEntry {
   final double x;
   final double y;
   final double z;
-  final int tier;
+  int tier;
 
   _SavedEntry(this.type, this.x, this.y, this.z, {this.tier = 1});
 
@@ -179,7 +190,12 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   static const double _kGroundW = 280.0;
   static const double _kGroundD = 180.0;
   static const double _kMinSpacing = 8.5;
-  static const int _kMaxSceneModels = 65;
+
+  /// سقف عدد الموديلات في المشهد. كان ٦٥ فامتلأ الزرع اليدوي المشهد وتوقّف
+  /// قبل أن يرى اللاعب مرحلة النماء الثانية. المساحة العشبية (46×100 لكل
+  /// ضفة) مع تباعد ٨٫٥ تستوعب ~١٢٧ موضعًا، فـ١٢٠ هو أقصى ما يُملأ بلا تكدّس
+  /// حقيقي؛ وما زاد عنه يُحفظ في `rewards_3d` ويظهر بعد الترقية أو التقليم.
+  static const int _kMaxSceneModels = 120;
 
   @override
   void initState() {
@@ -292,6 +308,14 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       final previousTier = _tierByType[type];
       _tierByType[type] = tier;
 
+      // إذا ارتقى النوع نرفع الموديلات القائمة نفسها للمرحلة الجديدة. بدون
+      // ذلك يبقى المشهد كله Tier 1 مهما بلغ العدد: الإضافة تتوقف عند
+      // targetCount، والقديم لا يُرقّى أبدًا.
+      var promoted = 0;
+      if (previousTier != null && tier > previousTier) {
+        promoted = _promoteModelsOfType(type, tier);
+      }
+
       int targetCount;
       if (totalRewards < 50) {
         targetCount = (totalRewards / 10).ceil();
@@ -317,7 +341,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
 
       // ارتقاء النوع: وميض ذهبي عند آخر غرسة أُضيفت. أول مزامنة لا تُومض
       // لأن `previousTier` يكون فارغًا — الوميض لمن ارتقى أمامه لا لمن فتح.
-      if (previousTier != null && tier > previousTier && lastAdded != null) {
+      if (promoted == 0 &&
+          previousTier != null &&
+          tier > previousTier &&
+          lastAdded != null) {
         _spawnGoldBurst(lastAdded);
       }
     }
@@ -327,6 +354,40 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         '🔄 Synced $totalAdded new 3D rewards according to Tier progression',
       );
     }
+  }
+
+  /// يرفع كل موديلات [type] القائمة إلى [tier] في مكانها نفسه.
+  ///
+  /// استبدال ملف الـGLB داخل المجموعة (لا حذف الغرسة وإعادة زرعها) يحفظ
+  /// مواقع الحديقة التي بناها اللاعب، ويجعل الترقية تُقرأ كنموّ الشجرة نفسها.
+  /// ونحفظ المرحلة الجديدة في `rewards_3d`، فيبقى الارتقاء بعد إعادة الفتح.
+  int _promoteModelsOfType(RewardType type, int tier) {
+    var promoted = 0;
+    three.Vector3? lastPos;
+    for (final m in _animatedModels) {
+      if (m.type != type || m.tier >= tier) continue;
+      m.tier = tier;
+      _enqueueUpgrade(m, tier);
+      lastPos = m.mesh.position;
+      promoted++;
+    }
+
+    var savedChanged = false;
+    for (final e in _savedEntries) {
+      if (e.type == type && e.tier < tier) {
+        e.tier = tier;
+        savedChanged = true;
+      }
+    }
+    if (savedChanged) {
+      _storage.saveRewards3D(_savedEntries.map((e) => e.toJson()).toList());
+    }
+
+    if (promoted > 0) {
+      debugPrint('🌱 Promoted $promoted × ${type.name} to Tier $tier');
+      if (lastPos != null) _spawnGoldBurst(lastPos);
+    }
+    return promoted;
   }
 
   void initSize(BuildContext context) {
@@ -1943,42 +2004,38 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     }
   }
 
-  /// Replaces the procedural mesh of [group] with the staged GLB, when the type
+  /// Replaces the model child of [model] with the staged GLB, when the type
   /// and tier have one. Runs through [_glbQueue] so only one model parses at a
   /// time.
-  Future<void> _upgradeToGLB(
-    three.Group group,
-    three.Object3D oldChild,
-    RewardType type,
-    int tier,
-  ) async {
-    final path = resolveTierModelPath(type, tier);
+  Future<void> _upgradeToGLB(_AnimatedModel model, int tier) async {
+    final path = resolveTierModelPath(model.type, tier);
     if (path == null) return;
+    // قد يكون النوع ارتقى بينما كان هذا الطلب في الطابور: تحميل المرحلة
+    // القديمة أولًا يُظهر الموديل صغيرًا ثم يكبّره بعد ثوانٍ، وهو وميض
+    // حجم لا معنى له. الطلب الأحدث وحده هو الذي يُنفَّذ.
+    if (model.tier != tier) return;
 
     try {
-      final glb = await _loadGLB(path, type, tier: tier);
+      final glb = await _loadGLB(path, model.type, tier: tier);
       if (glb == null || _disposed) return;
       // The entry may have been undone, or the screen rebuilt, while the model
       // was parsing.
-      if (group.parent == null) return;
-      group.remove(oldChild);
-      group.add(glb);
-      debugPrint('⬆️ Model active: $type (Tier $tier)');
+      if (model.mesh.parent == null) return;
+      final oldChild = model.modelChild;
+      if (oldChild != null) model.mesh.remove(oldChild);
+      model.mesh.add(glb);
+      model.modelChild = glb;
+      debugPrint('⬆️ Model active: ${model.type} (Tier $tier)');
     } catch (e) {
-      debugPrint('⚠️ Upgrade failed for $type (Tier $tier): $e');
+      debugPrint('⚠️ Upgrade failed for ${model.type} (Tier $tier): $e');
     }
   }
 
-  void _enqueueUpgrade(
-    three.Group group,
-    three.Object3D oldChild,
-    RewardType type,
-    int tier,
-  ) {
+  void _enqueueUpgrade(_AnimatedModel model, int tier) {
     _glbQueue = _glbQueue
         .then((_) async {
           if (_disposed) return;
-          await _upgradeToGLB(group, oldChild, type, tier);
+          await _upgradeToGLB(model, tier);
         })
         .catchError((Object e) {
           debugPrint('⚠️ GLB queue: $e');
@@ -2022,7 +2079,20 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     group.rotation.y = three.Math.randFloat(0, three.Math.pi * 2);
 
     final procedural = _fallbackForType(type, tier: tier);
+    // البديل الإجرائي كان يُبنى بمقاسه القديم (نحو ٣ وحدات للمرحلة الأولى)،
+    // فيقفز للأسفل لحظة استبداله بالـGLB المصغّر. نطبّعه على نفس الارتفاع
+    // قبل إضافته للمجموعة، فيصبح التبديل نموًا صامتًا لا انكماشًا مفاجئًا.
+    // (يجب أن يكون بلا أب هنا: Box3 يقيس في إحداثيات العالم.)
+    if (hasTierModels(type)) {
+      fitModelToGround(procedural, tierHeight(tier));
+    }
     group.add(procedural);
+
+    // مقاسات الظل والكومة تتبع المرحلة بدل ثباتها: كومة بعرض ١٫٣ تحت شجرة
+    // ارتفاعها ١٫٢ تجعل الشتلة تبدو غارقة في جبل تراب.
+    final stageScale = hasTierModels(type)
+        ? (tierHeight(tier) / 3.0).clamp(0.35, 3.0)
+        : 1.0;
 
     // 1. Soft Dark Contact Shadow Decal on the ground
     final shadowRadius =
@@ -2038,7 +2108,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       "side": three.DoubleSide,
     });
     final shadowDecal = three.Mesh(
-      three.CircleGeometry(radius: shadowRadius, segments: 14),
+      three.CircleGeometry(radius: shadowRadius * stageScale, segments: 14),
       shadowMat,
     );
     shadowDecal.rotation.x = -three.Math.pi / 2;
@@ -2053,25 +2123,25 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         "flatShading": true,
       });
       final soilMound = three.Mesh(three.DodecahedronGeometry(0.65), soilMat);
-      soilMound.scale.set(1.0, 0.18, 1.0);
+      soilMound.scale.set(stageScale, 0.18, stageScale);
       soilMound.position.y = 0.04;
       group.add(soilMound);
     }
 
     _scene.add(group);
-    _animatedModels.add(
-      _AnimatedModel(
-        group,
-        DateTime.now().millisecondsSinceEpoch,
-        type,
-        tier: tier,
-      ),
+    final model = _AnimatedModel(
+      group,
+      DateTime.now().millisecondsSinceEpoch,
+      type,
+      tier: tier,
+      modelChild: procedural,
     );
+    _animatedModels.add(model);
 
     // The procedural mesh above is what appears immediately; the staged GLB is
     // swapped in asynchronously once it parses, so a slow device never waits on
     // the model before the garden grows.
-    _enqueueUpgrade(group, procedural, type, tier);
+    _enqueueUpgrade(model, tier);
 
     if (!fromStorage) {
       _savedEntries.add(
@@ -2191,7 +2261,12 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   /// بطاقة زجاجية صغيرة تصف الغرسة الملموسة: النوع، مرتبة النماء، وعدد
   /// المغروس منها هنا وفي الحديقة كلها.
   Widget _buildInspectCard({required RewardType type, required int tier}) {
-    final total = _storage.getTotalByType(type);
+    // مصدران مختلفان: `rewards_list` يكتبه عدّاد الأذكار، و`rewards_3d`
+    // يحفظ ما غُرس فعلًا (بما فيه الزرع اليدوي). الأكبر هو ما يمكن الدفاع
+    // عنه كإجمالي؛ الأخذ من الأول وحده أنتج «٠ إجمالي» وجنبها ١٦ شجرة.
+    final earned = _storage.getTotalByType(type);
+    final planted = _savedEntries.where((e) => e.type == type).length;
+    final total = earned > planted ? earned : planted;
     final inScene = _animatedModels.where((m) => m.type == type).length;
 
     return TweenAnimationBuilder<double>(
@@ -2847,7 +2922,13 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                 ElevatedButton.icon(
                   onPressed: () {
                     final targetType = _selectedFilter ?? RewardType.palmTree;
-                    addModelAt(type: targetType, tier: 1, reveal: true);
+                    // الزرع هنا كان يثبّت المرحلة الأولى دائمًا، فيبقى المشهد
+                    // صغيرًا مهما بلغ عدّ الذكر. المرحلة تُشتق الآن من
+                    // المكافآت الفعلية للنوع، فما يُغرس اليوم يعكس نماءه.
+                    final tier = TierSystem.calculate(
+                      _storage.getTotalByType(targetType),
+                    );
+                    addModelAt(type: targetType, tier: tier, reveal: true);
                     setState(() {});
                   },
                   icon: const Icon(Icons.add, size: 16),

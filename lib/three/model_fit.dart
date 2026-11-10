@@ -8,26 +8,26 @@ import 'package:three_dart_flutterflow/three_dart.dart' as three;
 ///
 /// One unit is roughly one metre: the marble bridge has a 1.2-thick deck, a
 /// 7.5-wide walkway and 3.3-high lanterns, so a person standing on it would be
-/// about 1.7. The first ladder (7 / 9 / 11 / 14 / 18) therefore made the
-/// *seedling* files — tier 1 is a nursery sapling — seven metres tall, which
-/// is what made every new planting dwarf the bridge and the river. The stages
-/// now follow the procedural seedlings they replace (the tier-1 palm is about
-/// 2.4 units high before the GLB swap) and only the mature stages reach tree
-/// size.
+/// about 1.7. The meadow grass is 0.35–0.70 high, and the first stage is now
+/// about twice that — a nursery sapling you can still see from the default
+/// camera, instead of a seven-metre tree (the original ladder) or a
+/// three-metre one that still dwarfed the lawn. Later stages keep a clear,
+/// readable jump so a promotion is visible: a mature palm reaches 9 units,
+/// roughly the height of a real date palm.
 double tierHeight(int tier) {
   switch (tier) {
     case 1:
-      return 3.0;
+      return 1.2;
     case 2:
-      return 4.2;
+      return 2.0;
     case 3:
-      return 6.0;
+      return 3.4;
     case 4:
-      return 9.0;
+      return 5.5;
     case 5:
-      return 13.0;
+      return 9.0;
     default:
-      return 7.0;
+      return 3.4;
   }
 }
 

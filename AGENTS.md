@@ -97,12 +97,20 @@
 - `kBundledModelAssets` in `lib/three/asset_map.dart` mirrors those entries; `test/asset_map_test.dart` fails when the two drift apart.
 - Only `palmTree` and `tree` have staged lineages. Buildings (house / palace / mosque / treasure) keep their procedural meshes on purpose — the GLB house and palace are lower fidelity than what the scene draws.
 - Pivot correction lives in `lib/three/model_fit.dart`. The exports do not share a pivot: `palm_medium` reaches **y = −2.58** before scaling. Never scale a model without `fitModelToGround`.
-- Stage heights are `3 / 4.2 / 6 / 9 / 13` (`tierHeight`). One world unit is a
-  metre (the bridge deck is 1.2 thick, its lanterns 3.3 high), so the old
-  `7 / 9 / 11 / 14 / 18` made the tier-1 *seedling* a seven-metre tree that
-  dwarfed the river and the bridge; the new ladder matches the procedural
-  seedlings it replaces. The cap at tier 5 is what makes a reused stage-4 file
-  still read as a bigger tree.
+- Stage heights are `1.2 / 2 / 3.4 / 5.5 / 9` (`tierHeight`). One world unit is a
+  metre (the bridge deck is 1.2 thick, its lanterns 3.3 high), and the meadow
+  grass is 0.35–0.70, so the tier-1 seedling is about **twice the grass**. An
+  earlier ladder (`7 / 9 / 11 / 14 / 18`, then `3 / 4.2 / 6 / 9 / 13`) made the
+  nursery sapling dwarf the river and the bridge. The cap at tier 5 is what
+  makes a reused stage-4 file still read as a bigger tree.
+- A tier promotion **re-scales the trees already standing**
+  (`_promoteModelsOfType`), not only new ones: `targetCount` stops adding at 15
+  per type, so without it a garden planted at tier 1 would never show tier 2.
+  The procedural fallback is fitted to `tierHeight` before it joins the group,
+  so the GLB swap does not visibly shrink the tree.
+- `_kMaxSceneModels` is 120. The meadow (46×100 per bank) with `_kMinSpacing`
+  8.5 holds ~127 spots; the old cap of 65 filled up and made the garden look
+  frozen while the dhikr counter kept counting.
 - The GLB cache key is `path#tier`, not `path` — the same file can serve two stages at two heights.
 - New or re-shrunk models go through `tool/assets/repack_glb.py` (512 px textures). It verifies geometry is bit-identical, so a repack that changes a vertex fails the run.
 - **A cached model is cloned on every use, and `BufferAttribute.clone()` only knows Float32/Uint8/Uint16.** Every export indexes with 32 bits, so `makeModelCloneable` narrows the index to 16 bits *before* the model is cached; without it `scene.clone(true)` throws and the procedural mesh silently stays.
