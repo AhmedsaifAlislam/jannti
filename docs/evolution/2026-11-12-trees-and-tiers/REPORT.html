@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>المرحلة ١ — الأشجار والمراتب | جنتي</title>
+<link rel="stylesheet" href="../report.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topnav">
+    <a class="home" href="../index.html">الفهرس</a>
+    <a class="off">→ السابق</a>
+    <a href="../2026-11-12-13-plateau/REPORT.html">التالي: الهضبة ←</a>
+    <span class="spacer"></span>
+    <span class="here">المرحلة ١ من ٤</span>
+  </div>
+
+  <div class="eyebrow">جَنَّتِي · سجل تطوّر المشهد · المرحلة ١</div>
+  <h1>الأشجار <span>والمراتب</span></h1>
+  <div class="sub">١٢ نوفمبر ٢٠٢٦ — استبدال المجسّمات الإجرائية بأصول حقيقية، وضبط سلّم الأحجام والدفن في الأرض.</div>
+
+  <figure class="wide">
+    <a href="00-contact-sheet.jpg"><img src="00-contact-sheet.jpg" alt="لوحة تجميع المرحلة ١"></a>
+    <figcaption><b>لوحة المرحلة</b> خمس لقطات في صورة واحدة — كل واحدة تُثبت قرارًا مختلفًا.</figcaption>
+  </figure>
+
+  <h2>المشكلة قبل المرحلة</h2>
+  <p>
+    الشجرة والنخلة كانتا مجسّمَين إجرائيَّين: مخروط أخضر وأسطوانة بنية. لا خامة،
+    ولا ظل، ولا فرق بصري بين «شتلة» و«شجرة مثمرة» إلا الحجم. والمراتب الخمس كانت
+    تتغيّر بالأرقام وحدها.
+  </p>
+
+  <h2>القرارات</h2>
+  <ul>
+    <li>
+      <strong>الأشجار الخمس مقصوصة من <code>assets/trees.glb</code> بنسب تبسيط لكل
+      قطعة على حدة</strong> (<code>0.65 / 0.18 / 0.0157 / 0.0097 / 0.0085</code>).
+      التبسيط الموحّد ٠٫٠١٢ على الملف كله دمّر الشتلة (٩٣ مثلثًا)، فالقصّ أولًا
+      غير قابل للتفاوض.
+    </li>
+    <li>
+      <strong>التلوين مزج ٠٫٤٥ + وهج ٠٫١٨، لا ٠٫٨.</strong> المادة تُضرب في صورة
+      الخامة، فمزج ٠٫٨ — المعاير على المجسّمات الإجرائية المسطّحة — كان يمحو خامة
+      النخيل ويحوّل السعف النعناعي إلى ليموني.
+    </li>
+    <li>
+      <strong>الدفن في الأرض يُطرح بعد تثبيت القاعدة على الصفر</strong>، فتبقى
+      <code>fitModelToGround</code> قابلة لإعادة الاستدعاء. نسب النخيل
+      <code>0.40 / 0.16 / 0.13 / 0.13 / 0.15</code> والشجر <code>0.10</code>،
+      والمباني والكنوز لا تُدفن.
+    </li>
+    <li>
+      <strong>سلّم الأحجام لا ينكمش عند الترقية:</strong> أقصر موديل في مرتبة يجب
+      أن يتجاوز أطول موديل في المرتبة السابقة بـ٢٠٪ على الأقل. تير ٢ رُفع من ٢٫٠
+      إلى ٢٫٣ بعد أن كان الفارق +٩٪ فقط.
+    </li>
+  </ul>
+
+  <h2>اللقطات</h2>
+  <div class="gallery">
+    <figure>
+      <a href="01-tint-stage-0-vs-2.jpg"><img src="01-tint-stage-0-vs-2.jpg" alt="مقارنة التلوين"></a>
+      <figcaption><b>التلوين: المرحلة ٠ مقابل ٢</b> على المراتب الخمس — المرجع الذي حسم نسبة المزج ٠٫٤٥.</figcaption>
+    </figure>
+    <figure>
+      <a href="02-tree-tier-1.jpg"><img src="02-tree-tier-1.jpg" alt="الشتلة في المرتبة ١"></a>
+      <figcaption><b>المرتبة ١</b> الشتلة داخل عشب المرج بارتفاع ٠٫٦ — لا فوقه.</figcaption>
+    </figure>
+    <figure>
+      <a href="03-tree-tier-4.jpg"><img src="03-tree-tier-4.jpg" alt="الشجرة المثمرة"></a>
+      <figcaption><b>المرتبة ٤</b> الشجرة المثمرة بعد اكتمال النمو.</figcaption>
+    </figure>
+    <figure>
+      <a href="04-tree-tier-5.jpg"><img src="04-tree-tier-5.jpg" alt="الشجرة السماوية"></a>
+      <figcaption><b>المرتبة ٥</b> الشجرة السماوية عند سقف ٩ وحدات.</figcaption>
+    </figure>
+    <figure>
+      <a href="05-ground-sink-palms.jpg"><img src="05-ground-sink-palms.jpg" alt="النخيل بعد الدفن"></a>
+      <figcaption><b>الدفن في الأرض</b> القاعدة العشبية لم تعد «عشبًا بطول الموديل».</figcaption>
+    </figure>
+  </div>
+
+  <div class="note good">
+    <strong>ما تحقّق:</strong> المراتب الخمس صارت تُقرأ بالنظر لا بالرقم، والدفن
+    جعل قاعدة النخلة تختفي في المرج بدل أن تطفو فوقه.
+  </div>
+
+  <div class="pager">
+    <a class="off">→ المرحلة السابقة</a>
+    <a href="../2026-11-12-13-plateau/REPORT.html">المرحلة ٢: الهضبة ←</a>
+  </div>
+
+  <footer>
+    الملفات: <code>assets/trees.glb</code> · <code>lib/three/model_fit.dart</code> ·
+    <code>lib/three/model_evolution.dart</code> ·
+    <code>test/model_fit_test.dart</code>
+  </footer>
+
+</div>
+</body>
+</html>

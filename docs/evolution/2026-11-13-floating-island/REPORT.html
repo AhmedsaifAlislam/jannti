@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>المرحلة ٣ — الجزيرة الطافية | جنتي</title>
+<link rel="stylesheet" href="../report.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topnav">
+    <a class="home" href="../index.html">الفهرس</a>
+    <a href="../2026-11-12-13-plateau/REPORT.html">→ السابق: الهضبة</a>
+    <a href="../2026-11-16-nature-island/REPORT.html">التالي: الجزيرة الطبيعية ←</a>
+    <span class="spacer"></span>
+    <span class="here">المرحلة ٣ من ٤</span>
+  </div>
+
+  <div class="eyebrow">جَنَّتِي · سجل تطوّر المشهد · المرحلة ٣</div>
+  <h1>الجزيرة <span>الطافية</span></h1>
+  <div class="sub">١٣ نوفمبر ٢٠٢٦ — تحويل الأرضية إلى كتلة بسماكة: جرف صخري، جزر صغيرة طافية، وسحب سفلية.</div>
+
+  <figure class="wide">
+    <a href="00-contact-sheet.jpg"><img src="00-contact-sheet.jpg" alt="لوحة تجميع المرحلة ٣"></a>
+    <figcaption><b>لوحة المرحلة</b> ثماني لقطات: ثلاث محاولات لخامة الجرف، ثم القشرة والزوايا.</figcaption>
+  </figure>
+
+  <h2>المشكلة قبل المرحلة</h2>
+  <p>
+    الأرض كانت مستويًا بلا سماكة: من أي زاوية منخفضة تُقرأ مسطّحًا أخضر لا جزيرة.
+    والقمم المحيطية كانت تجلس على الأرض القديمة، فصار تحتها فراغ بعد التحويل.
+  </p>
+
+  <h2>القرارات</h2>
+  <ul>
+    <li>
+      <strong>خامة الجرف إجرائية</strong> (<code>cliff_rock.png</code>، ٥١٢px،
+      ١٦٠ ك.ب) لأن الجرف يُبنى في الكود ولا يوجد له أطلس في أي أصل. مولّدها
+      <code>tool/assets/prep_cliff_texture.py</code>: فورونوي ملتوٍ + طبقات أفقية
+      + حبيبات.
+    </li>
+    <li>
+      <strong>لون الخامة بارد عن قصد</strong> (متوسط ٩٨،١٠٥،١٢٥): شمس الظهيرة
+      <code>0xFFE082</code> تضاعف الأحمر/الأخضر وتخفض الأزرق، فيصل الصخر إلى
+      الشاشة رماديًا دافئًا لا أصفر.
+    </li>
+    <li>
+      <strong>حلقة الجرف العليا عند ١٤٠×٩٠ بالضبط</strong> لتطابق حدّ المرج، ثم
+      ١٤١×٩١ عند <code>y = −1.6</code> كحافة بارزة.
+    </li>
+    <li>
+      <strong>القمة تُغلق بحلقة صغيرة ومروحة مثلثات.</strong> لا تُترك ١٢٨ نقطة
+      متطابقة: نواظمها تتلاشى ويخرج السطح أسود.
+    </li>
+    <li>
+      <strong>الجرف يخرج أسود بلا ضوء ارتداد</strong> لأنه يواجه عكس الشمس دائمًا.
+      الحل: ضوءان من الأسفل (<code>0x9DB2C4</code>) مربوطان بشدة
+      <code>spec.ambientIntensity</code> فيتبعان دورة النهار.
+    </li>
+    <li>
+      <strong>اتجاه لفّ المثلثات <code>[a, b, c, b, d, c]</code></strong> يعطي
+      نواظم للخارج. الترتيب المعتاد <code>[a, c, b]</code> يقلبها ويجعل السطح
+      الداخلي هو المرئي.
+    </li>
+  </ul>
+
+  <h2>اللقطات</h2>
+  <div class="gallery">
+    <figure>
+      <a href="01-cliff-map-mosaic.jpg"><img src="01-cliff-map-mosaic.jpg" alt="محاولة خامة ١"></a>
+      <figcaption><b>محاولة ١ — مرفوضة</b> بلاطات زجاجية.</figcaption>
+    </figure>
+    <figure>
+      <a href="02-cliff-map-scales.jpg"><img src="02-cliff-map-scales.jpg" alt="محاولة خامة ٢"></a>
+      <figcaption><b>محاولة ٢ — مرفوضة</b> حراشف زواحف/فسيفساء.</figcaption>
+    </figure>
+    <figure>
+      <a href="03-cliff-map-layered-stone.jpg"><img src="03-cliff-map-layered-stone.jpg" alt="محاولة خامة ٣"></a>
+      <figcaption><b>محاولة ٣ ✅</b> صخر طبقي متشقق.</figcaption>
+    </figure>
+    <figure>
+      <a href="04-shell-unlit-underside.jpg"><img src="04-shell-unlit-underside.jpg" alt="القشرة قبل الإضاءة"></a>
+      <figcaption><b>القشرة قبل الإضاءة</b> الجرف أسود تمامًا — الدليل على الحاجة لضوء ارتداد.</figcaption>
+    </figure>
+    <figure>
+      <a href="05-island-far-low.jpg"><img src="05-island-far-low.jpg" alt="زاوية منخفضة"></a>
+      <figcaption><b>زاوية أدنى</b> القشرة خرجت من الكادر، والجزيرة تُقرأ كتلة عشب. الجزر الصغيرة تظهر بصخور بنية تحتها.</figcaption>
+    </figure>
+    <figure>
+      <a href="06-home-default-camera.jpg"><img src="06-home-default-camera.jpg" alt="كادر الافتتاح"></a>
+      <figcaption><b>كادر الافتتاح</b> لا جرف ولا جزر طافية مرئية، والقمم المحيطية تسدّ الوسط.</figcaption>
+    </figure>
+    <figure>
+      <a href="07-wide-default-angle.jpg"><img src="07-wide-default-angle.jpg" alt="أقصى تصغير"></a>
+      <figcaption><b>أقصى تصغير</b> القمم تغطي وسط الكادر والنهر/الجسر يصغُران إلى شريط.</figcaption>
+    </figure>
+    <figure>
+      <a href="08-wide-low-angle.jpg"><img src="08-wide-low-angle.jpg" alt="بعد تدوير الكاميرا"></a>
+      <figcaption><b>بعد تدوير الكاميرا</b> القمم الخضراء تحجب القشرة تمامًا.</figcaption>
+    </figure>
+  </div>
+
+  <h2>ما بقي مفتوحًا عند الأرشفة</h2>
+  <ol>
+    <li><strong>الجرف محجوب عن اللاعب</strong> — <code>maxPolarAngle = 1.483</code> تُبقي الكاميرا فوق مستوى العشب، وحلقة القشرة العليا عند حدّ المرج فتختفي تحته.</li>
+    <li><strong>كادر الافتتاح لا يُظهر الجزيرة</strong> — مسافة ٨٥ وحدة والجزيرة ٢٨٠×١٨٠.</li>
+    <li><strong>الجزر الطافية تُقرأ ألواحًا مسطّحة</strong> — تُرى قبعة العشب فقط بلا صخرة.</li>
+    <li><strong>الجبال المحيطية تطفو فوق الفراغ</strong> بعد تحويل الأرض إلى قشرة.</li>
+    <li><strong>الضباب</strong> <code>Fog(0x134C37, 150, 460)</code> يحجب الحواف البعيدة.</li>
+  </ol>
+
+  <div class="note warn">
+    هذه الملاحظات الخمس هي ما دفع المرحلة ٤: استبدال الأرض كلها بجزيرة
+    FreeLowPolyForest، حيث الجبال والبحيرات والحدود من مشهد واحد.
+  </div>
+
+  <div class="pager">
+    <a href="../2026-11-12-13-plateau/REPORT.html">→ المرحلة ٢: الهضبة</a>
+    <a href="../2026-11-16-nature-island/REPORT.html">المرحلة ٤: الجزيرة الطبيعية ←</a>
+  </div>
+
+  <footer>
+    الملفات: <code>lib/screens/jannati_3d_screen.dart</code> ·
+    <code>assets/3d/textures/cliff_rock.png</code> ·
+    <code>tool/assets/prep_cliff_texture.py</code>
+  </footer>
+
+</div>
+</body>
+</html>

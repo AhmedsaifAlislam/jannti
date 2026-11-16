@@ -4,6 +4,9 @@
 
 كل تسبيحة أو ذكر يضيف عنصرًا بصريًا (نخيل، أشجار، بيوت، قصور، مساجد، كنوز) في عالم المستخدم الخاص - في 2D و 3D.
 
+> **للحالة الحالية والخطة والتسليم:** [`PROJECT.md`](PROJECT.md) هو المصدر الوحيد.
+> هذا الملف يشرح التشغيل والإعداد فقط.
+
 ---
 
 ## ✨ المميزات الحالية
@@ -14,11 +17,11 @@
 - Zoom & Pan تفاعلي
 - خلفية بانورامية جميلة
 
-### 3D World (POC):
-- مشهد ثلاثي الأبعاد مع OrbitControls
-- نماذج للنخيل، الأشجار، البيوت، القصور، الكنوز
-- إضاءة وأرض ومنظور كامل
-- حفظ مواضع العناصر تلقائيًا
+### 3D World (نشط):
+- جزيرة `FreeLowPolyForest` كاملة (17 شبكة، 245 نسخة) بجبال وبحيرتين وممرات
+- مراحل النخيل والشجر الخمس مرتبطة بالمكافآت (100 / 1000 / 5000 / 10000)
+- بطاقة فحص عند لمس الموديل، وجزيئات نور وحياة
+- كاميرا حرة مع OrbitControls، وحفظ مواضع العناصر تلقائيًا
 
 ### نظام الذكر:
 - عدّاد تفاعلي لكل ذكر
@@ -94,27 +97,28 @@ lib/
     └── asset_map.dart
 
 assets/
-├── 3d/               # GLB models (5 files, CC0)
+├── 3d/               # المُجهَّز فقط: مراحل، جزيرة، جسر، هضبة، أرضيات
 ├── images/           # 2D sprites
 └── fonts/            # Amiri + Cairo
-🎯 Current Status
-✅ Stable:
-Storage system (SharedPreferences)
-2D garden display
-Dhikr counter
-Bottom navigation
-3D scene with procedural models + GLB (color override)
-3D ↔ Dhikr Sync (every 10 = 1 model)
-Data Persistence (run_dev.bat)
-🚧 In Progress:
-Tier System + Random Distribution (Session #11)
-Stats screen (placeholder currently)
-🔒 Frozen:
-2D zoom/pan logic (acceptable after 7 optimization phases)
-📚 Documentation
-AGENTS.md - Coding standards & methodology for AI assistants
-PROJECT_STATE.md - Detailed current state
-ROADMAP.md - Full feature roadmap & priorities
+
+> المصادر الخام (`assets/*.glb`، `assets/اضافي/`) محلية ومستثناة في `.gitignore`.
+
+## 🎯 Current Status
+
+- ✅ التخزين (SharedPreferences)، عالم 2D، عدّاد الذكر، الشريط السفلي
+- ✅ عالم 3D: جزيرة FreeLowPolyForest، المراحل 1–5، بطاقة الفحص، الجزيئات
+- ✅ نظام النمو: كل 10 مكافآت = نموذج مكتمل، والباقي شتلات
+- ✅ الإحصاءات والأوسمة، وإذاعة السكينة (4 طبقات + قرآن)
+- ✅ `flutter analyze` نظيف و`flutter test` 87/87
+- 🔒 2D zoom/pan مجمّد بقصد بعد Phase 4H
+
+## 📚 Documentation
+
+- [`AGENTS.md`](AGENTS.md) — قواعد العمل والممنوعات وثوابت الكود
+- [`PROJECT.md`](PROJECT.md) — الحالة والخطة والتسليم (المصدر الوحيد)
+- [`docs/evolution/index.html`](docs/evolution/index.html) — السجل البصري للمراحل الأربع
+- [`docs/SPIRITUAL_COMMUNITY_ROADMAP.md`](docs/SPIRITUAL_COMMUNITY_ROADMAP.md) — ميزة المجتمع
+- [`docs/IN_APP_UPDATES_GUIDE.md`](docs/IN_APP_UPDATES_GUIDE.md) — دليل التحديث الذاتي
 🛠️ Troubleshooting
 Data lost between runs?
 Use `scripts\run_dev.bat` for persistent data (creates permanent Chrome profile)
@@ -122,13 +126,11 @@ Verify you're using port 8080: flutter run -d chrome --web-port=8080
 Open DevTools → Application → Local Storage → http://localhost:8080
 Verify keys: dhikr_count_*, rewards_list, rewards_3d
 Don't clear unless you want a hard reset
-3D scene shows GLB models with solid colors (no textures)?
-This is by design. Color override solution is applied in _loadGLB to handle 
-embedded textures issue in three_dart_jsm_flutterflow. Models display with 
-type-specific colors (green for palms, gold for treasures, etc.) which works 
-well visually for the MVP.
-
-Note: There are 6 reward types but only 5 GLB files (no mosque.glb). The mosque type uses the procedural fallback exclusively.
+3D models appear black or textureless?
+- تأكد أن كل GLB له PNG جانبي مُعلَن في `pubspec.yaml` (الصور المدفونة تفشل في محمّل الويب).
+- لا تضبط `texture.encoding` على خامات الموديلات؛ `makeTexturesUploadable` يتعمد إسقاطه.
+- `metalness` يُصفَّر عند التحميل لأن التصديرات تأتي بـ`metallicFactor: 1.0` بلا خريطة بيئة.
+- التفاصيل الكاملة في `AGENTS.md` §«Model invariants».
 
 Black borders around the world in 2D?
 Should not happen after Phase 4H. If you see them, check boundaryMargin in garden_screen.dart (should be EdgeInsets.symmetric(horizontal: 20, vertical: 10)).

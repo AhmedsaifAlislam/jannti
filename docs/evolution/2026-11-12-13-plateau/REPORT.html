@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>المرحلة ٢ — الهضبة | جنتي</title>
+<link rel="stylesheet" href="../report.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topnav">
+    <a class="home" href="../index.html">الفهرس</a>
+    <a href="../2026-11-12-trees-and-tiers/REPORT.html">→ السابق: الأشجار</a>
+    <a href="../2026-11-13-floating-island/REPORT.html">التالي: الجزيرة الطافية ←</a>
+    <span class="spacer"></span>
+    <span class="here">المرحلة ٢ من ٤</span>
+  </div>
+
+  <div class="eyebrow">جَنَّتِي · سجل تطوّر المشهد · المرحلة ٢</div>
+  <h1>الهضبة: <span>من قرص مسطّح إلى جرف</span></h1>
+  <div class="sub">١٢–١٣ نوفمبر ٢٠٢٦ — رفع الهضبة الوسطى إلى مجسّم حقيقي دون المساس بمواضع الزرع ولا بانحناءات المرج.</div>
+
+  <figure class="wide">
+    <a href="00-contact-sheet.jpg"><img src="00-contact-sheet.jpg" alt="لوحة تجميع المرحلة ٢"></a>
+    <figcaption><b>لوحة المرحلة</b> ثماني لقطات: من الأصل ١٫١٨ مليون مثلث إلى الهضبة النهائية في المشهد.</figcaption>
+  </figure>
+
+  <h2>المشكلة قبل المرحلة</h2>
+  <p>
+    الهضبة كانت أسطوانة إجرائية وقرصًا أخضر: شكل هندسي صريح، لا جرف ولا حصى، ويظهر
+    ككعكة عشب في وسط الجزيرة.
+  </p>
+
+  <h2>القرارات</h2>
+  <ul>
+    <li>
+      <strong>المقياس النهائي <code>42.9 × 4.34 × 30.4</code> موحّدًا</strong>
+      (نسبة الأصل ١٫٨٨:١٫٣٣)، لا تمطيط. التمطيط كان يفسد اتجاه حراشف العشب
+      ويحوّل الجرف إلى شريط.
+    </li>
+    <li>
+      <strong>سطح المشي <code>_kPlateauHeight = 4.08</code> لا ٤٫٣٤.</strong>
+      القياس: الوسيط ٤٫٠٧ وp99 عند ٤٫١٩، فالـ٤٫٣٤ هو رؤوس العشب لا الأرض. أي موديل
+      يُزرع عند ٤٫٣٤ يطفو فوق السطح.
+    </li>
+    <li>
+      <strong>اللون يُطبخ داخل الخامة</strong> (<code>MEADOW_TINT</code> ومادة
+      بيضاء). تعديل لون المادة يضرب الصورة كلها فيمحو تفاصيل الجرف الرملي.
+    </li>
+    <li>
+      <strong><code>TILE = 2</code> في الصورة نفسها لا في UV</strong> — التكرار
+      في UV يخلق حدودًا مرئية عند الحواف المستديرة.
+    </li>
+    <li>
+      <strong>JPEG بجودة ٩٠ للخامة الكبيرة:</strong> ٠٫٩٤ م.ب بدل ٢٫٩ م.ب بلا فرق
+      مرئي.
+    </li>
+  </ul>
+
+  <h2>اللقطات</h2>
+  <div class="gallery">
+    <figure>
+      <a href="01-source-asset.jpg"><img src="01-source-asset.jpg" alt="الأصل"></a>
+      <figcaption><b>الأصل</b> <code>assets/هضبة.glb</code> كما وصل — ١٫١٨ مليون مثلث.</figcaption>
+    </figure>
+    <figure>
+      <a href="02-first-pass-70k-triangles.jpg"><img src="02-first-pass-70k-triangles.jpg" alt="التمريرة الأولى"></a>
+      <figcaption><b>التمريرة الأولى</b> ٧٠ ألف مثلث: الشكل صحيح لكن الخامة ضاعت.</figcaption>
+    </figure>
+    <figure>
+      <a href="03-v2-cylinder-base.jpg"><img src="03-v2-cylinder-base.jpg" alt="قاعدة أسطوانية مرفوضة"></a>
+      <figcaption><b>محاولة مرفوضة</b> قاعدة أسطوانية — حدّ اصطناعي دائري.</figcaption>
+    </figure>
+    <figure>
+      <a href="04-v4-uniform-scale.jpg"><img src="04-v4-uniform-scale.jpg" alt="مقياس موحّد"></a>
+      <figcaption><b>مقياس موحّد</b> لا تمطيط، والنسبة ١٫٨٨:١٫٣٣ محفوظة.</figcaption>
+    </figure>
+    <figure>
+      <a href="05-model-natural-proportions.jpg"><img src="05-model-natural-proportions.jpg" alt="النسب الطبيعية"></a>
+      <figcaption><b>الشكل الطبيعي</b> كما طُلب — التكستشر لا يتبدّل.</figcaption>
+    </figure>
+    <figure>
+      <a href="06-final-colour-atlas.jpg"><img src="06-final-colour-atlas.jpg" alt="أطلس الألوان"></a>
+      <figcaption><b>أطلس الألوان النهائي</b> ٢٠٤٨px — اللون داخل الصورة لا في المادة.</figcaption>
+    </figure>
+    <figure>
+      <a href="07-palaces-planted.jpg"><img src="07-palaces-planted.jpg" alt="القصور على السطح"></a>
+      <figcaption><b>القصور الثلاثة</b> بعد الغرس على السطح.</figcaption>
+    </figure>
+    <figure>
+      <a href="08-final-in-scene.jpg"><img src="08-final-in-scene.jpg" alt="الهضبة في المشهد"></a>
+      <figcaption><b>في المشهد الكامل</b> من كادر الافتتاح.</figcaption>
+    </figure>
+  </div>
+
+  <div class="note">
+    <strong>الدرس:</strong> «الشكل صحيح» و«الخامة صحيحة» مسألتان منفصلتان. أول
+    تمريرة أنقذت الهندسة وأضاعت الصورة، والحل كان طبخ اللون في الأطلس لا في المادة.
+  </div>
+
+  <div class="pager">
+    <a href="../2026-11-12-trees-and-tiers/REPORT.html">→ المرحلة ١: الأشجار</a>
+    <a href="../2026-11-13-floating-island/REPORT.html">المرحلة ٣: الجزيرة الطافية ←</a>
+  </div>
+
+  <footer>
+    الملفات: <code>assets/3d/plateau.glb</code> · <code>assets/3d/plateau.jpg</code> ·
+    <code>lib/three/asset_map.dart</code> · <code>tool/assets/</code>
+  </footer>
+
+</div>
+</body>
+</html>

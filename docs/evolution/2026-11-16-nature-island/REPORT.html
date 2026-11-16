@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>جنتي — تقرير بيئة الجزيرة ٢٠٢٦-١١-١٦</title>
+<style>
+  :root{
+    --bg:#08201A; --panel:#0E2E24; --panel2:#103A2C;
+    --gold:#E8C97A; --gold-dim:#B99C57; --txt:#EAF3EE; --muted:#9FB8AD;
+    --bad:#E36A5A; --good:#4FD08A; --line:rgba(232,201,122,.18);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px 64px; background:
+      radial-gradient(1200px 600px at 80% -10%, #14493A 0%, transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, #0C3529 0%, transparent 55%),
+      var(--bg);
+    color:var(--txt);
+    font-family:"Cairo","Segoe UI",Tahoma,system-ui,sans-serif;
+    line-height:1.75;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  .eyebrow{color:var(--gold-dim);letter-spacing:.14em;font-size:12px;margin-bottom:10px}
+  h1{font-size:30px;margin:0 0 6px;font-weight:800;letter-spacing:-.01em}
+  h1 span{color:var(--gold)}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:28px}
+  h2{font-size:19px;margin:40px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);font-weight:700}
+  h2::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;
+    background:var(--gold);margin-inline-end:10px;transform:rotate(45deg)}
+  p{margin:0 0 12px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:22px 0 8px}
+  .kpi{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:14px;padding:16px 14px;text-align:center}
+  .kpi b{display:block;font-size:26px;color:var(--gold);line-height:1.2}
+  .kpi small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+  .kpi.ok b{color:var(--good)}
+  .kpi.bad b{color:var(--bad)}
+  table{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:10px 12px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06)}
+  th{background:rgba(232,201,122,.10);color:var(--gold);font-weight:700;font-size:13px}
+  tr:last-child td{border-bottom:none}
+  code,pre{font-family:"Cascadia Mono",Consolas,monospace;direction:ltr;text-align:left}
+  code{background:rgba(255,255,255,.07);padding:2px 6px;border-radius:5px;font-size:12.5px;color:#D8F3E6;
+    direction:ltr;unicode-bidi:isolate}
+  pre{background:#06170F;border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    overflow:auto;font-size:12.5px;line-height:1.65;color:#CFE9DC;margin:12px 0}
+  .shot{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin:16px 0 26px}
+  .shot img{width:100%;display:block;border-radius:10px;border:1px solid rgba(0,0,0,.35)}
+  .shot .cap{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--muted)}
+  .tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid}
+  .tag.bad{color:var(--bad);border-color:rgba(227,106,90,.45);background:rgba(227,106,90,.10)}
+  .tag.mid{color:#E9B44C;border-color:rgba(233,180,76,.45);background:rgba(233,180,76,.10)}
+  .tag.good{color:var(--good);border-color:rgba(79,208,138,.45);background:rgba(79,208,138,.10)}
+  .note{border-inline-start:3px solid var(--gold);background:rgba(232,201,122,.07);
+    padding:12px 16px;border-radius:0 10px 10px 0;font-size:14px;margin:14px 0}
+  .note.warn{border-color:var(--bad);background:rgba(227,106,90,.08)}
+  ul{margin:8px 0 14px;padding-inline-start:22px}
+  li{margin:6px 0}
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+  .topnav{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:26px;
+    padding:10px 14px;background:rgba(14,46,36,.85);border:1px solid var(--line);border-radius:14px}
+  .topnav a{color:var(--txt);text-decoration:none;font-size:13.5px;font-weight:700;
+    padding:7px 14px;border-radius:999px;border:1px solid rgba(232,201,122,.28);white-space:nowrap}
+  .topnav a:hover{background:rgba(232,201,122,.12);border-color:var(--gold)}
+  .topnav a.home{background:rgba(232,201,122,.16);border-color:var(--gold);color:var(--gold)}
+  .topnav .spacer{flex:1}
+  .topnav .here{color:var(--muted);font-size:12px}
+  .pager{display:flex;justify-content:space-between;gap:12px;margin-top:40px;padding-top:18px;
+    border-top:1px solid var(--line)}
+  .pager a{color:var(--gold);text-decoration:none;font-size:13.5px;font-weight:700;
+    padding:9px 16px;border:1px solid rgba(232,201,122,.3);border-radius:999px}
+  .pager a:hover{background:rgba(232,201,122,.12)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topnav">
+    <a class="home" href="../index.html">الفهرس</a>
+    <a href="../2026-11-13-floating-island/REPORT.html">→ السابق: الجزيرة الطافية</a>
+    <a href="../index.html">كل المراحل ←</a>
+    <span class="spacer"></span>
+    <span class="here">المرحلة ٤ من ٤</span>
+  </div>
+
+  <div class="eyebrow">جَنَّتِي · سجل تطوّر المشهد · المرحلة ٤</div>
+  <h1>بيئة الجزيرة: <span>من أرض مستوية إلى موديل حقيقي</span></h1>
+  <div class="sub">تقرير جلسة ١٦ نوفمبر ٢٠٢٦ — ما جرى وما أُصلح، بالأرقام واللقطات، وما بقي غير مُودَع.</div>
+
+  <div class="kpis">
+    <div class="kpi"><b>١٧</b><small>شبكة GLB</small></div>
+    <div class="kpi"><b>٢٤٥</b><small>نسخة في المشهد</small></div>
+    <div class="kpi bad"><b>١٧</b><small>طلب ٤٠٤ قبل الإصلاح</small></div>
+    <div class="kpi ok"><b>٨٧/٨٧</b><small>اختبار ناجح</small></div>
+    <div class="kpi ok"><b>٠</b><small>مشكلة في analyze</small></div>
+  </div>
+
+  <h2>العطل: جزيرة فارغة بلا أي رسالة خطأ</h2>
+  <p>
+    المشهد كان يطلب سبعة عشر موديلًا من <code>assets/3d/nature/</code>، والمجلد
+    <strong>لم يكن مسرودًا في <code>pubspec.yaml</code> إطلاقًا</strong>. فكل طلب يرجع ٤٠٤،
+    و<code>GLTFLoader</code> لا يكمل وعده، فيبقى المشهد عشبًا فارغًا.
+  </p>
+  <p>الدليل الوحيد كان في كونسول المتصفح — لا شيء في واجهة Flutter:</p>
+<pre>GET /assets/assets/3d/nature/birch_a.glb      → 404
+GET /assets/assets/3d/nature/mountain_a.glb   → 404
+GET /assets/assets/3d/nature/meadow_path.glb  → 404
+… ١٤ سطرًا أخرى بنفس النتيجة
+
+network: 355 طلبًا · 17 منها 404 · 0 خطأ في واجهة Flutter</pre>
+
+  <div class="shot">
+    <img src="01-empty-island.png" alt="الجزيرة الفارغة">
+    <div class="cap">
+      <span class="tag bad">قبل الإصلاح</span>
+      <span>لا شجرة واحدة. الجرف الصخري هو الشيء الوحيد الذي بُني إجرائيًا، وظهر على الحافة الجنوبية وحدها.</span>
+    </div>
+  </div>
+
+  <h2>الإصلاح: ٣٤ سطرًا</h2>
+  <table>
+    <tr><th>ما أُضيف</th><th>العدد</th><th>الملف</th></tr>
+    <tr><td>أسطر الأصول (١٧ GLB + ١٧ صورة جانبية)</td><td><strong>٣٤</strong></td><td><code>pubspec.yaml</code></td></tr>
+    <tr><td>مسارات الشبكات في جدول الحزمة</td><td><strong>١٧</strong></td><td><code>lib/three/asset_map.dart</code></td></tr>
+    <tr><td>اختبار حراسة جديد</td><td><strong>١</strong></td><td><code>test/asset_map_test.dart</code></td></tr>
+  </table>
+  <p>
+    الاختبار الجديد «كل شبكة يسردها <code>nature_layout</code> معلنة وموجودة» يمنع تكرار
+    العطل: أي شبكة تُضاف إلى المشهد ولم تُعلن، يفشل الاختبار قبل أن تصل إلى الشاشة.
+  </p>
+  <div class="note">
+    <strong>لماذا لم يمسكها الاختبار القديم؟</strong> كان يفحص <code>kBundledModelAssets</code>
+    فقط — وهي قائمة موديلات المراتب. مسارات الطبيعة تعيش في <code>nature_layout.dart</code>
+    المُولَّد، ولم يكن أحد يربط بين الملفين.
+  </div>
+
+  <h2>بعد الإصلاح</h2>
+<pre>console: 🏝 nature 40× assets/3d/nature/meadow_b.glb
+console: 🏝 nature island ready (245 copies)
+network: 0 × 404</pre>
+
+  <div class="shot">
+    <img src="02-inside-mountains.jpeg" alt="المشهد بعد الإصلاح — الكاميرا داخل الجبال">
+    <div class="cap">
+      <span class="tag mid">بعد الإصلاح</span>
+      <span>كل شيء ظهر: شجر، جبال، مرج، صخور، بحيرتان، هضبة الرصف، الجسر. لكن الكاميرا الافتراضية واقعة <strong>داخل حلقة الجبال</strong>، فسدّت الجدران البنية الأفق.</span>
+    </div>
+  </div>
+
+  <div class="shot">
+    <img src="03-whole-island.jpeg" alt="الجزيرة كاملة من بعيد">
+    <div class="cap">
+      <span class="tag good">الكادر المطلوب</span>
+      <span>الجزيرة كاملة: الجرف الصخري أسفلها، الممرات، البحيرتان، الهضبة المرصوفة، والجسر. هذه هي الصورة التي يجب أن يفتح عليها المشهد.</span>
+    </div>
+  </div>
+
+  <h2>الكادر النهائي: ٣٦° والجزيرة كاملة</h2>
+  <p>
+    الكادر القديم <code>(58, 50, 62) → (26, 2, 0)</code> كان مسافته ٨٤٫٧ وحدة، أي
+    <strong>داخل حلقة الجبال</strong> (نصف قطرها ~٧٠–٨٠)، وكانت حدود النظر
+    <code>±78 / ±56</code> تقطع ربع عرض الجزيرة وثلث عمقها. القيم المطبَّقة الآن:
+  </p>
+  <table>
+    <tr><th>العنصر</th><th>القيمة المطبَّقة</th><th>المعنى</th></tr>
+    <tr><td><code>_kHomeX/Y/Z</code></td><td><strong>150 / 172 / 180</strong></td><td>مسافة <strong>٢٨٩٫٥</strong> وحدة من الهدف</td></tr>
+    <tr><td><code>_kHomeTarget*</code></td><td><strong>0 / 2 / 0</strong></td><td>مركز الجزيرة لا الهضبة</td></tr>
+    <tr><td>الميل</td><td><strong>٣٦°</strong></td><td>البعيد أعلى والقريب أسفل</td></tr>
+    <tr><td>السمت</td><td><strong>٣٩٫٨°</strong> عن <code>+z</code></td><td>نفس اتجاه الكادر القديم — بلا دوران يمين/شمال</td></tr>
+    <tr><td>حدود النظر</td><td><strong>±110 / ±95</strong></td><td>تغطي ٢٠٧×١٧٦ كاملة (كانت ±78 / ±56)</td></tr>
+    <tr><td><code>maxDistance</code></td><td><strong>340</strong></td><td>كان ٢٦٠</td></tr>
+    <tr><td>الضباب</td><td><code>400 → 1000</code></td><td>كان <code>150 → 460</code> فيذيب الحافة البعيدة</td></tr>
+  </table>
+
+  <div class="shot">
+    <img src="04-home-framing.png" alt="كادر البداية الجديد — الجزيرة كاملة بميل 36 درجة">
+    <div class="cap">
+      <span class="tag good">مُتحقَّق بصريًا</span>
+      <span>تبويب حقيقي ٤١١×٦٥٣: الجزيرة كاملة، البعيد أعلى والقريب أسفل، والحدّ السفلي يلامس شريط الـHUD. لا دوران يمين/شمال. الحلقة الجبلية تحيط بالمرج بدل أن تسدّ الأفق.</span>
+    </div>
+  </div>
+
+  <h2>الفساحة: تصغير البيئة وحدها</h2>
+  <p>
+    المساحة بين الممرات كانت ضيقة، فصُغِّرت المجسّمات <strong>حول قاعدتها</strong>
+    (عمود الترجمة في المصفوفة لا يُمَس): الجبال <strong>٠٫٨٠</strong>، الشجر
+    والصخور <strong>٠٫٨٥</strong>. بلاطات المرج والبحيرات <strong>بلا تصغير</strong>
+    — تصغير البلاطة يفتح فجوة في الأرض لأن المرج مرصوف بها بلا تراكب.
+  </p>
+  <table>
+    <tr><th>العنصر</th><th>قبل</th><th>بعد</th></tr>
+    <tr><td>الجسر — الطول</td><td>١٦٫٩</td><td><strong>١٦٫٩ ثابت</strong> (يغطي البحيرة ٣٢ وحدة)</td></tr>
+    <tr><td>الجسر — العرض</td><td>٨٫٩</td><td><strong>٨٫٠</strong></td></tr>
+    <tr><td>الجسر — الارتفاع</td><td>١٠٫٢</td><td><strong>٨٫٨</strong> (المركز <code>y = 1.54</code>)</td></tr>
+  </table>
+
+  <h2>الهضبة: إرجاع الخامة الأصلية وحذف الحلقة</h2>
+  <p>
+    جُرِّب في هذه الجلسة استبدال خامة <code>plateau.jpg</code> بخامة المرج
+    <code>ground_spots</code> مع <code>_tileModelUv(scene, 3.0)</code>، وإضافة
+    <strong>١٠ صخور</strong> <code>rock_moss_a/b</code> حول الحدّ. النتيجة على
+    الشاشة كانت معاكسة: الأطلس الأصلي يحمل <strong>عشب السطح وجرفه الصخري معًا</strong>،
+    فاستبداله بخامة واحدة محا الجرف وحوّل الهضبة إلى فطيرة باهتة، والصخور خرجت
+    بيضاء كحلقة نفايات فوق حدّ يملك صخره أصلًا.
+  </p>
+  <p>
+    لذلك أُرجعت خامة <code>plateau.jpg</code> كما صُنعت، وحُذف
+    <code>_tileModelUv</code> و<code>_buildPlateauRocks</code> معًا
+    (وحُذفت حقول <code>_plateauMat</code> و<code>_moundsTexture</code> التي لم يبقَ
+    لها قارئ). هندسة <code>plateau.glb</code> ورصفها (٣٦ بلاطة) ومواضع الزرع
+    <strong>لم تُمس</strong>.
+  </p>
+
+  <div class="shot">
+    <img src="05-plateau-rim.png" alt="الهضبة عن قرب بعد الإصلاح — الخامة الأصلية بلا حلقة صخور">
+    <div class="cap">
+      <span class="tag good">بعد الإصلاح</span>
+      <span>الهضبة بعد إرجاع خامتها: سطح أخضر داكن، الرصف الحجري في وسطه، وحدّ الجرف البيج تحته — بلا حلقة صخور. مقتطع مكبّر ×٣ من لقطة التحقق.</span>
+    </div>
+  </div>
+
+  <h2>عطل ثانٍ اكتُشف أثناء التحقق: المشهد الأسود</h2>
+  <p>
+    عند إعادة تحميل الصفحة ظهر الـHUD فوق <strong>مشهد أسود</strong>، والكونسول:
+  </p>
+<pre>DartError: Unexpected null value.
+  at get domElement (three_dart_jsm/controls/index.dart)
+  at OrbitControls.new
+  at _Jannati3DScreenState.initPage (jannati_3d_screen.dart)</pre>
+  <p>
+    السبب: <code>OrbitControls</code> يقرأ <code>_globalKey.currentState</code> في
+    مُنشئه، ومؤقّت الـ١٠٠ms كان يسبق أول إطار في تبويب خلفي (Chrome يؤجّل إطارات
+    Flutter). الحل: <code>_waitForSceneHost()</code> ينتظر ظهور
+    <code>DomLikeListenable</code> قبل <code>initScene()</code> — فلا انهيار مهما
+    تأخر الإطار.
+  </p>
+
+  <h2>حالة الشجرة الآن</h2>
+  <ul>
+    <li><code>flutter analyze</code> ← <strong>No issues found</strong></li>
+    <li><code>flutter test</code> ← <strong>٨٧ / ٨٧</strong></li>
+    <li>الشبكة: <strong>٢٥٠ موردًا · صفر ٤٠٤ · صفر خطأ صفحة</strong></li>
+    <li>الكونسول: <code>👆 scene pointer bound</code> · <code>🏔️ plateau model added</code> · <code>🌿 ground textures ready</code></li>
+    <li>كل التعديلات <strong>مُودعة</strong> في 2026-11-16 — كوميت الميزة <code>8e66e54</code> — راجع <a href="../../../PROJECT.md">PROJECT.md</a></li>
+  </ul>
+
+  <div class="pager">
+    <a href="../2026-11-13-floating-island/REPORT.html">→ المرحلة ٣: الجزيرة الطافية</a>
+    <a href="../index.html">فهرس المراحل ←</a>
+  </div>
+
+  <footer>
+    الملفات المتأثرة في هذه الجلسة: <code>pubspec.yaml</code> (٣٤ سطر أصول) ·
+    <code>lib/three/asset_map.dart</code> (١٧ مسار طبيعة) · <code>test/asset_map_test.dart</code> (اختبار حراسة) ·
+    <code>lib/screens/jannati_3d_screen.dart</code> (كادر <code>_kHome*</code> ٣٦°، حدود
+    <code>±110 / ±95</code>، ضباب <code>400 → 1000</code>، <code>maxDistance = 340</code>،
+    <code>_kNatureScale</code>، جسر <code>8.0 × 8.8</code>،
+    إرجاع خامة الهضبة الأصلية وحذف <code>_tileModelUv</code> و<code>_buildPlateauRocks</code>،
+    وإصلاح <code>_waitForSceneHost</code>) · <code>AGENTS.md</code> ·
+    <code>PROJECT.md</code> · <code>README.md</code> · <code>docs/evolution/</code>.
+    اللقطات من تبويب حقيقي: <code>01</code> بـ٤٠١×٦٥٣ (×٢ جهاز)، و<code>02–03</code> بـ٨٠٢×١٣٠٦،
+    و<code>04</code> بـ٤١١×٦٥٣ (DPR 1)، و<code>05</code> مقتطع مكبّر ٥٧٠×٤٢٠.
+    كل التعديلات مُودعة في 2026-11-16 — كوميت الميزة <code>8e66e54</code>.
+  </footer>
+
+</div>
+</body>
+</html>

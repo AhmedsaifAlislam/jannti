@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>جنتي — سجل تطوّر المشهد</title>
+<link rel="stylesheet" href="report.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topnav">
+    <a class="home" href="index.html">الفهرس</a>
+    <a href="2026-11-12-trees-and-tiers/REPORT.html">١ · الأشجار والمراتب</a>
+    <a href="2026-11-12-13-plateau/REPORT.html">٢ · الهضبة</a>
+    <a href="2026-11-13-floating-island/REPORT.html">٣ · الجزيرة الطافية</a>
+    <a href="2026-11-16-nature-island/REPORT.html">٤ · الجزيرة الطبيعية</a>
+    <span class="spacer"></span>
+    <span class="here">آخر تحديث: ١٦ نوفمبر ٢٠٢٦</span>
+  </div>
+
+  <div class="eyebrow">جَنَّتِي · التوثيق البصري</div>
+  <h1>سجل تطوّر <span>المشهد ثلاثي الأبعاد</span></h1>
+  <div class="sub">
+    أربع مراحل، كل واحدة تحفظ قرارًا اتُّخذ أو طريقًا جُرّب ورُفض. اللقطات من متصفح
+    حقيقي يشغّل المشهد، لا صور مركّبة.
+  </div>
+
+  <div class="cards">
+
+    <a class="card" href="2026-11-12-trees-and-tiers/REPORT.html">
+      <div class="thumb">
+        <img src="2026-11-12-trees-and-tiers/00-contact-sheet.jpg" alt="لوحة المرحلة ١">
+        <span class="n">المرحلة ١</span>
+      </div>
+      <div class="body">
+        <div class="date">١٢ نوفمبر ٢٠٢٦</div>
+        <h3>الأشجار والمراتب</h3>
+        <p>استبدال المجسّمات الإجرائية بأصول حقيقية، وضبط سلّم الأحجام والدفن في الأرض.</p>
+        <div class="go">افتح المرحلة ←</div>
+      </div>
+    </a>
+
+    <a class="card" href="2026-11-12-13-plateau/REPORT.html">
+      <div class="thumb">
+        <img src="2026-11-12-13-plateau/00-contact-sheet.jpg" alt="لوحة المرحلة ٢">
+        <span class="n">المرحلة ٢</span>
+      </div>
+      <div class="body">
+        <div class="date">١٢–١٣ نوفمبر ٢٠٢٦</div>
+        <h3>الهضبة</h3>
+        <p>رفع الهضبة الوسطى من قرص مسطّح إلى مجسّم بجرف صخري، بلا مساس بمواضع الزرع.</p>
+        <div class="go">افتح المرحلة ←</div>
+      </div>
+    </a>
+
+    <a class="card" href="2026-11-13-floating-island/REPORT.html">
+      <div class="thumb">
+        <img src="2026-11-13-floating-island/00-contact-sheet.jpg" alt="لوحة المرحلة ٣">
+        <span class="n">المرحلة ٣</span>
+      </div>
+      <div class="body">
+        <div class="date">١٣ نوفمبر ٢٠٢٦</div>
+        <h3>الجزيرة الطافية</h3>
+        <p>تحويل الأرضية إلى كتلة بسماكة: جرف صخري، جزر صغيرة طافية، وضوء ارتداد.</p>
+        <div class="go">افتح المرحلة ←</div>
+      </div>
+    </a>
+
+    <a class="card" href="2026-11-16-nature-island/REPORT.html">
+      <div class="thumb">
+        <img src="2026-11-16-nature-island/04-home-framing.png" alt="كادر البداية — الجزيرة كاملة بميل 36°">
+        <span class="n">المرحلة ٤</span>
+      </div>
+      <div class="body">
+        <div class="date">١٦ نوفمبر ٢٠٢٦</div>
+        <h3>بيئة الجزيرة الطبيعية</h3>
+        <p>٢٤٥ نسخة من FreeLowPolyForest، كادر افتتاح بميل ٣٦° يرى الجزيرة كلها، وهضبة
+          بخامتها الأصلية بعد حذف حلقة الصخور — ودرس الـ٤٠٤ وإصلاح المشهد الأسود.</p>
+        <div class="go">افتح المرحلة ←</div>
+      </div>
+    </a>
+
+  </div>
+
+  <h2>كيف التُقطت</h2>
+  <p>
+    كل اللقطات من <strong>Chrome حقيقي</strong> يشغّل المشهد محليًا عبر
+    <code>flutter run -d web-server</code>. لا صور مركّبة ولا محاكاة. الصور في المراحل
+    الثلاث الأولى مضغوطة JPEG بجودة ٨٨٪ وعرض أقصى ١٢٠٠px لتقليل حجم المستودع،
+    ولقطات المرحلة ٤ كما خرجت من الجهاز. لقطة الكادر (<code>04</code>)
+    من تبويب <strong>٤١١×٦٥٣ بكسل</strong> (DPR 1)، ولقطة الهضبة (<code>05</code>)
+    مقتطع مكبّر ×٣ منها (٥٧٠×٤٢٠)، والتُقطتا بعد إصلاح
+    <code>_waitForSceneHost()</code> لا قبلها.
+  </p>
+
+  <div class="note">
+    <strong>لماذا هذا السجل؟</strong> لأن «لماذا صار المشهد هكذا» لا تُقرأ من الكود
+    وحده. كل لقطة هنا تقابل رقمًا أو محاولة مرفوضة: خلطة التلوين ٠٫٤٥ لا ٠٫٨،
+    والدفن ٤٠٪ للشتلة، والـ٣٤ سطرًا التي كانت غائبة من <code>pubspec.yaml</code>.
+  </div>
+
+  <footer>
+    المجلد: <code>docs/evolution/</code> · النمط المشترك: <code>report.css</code> ·
+    المرحلة ٤: ٢٥٠ موردًا وصفر ٤٠٤ في الشبكة، و٨٧/٨٧ اختبارًا ناجحًا،
+    وصفر مشاكل في <code>flutter analyze</code>.
+    · الحالة والخطة: <a href="../../PROJECT.md">PROJECT.md</a>.
+  </footer>
+
+</div>
+</body>
+</html>
