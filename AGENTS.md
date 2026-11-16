@@ -323,6 +323,8 @@
   Release must never be deleted, or the download button breaks in already-installed apps.
 - Fonts are **Cairo (OFL 1.1)** + Amiri. `GESSTwo` survives only as an alias to the same
   Cairo files for the frozen 2D screen. Never add a commercial font back to the repo.
+  **Pending decision:** drop Amiri entirely and ship Cairo only
+  (see `PROJECT.md` §3.6/B1); update this line when it actually ships.
 - **Never commit a keystore / `key.properties`** — releases are still signed with debug keys.
 - **المصادر الخام لا تُودَع.** `assets/*.glb` (مثل `trees.glb` 171.8 MB و
   `نخيل.glb` 108.6 MB)، و`assets/اضافي/`، و
