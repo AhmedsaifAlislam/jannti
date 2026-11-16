@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jannti/models/reward_type.dart';
 import 'package:jannti/three/asset_map.dart';
+import 'package:jannti/three/ground_texture.dart';
+import 'package:jannti/three/nature_layout.dart';
 
 /// The staged-model table is the only place that knows where a tier's GLB
 /// lives, and `pubspec.yaml` is the only place that decides whether it reaches
@@ -94,6 +97,13 @@ void main() {
           reason: 'معلن في asset_map ومش في pubspec: $asset',
         );
       }
+      for (final asset in kBundledModelTextures) {
+        expect(
+          declared,
+          contains(asset),
+          reason: 'خامة الموديل مش معلنة في pubspec: $asset',
+        );
+      }
       for (final type in RewardType.values) {
         expect(
           declared,
@@ -106,6 +116,76 @@ void main() {
           File(asset).existsSync(),
           isTrue,
           reason: 'pubspec بيعلن ملف مش موجود: $asset',
+        );
+      }
+    });
+
+    test('خامات الأرض مدمجة وموجودة بمقاس ٢٥٦', () {
+      final pubspec = File('pubspec.yaml').readAsStringSync();
+
+      for (final asset in [kGrassBaseTexture, kGroundSpotTexture]) {
+        final file = File(asset);
+        expect(file.existsSync(), isTrue, reason: 'ناقص: $asset');
+        expect(
+          pubspec.contains('- $asset'),
+          isTrue,
+          reason: 'مش معلن في pubspec: $asset',
+        );
+
+        // PNG: التوقيع ٨ بايت، ثم طول IHDR (٤) ونوعه (٤)، فالعرض والارتفاع
+        // كل واحد ٤ بايت big-endian. القياس هنا بلا فكّ ترميز كامل.
+        final head = file.readAsBytesSync().sublist(0, 24);
+        final width =
+            (head[16] << 24) | (head[17] << 16) | (head[18] << 8) | head[19];
+        final height =
+            (head[20] << 24) | (head[21] << 16) | (head[22] << 8) | head[23];
+        // ٢٥٦ لا ٥١٢: three_dart لا يبني سلسلة mip لخامة `DataTexture`، فكل
+        // تفصيل إضافي في الخامة يظهر رجفة عند البعد بدل أن يذوب في المستوى
+        // التالي. المقاس مصغّر عن قصد في `tool/assets/prep_textures.py`.
+        expect(width, 256, reason: '$asset عرض');
+        expect(height, 256, reason: '$asset ارتفاع');
+      }
+    });
+
+    test('كل موديل مدمج بيشير لصورة خارجية جانبيه', () {
+      // الصورة المدفونة داخل الـGLB تُمرَّر إلى محمّل الويب كـ`Blob` خاص
+      // بـthree_dart، وهو لا يعرفه: يرمي استثناءً داخل `onLoad` ولا يكتمل
+      // الـFuture أبدًا، فيموت الموديل على مهلة ١٥ ثانية. الفصل هنا ليس
+      // تجميلًا — هو الفرق بين موديل يظهر وآخر لا يظهر.
+      for (final model in kBundledModelAssets) {
+        final file = File(model);
+        expect(file.existsSync(), isTrue, reason: 'ناقص: $model');
+
+        final bytes = file.readAsBytesSync();
+        final jsonLength =
+            bytes[12] |
+            (bytes[13] << 8) |
+            (bytes[14] << 16) |
+            (bytes[15] << 24);
+        final json =
+            jsonDecode(utf8.decode(bytes.sublist(20, 20 + jsonLength)))
+                as Map<String, dynamic>;
+
+        final images = (json['images'] as List?) ?? const [];
+        expect(images, isNotEmpty, reason: 'الموديل بلا خامة: $model');
+
+        final image = images.first as Map<String, dynamic>;
+        expect(
+          image.containsKey('bufferView'),
+          isFalse,
+          reason: '$model لسه مدفون جواه الصورة (bufferView)',
+        );
+
+        final uri = image['uri'] as String?;
+        expect(uri, isNotNull, reason: '$model بلا uri');
+
+        final sidecar = File(
+          '${model.substring(0, model.lastIndexOf('/'))}/$uri',
+        );
+        expect(
+          sidecar.existsSync(),
+          isTrue,
+          reason: 'صورة $model مش موجودة جانبيه: ${sidecar.path}',
         );
       }
     });
@@ -135,6 +215,22 @@ void main() {
       for (final type in RewardType.values) {
         final path = assetForRewardTypeAndTier(type, 3);
         expect(File(path).existsSync(), isTrue, reason: '$type -> $path');
+      }
+    });
+  });
+
+  group('جزر الطبيعة', () {
+    test('كل شبكة يسردها nature_layout معلنة وموجودة', () {
+      // `nature_layout.dart` مُولَّد: يسرد المسارات التي يطلبها المشهد ولا
+      // يعرف شيئًا عن `pubspec.yaml`. غياب الأسطر هناك كان يعني ١٧ طلبًا
+      // يرجع ٤٠٤ وجزيرة فارغة تمامًا — وهو بالضبط ما حدث قبل إضافة الحراسة.
+      for (final mesh in kNatureMeshPaths) {
+        expect(
+          kBundledModelAssets,
+          contains(mesh),
+          reason: 'شبكة مش معلنة في pubspec/asset_map: $mesh',
+        );
+        expect(File(mesh).existsSync(), isTrue, reason: 'ناقص: $mesh');
       }
     });
   });

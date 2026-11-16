@@ -44,7 +44,17 @@ int makeTexturesUploadable(three.Object3D root) {
       }
 
       final pixels = decodeTexturePixels(texture.image);
-      if (pixels == null) continue;
+      if (pixels == null) {
+        final dynamic img = texture.image;
+        final dynamic data = img is three.ImageElement ? img.data : null;
+        // ignore: avoid_print
+        print(
+          'TEXNULL img=${img.runtimeType} data=${data.runtimeType} '
+          'w=${img is three.ImageElement ? img.width : -1} '
+          'h=${img is three.ImageElement ? img.height : -1}',
+        );
+        continue;
+      }
 
       final copy =
           three.DataTexture(
@@ -66,7 +76,13 @@ int makeTexturesUploadable(three.Object3D root) {
             // pixels we actually uploaded.
             ..minFilter = three.LinearFilter
             ..anisotropy = texture.anisotropy
-            ..encoding = texture.encoding
+            // NOT `texture.encoding`. The glTF loader tags a base-colour map as
+            // `sRGBEncoding`, and the uploader then asks for an
+            // `SRGB8_ALPHA8` internal format. This build never gets a complete
+            // texture that way: the sampler returns black RGB with alpha 1, and
+            // the model draws as an opaque silhouette. The ground maps ship
+            // without an encoding and upload cleanly, so the model maps now do
+            // the same; the extra gamma is not worth a black tree.
             ..generateMipmaps = false
             // three_dart's DataTexture omits the `needsUpdate = true` that
             // three.js sets in its own constructor. Without it `version` stays

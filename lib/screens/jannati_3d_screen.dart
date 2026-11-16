@@ -9,14 +9,17 @@ import 'package:flutter_gl_flutterflow/flutter_gl.dart';
 import 'package:three_dart_flutterflow/three_dart.dart' as three;
 import 'package:three_dart_jsm_flutterflow/three_dart_jsm.dart' as three_jsm;
 
+import '../models/reward.dart';
 import '../models/reward_type.dart';
-import '../models/tier_system.dart';
 import '../services/spiritual_audio_service.dart';
 import '../services/storage_service.dart';
 import '../three/asset_map.dart';
 import '../three/day_palette.dart';
+import '../three/ground_texture.dart';
+import '../three/model_evolution.dart';
 import '../three/model_fit.dart';
 import '../three/model_texture.dart';
+import '../three/nature_layout.dart';
 import '../utils/garden_assets.dart';
 import '../utils/number_formatter.dart';
 
@@ -26,16 +29,52 @@ class _AnimatedModel {
   final RewardType type;
   int tier;
 
+  /// ٠ = الموديل الأساسي، ١ = تكبير، ٢ = تكبير + لون.
+  int stage;
+
+  /// التكبير الإضافي فوق ارتفاع التير (١٫٠٥ … ١٫٢٥).
+  double scaleMultiplier;
+
+  /// لون المرحلة الثانية، أو null للمظهر الطبيعي.
+  int? tint;
+
+  /// اللون المطبّق فعلًا على [modelChild]، حتى لا نكرّر المزج عند تغيّر
+  /// التكبير وحده.
+  int? appliedTint;
+
+  /// زينة مؤقتة: تُوسم بحلقة ذهبية وتُحذف عند انتهاء [expiresAt].
+  final bool isDecor;
+  final int? expiresAt;
+
   /// الطفل الذي يحمل الموديل نفسه (إجرائي ثم GLB). للمجموعة أطفال آخرون
   /// (الظل وكومة التراب)، فنحتاج مرجعًا مباشرًا لنعرف ما نستبدله عند الترقية.
   three.Object3D? modelChild;
+
+  /// هل [modelChild] نسخة GLB حقيقية؟ نعرفها لنُعيد ضبط المقاس بدل إعادة البناء.
+  bool glbActive = false;
+  int glbTier = 0;
+
+  /// مراجع الزينة الأرضية، لتُعاد مقاساتها مع نمو المرحلة.
+  three.Object3D? shadowChild;
+  three.Object3D? moundChild;
+  three.Object3D? decorRing;
+
+  /// رقم يتغيّر مع كل إعادة تصميم، فيُلغي تحميل GLB القديم.
+  int revision = 0;
+
+  /// سجل الحفظ المقابل لهذا الموديل (null للنماذج العرضية).
+  _SavedEntry? entry;
 
   _AnimatedModel(
     this.mesh,
     this.bornAt,
     this.type, {
     this.tier = 1,
-    this.modelChild,
+    this.stage = 0,
+    this.scaleMultiplier = 1.0,
+    this.tint,
+    this.isDecor = false,
+    this.expiresAt,
   });
 }
 
@@ -55,8 +94,20 @@ class _SavedEntry {
   final double y;
   final double z;
   int tier;
+  int stage;
+  final bool isDecor;
+  final int? expiresAt;
 
-  _SavedEntry(this.type, this.x, this.y, this.z, {this.tier = 1});
+  _SavedEntry(
+    this.type,
+    this.x,
+    this.y,
+    this.z, {
+    this.tier = 1,
+    this.stage = 0,
+    this.isDecor = false,
+    this.expiresAt,
+  });
 
   Map<String, dynamic> toJson() => {
     'type': type.name,
@@ -64,6 +115,9 @@ class _SavedEntry {
     'y': y,
     'z': z,
     'tier': tier,
+    'stage': stage,
+    if (isDecor) 'decor': true,
+    if (expiresAt != null) 'expiresAt': expiresAt,
   };
 
   static _SavedEntry fromJson(Map<String, dynamic> m) => _SavedEntry(
@@ -72,6 +126,9 @@ class _SavedEntry {
     (m['y'] as num).toDouble(),
     (m['z'] as num).toDouble(),
     tier: (m['tier'] as num?)?.toInt() ?? 1,
+    stage: (m['stage'] as num?)?.toInt() ?? 0,
+    isDecor: m['decor'] == true,
+    expiresAt: (m['expiresAt'] as num?)?.toInt(),
   );
 }
 
@@ -95,11 +152,43 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   final double _dpr = 1.0;
   bool _disposed = false;
   bool _loaded = false;
-  bool _didSync = false;
   bool _platformInitStarted = false; // guard: prevent double initPlatformState
-  bool _autoRotate = true;
+  // الدوران التلقائي كان يلفّ المشهد حول نقطة واحدة رغم المستخدم؛ صار مطفأً
+  // افتراضيًا ويبقى زرّه في الشريط العلوي لمن يريده.
+  bool _autoRotate = false;
   bool _soundEnabled = true;
   RewardType? _selectedFilter;
+
+  /// كادر الافتتاح: منظور ثلاثي الأرباع من الجنوب الشرقي يجعل الجزيرة تُقرأ
+  /// جزيرةً لا بقعة عشب — الحافة البعيدة والفراغ فوقها داخل الكادر.
+  ///
+  /// القياس محسوب لا مُقدَّر. الجزيرة الآن **٢٠٧ × ١٧٦** وحدة (نصف أبعاد
+  /// ١٠٣٫٥ / ٨٧٫٩)، لا ٢٨٠×١٨٠ المستوية:
+  ///   • (58,50,62) مسافة ٨٥  → الكاميرا **داخل** حلقة الجبال (نصف قطرها
+  ///     ~٧٠–٨٠)، فسدّت الجدران الأرضية الأفق. هذه لقطة ما قبل الإصلاح.
+  ///   • (170,130,200) مسافة ٢٩٤ وزاوية **٢٦°** → الجزيرة كاملة، لكن السطح
+  ///     يُرى جانبيًا فتنضغط الممرات والبحيرتان في شريط رقيق.
+  ///   • الآن (150,172,180) مسافة **٢٨٩٫٥** وزاوية **٣٦°**: نفس الاتجاه
+  ///     (سمت ٣٩٫٨° عن +z) وارتفاع كادر رأسي ٣٠٧ وحدات (2·d·tan28°)، فتدخل
+  ///     الجزيرة كاملة ويظهر سطحها مائلًا نحو الكاميرا — الممرات والبحيرتان
+  ///     والرصف تُقرأ بلا تكبير.
+  /// `_resetCamera` يقرأ هذه القيم نفسها، فأي تعديل يسري على الزر أيضًا.
+  static const double _kHomeX = 150;
+  static const double _kHomeY = 172;
+  static const double _kHomeZ = 180;
+  static const double _kHomeTargetX = 0;
+  static const double _kHomeTargetY = 2;
+  static const double _kHomeTargetZ = 0;
+
+  /// حدود نقطة النظر — تمنع الضياع في الضباب أو الصعود إلى السحب بالسحب
+  /// الطولي، مع إبقاء كامل الجنة (x ±103.5، z ±87.9) في المتناول. كانت
+  /// ±٧٨ / ±٥٦ تقطع ٢٥٪ من عرض الجزيرة و٣٦٪ من عمقها فلا تصل إلى الحافة أبدًا.
+  static const double _kPanMinX = -110;
+  static const double _kPanMaxX = 110;
+  static const double _kPanMinZ = -95;
+  static const double _kPanMaxZ = 95;
+  static const double _kPanMinY = 0;
+  static const double _kPanMaxY = 14;
 
   // تحليق الكاميرا إلى الغرسة الجديدة: يُشغَّل من زر الغرس فقط، وعندما تقع
   // الغرسة خارج الكادر الآمن. نُزيح الهدف والكاميرا بنفس المقدار فتبقى
@@ -121,8 +210,15 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   final List<_SavedEntry> _savedEntries = [];
   final List<_GoldBurst> _goldBursts = [];
 
-  /// آخر مرحلة بلغها كل نوع، لمعرفة متى «ترتقّي» الشجرة فنُطلق وميضًا ذهبيًا.
-  final Map<RewardType, int> _tierByType = {};
+  /// عدد مكافآت كل نوع من `rewards_list` — المصدر الوحيد لمرحلة الموديل.
+  final Map<RewardType, int> _earnedByType = {};
+
+  /// الزينة التي أُضيفت في هذه الجلسة، للتراجع بالضغط العادي.
+  final List<_AnimatedModel> _sessionDecor = [];
+
+  /// عمر الزينة: ٢٤ ساعة، لا تتجدد إلا بضغط المستخدم بعد انتهائها.
+  static const Duration _kDecorLifetime = Duration(hours: 24);
+  Timer? _decorTicker;
 
   /// لمسة المشهد تُقرأ من أحداث [DomLikeListenable] لا من GestureDetector:
   /// على الويب يرسم المشهد داخل HtmlElementView، فلا تدخل اللمسات في نظام
@@ -132,9 +228,25 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   Offset? _sceneTapDown;
   int _sceneTapDownMs = 0;
 
+  /// مواضع الأصابع النشطة على المشهد. `DomLikeListenable` يرسل كل إصبع كحدث
+  /// مستقل، فنحتفظ بها هنا لنعرف متى صار الإصبعان معًا ونقيس حركتهما.
+  final Map<int, Offset> _scenePointers = <int, Offset>{};
+  Offset? _twoFingerMid;
+  Offset _twoFingerAccum = Offset.zero;
+  int _twoFingerMode = _kTwoFingerUndecided;
+  bool _twoFingerTouched = false;
+
+  /// إيماءة الإصبعين: يمين/شمال = دوران، أعلى/أسفل = تقريب وإبعاد.
+  static const int _kTwoFingerUndecided = 0;
+  static const int _kTwoFingerRotate = 1;
+  static const int _kTwoFingerZoom = 2;
+
   /// الموديل المفحوص حاليًا (لمسة على شجرة تفتح بطاقته الزجاجية).
   RewardType? _inspectedType;
   int _inspectedTier = 1;
+  int _inspectedStage = 0;
+  bool _inspectedIsDecor = false;
+  int? _inspectedExpiresAt;
   final Map<String, three.Object3D> _glbCache = {};
   // Staged models are swapped in one at a time. The GLTF loader shares the GL
   // context with the render loop, so a burst of concurrent parses stalls the
@@ -142,8 +254,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   Future<void> _glbQueue = Future<void>.value();
 
   // Environment & Atmosphere Elements
-  three.Mesh? _waterMesh;
-  final List<three.Mesh> _riverRipples = [];
   final List<three.Group> _clouds = [];
   final three.Group _particlesGroup = three.Group();
   final List<double> _particleInitialY = [];
@@ -180,10 +290,28 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   three.AmbientLight? _ambientLight;
   three.DirectionalLight? _sunLight;
   three.DirectionalLight? _fillLight;
+
+  /// ضوءا ارتداد من السحاب إلى قاعدة الجزيرة. نصف الجرف يواجه عكس الشمس في
+  /// أي زاوية كاميرا تقريبًا، فبالإضاءة المحيطة وحدها يخرج أسودَ مصمتًا. ضوء
+  /// واحد يترك الجهة المقابلة سوداء، فاثنان من جهتين متقابلتين يغطيان المحيط.
+  three.DirectionalLight? _underLight;
+  three.DirectionalLight? _underLightB;
   three.Points? _starPoints;
   three.PointsMaterial? _starMat;
   three.Points? _starHalo;
   three.PointsMaterial? _starHaloMat;
+
+  // 🌿 مواد الأرض. تُبنى المواد فورًا بلون مصمت (تحل محلّها الخامة عند
+  // وصولها) كي لا يتأخر أول إطار على فكّ ترميز الصور.  مرج الجزيرة وبلاطاته
+  // تأتي بخاماتها داخل ملفات الـGLB، فلم يبقَ هنا إلا ما تبنيه الشيفرة.
+  three.MeshPhongMaterial? _moundMat;
+  // شبكة الأمان: الأسطوانة والقرص يبقيان ظاهرين حتى يصل موديل الهضبة،
+  // فيُخفيان معًا. لو فشل التحميل تبقى الهضبة كما كانت بدل أن تختفي.
+  three.Mesh? _plateauBluffMesh;
+  three.Mesh? _plateauTopMesh;
+  // جرف الجزيرة الطافية: تُحمَّل خامته مع خامات الأرض في نفس الدفعة.
+  three.MeshPhongMaterial? _cliffMat;
+  bool _groundTexturesRequested = false;
 
   final Random _rng = Random(42);
 
@@ -191,11 +319,46 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   static const double _kGroundD = 180.0;
   static const double _kMinSpacing = 8.5;
 
+  // ---- حدود الزرع على جزيرة الطبيعة ----
+  /// مستطيل الزرع داخل الجزيرة. المرج المبلَّط يمتد x ≈ −٧٨..٨٥ و z ≈ −٥٢..٨٣،
+  /// فالمستطيل يقصّ الحواف المتعرّجة ويترك هامشًا قبل الفراغ. المساحة الصالحة
+  /// ٧٦٢٩ م² ≈ **٩٢ موضعًا** بتباعد ٨٫٥، مقابل ٥٢ على الأرض القديمة
+  /// (٤٣٥٦ م²) — التوسيع ضروري كي لا يمتلئ المرج قبل منتصف سلّم النمو.
+  static const double _kPlantMinX = -76.0;
+  static const double _kPlantMaxX = 82.0;
+  static const double _kPlantMinZ = -48.0;
+  static const double _kPlantMaxZ = 76.0;
+
+  /// هامش الإبعاد عن شاطئ البحيرة وعن سفح الجبل: داخله يغرق الموديل في الماء
+  /// أو في الصخر.
+  static const double _kPlantClearance = 1.0;
+
+  // الهضبة (القصور والمساجد). على أرض الجزيرة الجديدة لا متسع لهضبة
+  // ٤٢٫٩ × ٣٠٫٤: أكبر جيب خالٍ من الجبال والبحيرات نصف قطره ~١٥. صُغّرت إلى
+  // **٣٠ × ٢١٫٢** — نسبة الموديل الطبيعية (١٫٨٨ : ١٫٣٣) — في (٢٤، ٢٢)،
+  // والخلوص المقيس عن أقرب سفح جبل ٥٫٨ وحدة. المقياس يبقى **موحّدًا على
+  // المحاور الثلاثة** فلا تمطيط يشدّ التكستشر.
+  // الارتفاع ٢٫٨٥ = ٤٫٠٨ × (٣٠ ÷ ٤٢٫٩)، وسطح المشي هو سطح الأرض لا رؤوس
+  // الخصلات (سطح الموديل ٢٫٩٧ عند هذا العرض).
+  static const double _kPlateauX = 24.0;
+  static const double _kPlateauZ = 22.0;
+  static const double _kPlateauRadiusX = 15.0;
+  static const double _kPlateauRadiusZ = 10.6;
+  static const double _kPlateauHeight = 2.85;
+
+  /// نصف قطر فناء الرصف البيضاوي على سطح الهضبة (٥٤٪ / ٤٩٪ من نصف قطرها).
+  /// يُقرأ من مكانين: `_buildPlateauPaving` ترصف داخله، و`_buildGrassTufts`
+  /// تُفرّغه من العشب — الخصلات كانت تخترق البلاط كأشواك خضراء. ثابت واحد
+  /// يمنع انحراف الاثنين عن بعضهما.
+  static const double _kPavingRadiusX = 8.0;
+  static const double _kPavingRadiusZ = 5.2;
+
   /// سقف عدد الموديلات في المشهد. كان ٦٥ فامتلأ الزرع اليدوي المشهد وتوقّف
-  /// قبل أن يرى اللاعب مرحلة النماء الثانية. المساحة العشبية (46×100 لكل
-  /// ضفة) مع تباعد ٨٫٥ تستوعب ~١٢٧ موضعًا، فـ١٢٠ هو أقصى ما يُملأ بلا تكدّس
-  /// حقيقي؛ وما زاد عنه يُحفظ في `rewards_3d` ويظهر بعد الترقية أو التقليم.
-  static const int _kMaxSceneModels = 120;
+  /// قبل أن يرى اللاعب مرحلة النماء الثانية، ثم ١٢٠ على الأرض القديمة. جزيرة
+  /// الطبيعة تستوعب ~٩٢ موضعًا (٧٦٢٩ م² بتباعد ٨٫٥)، فـ٩٢ هو أقصى ما يُملأ
+  /// بلا تكدّس حقيقي؛ وما زاد عنه يُحفظ في `rewards_3d` ويظهر بعد الترقية أو
+  /// التقليم.
+  static const int _kMaxSceneModels = 92;
 
   @override
   void initState() {
@@ -217,6 +380,13 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       }
     });
 
+    // الزينة تنتهي بعد ٢٤ ساعة، ولا تُعاد تلقائيًا. الفحص الدوري يزيل
+    // المنتهي أثناء التشغيل ويكتب الحالة مرة واحدة فقط عند وجود تغيير.
+    _decorTicker = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _sweepExpiredDecor(),
+    );
+
     _loadSaved();
   }
 
@@ -229,38 +399,103 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   /// اللوحة التي يجب أن يكون عليها المشهد الآن.
   PhaseSpec _targetSpec() => specForMode(_lightMode, _currentHour());
 
+  // =========================================================================
+  // 🌿 ارتفاع الأرض — مصدر الحقيقة الوحيد
+  // =========================================================================
+
+  /// مركز البحيرة الوسطى (التي يعبرها الجسر).
+  ///
+  /// تُقرأ من `kNatureLakes` المُولَّدة لا من أرقام مكتوبة هنا: المركز ونصف
+  /// القطر يأتيان من نفس مصفوفة الموديل في المشهد الأصلي.
+  List<double> get _centralLake => kNatureLakes[1];
+
+  /// هل تقع النقطة داخل دائرة بحيرة؟ [margin] يوسّع نصف القطر.
+  ///
+  /// [shore] = true يستخدم **حدّ الشاطئ** (المرتفع بنحو ١٫٢ فوق المرج) بدل
+  /// حدّ الماء، وهو ما تقرأه قواعد الزرع: الموديل على الشاطئ يغرق في الحجر.
+  bool _isInLake(double x, double z, {double margin = 0.0, bool shore = true}) {
+    for (final lake in kNatureLakes) {
+      final dx = x - lake[0];
+      final dz = z - lake[1];
+      final r = (shore ? lake[3] : lake[2]) + margin;
+      if (dx * dx + dz * dz < r * r) return true;
+    }
+    return false;
+  }
+
+  /// هل تقع النقطة على سفح جبل؟ الأثر مُقاس من هندسة الموديل نفسه.
+  bool _isOnMountain(double x, double z, {double margin = 0.0}) {
+    for (final mountain in kNatureMountains) {
+      final dx = x - mountain[0];
+      final dz = z - mountain[1];
+      final r = mountain[2] + margin;
+      if (dx * dx + dz * dz < r * r) return true;
+    }
+    return false;
+  }
+
+  /// هل تصلح ([x]، [z]) ليقف عليها موديل؟ داخل مستطيل الزرع، على المرج لا
+  /// في بحيرة ولا على سفح جبل.
+  bool _isPlantable(double x, double z) {
+    if (x < _kPlantMinX || x > _kPlantMaxX) return false;
+    if (z < _kPlantMinZ || z > _kPlantMaxZ) return false;
+    if (_isInLake(x, z, margin: _kPlantClearance)) return false;
+    return !_isOnMountain(x, z, margin: _kPlantClearance);
+  }
+
+  /// ما يقف عليه اللاعب/الموديل: الهضبة إن كان داخلها، وإلا سطح المرج.
+  ///
+  /// أرض الجزيرة مضلّعة لا مستوية: بلاطات المرج ألواح بسماكة ٢٫٨ وأسطحها
+  /// تتذبذب ±٠٫٢ حول الصفر. سطح المشي يبقى **الصفر** لأن كل موديل يُغرس
+  /// بقاعدته عليه، والدفن البسيط يخفي الفرق؛ أي تعديل هنا يرفع الجزيرة كلها.
   double _calculateGroundElevation(double x, double z) {
-    // East Bluff is centered at (48, -26) with radius 33.0 and height 2.5
-    final dx = x - 48.0;
-    final dz = z - (-26.0);
-    final distSq = dx * dx + dz * dz;
-    if (distSq < (33.0 * 33.0)) {
-      return 2.5; // Elevated on hill
+    final dx = (x - _kPlateauX) / _kPlateauRadiusX;
+    final dz = (z - _kPlateauZ) / _kPlateauRadiusZ;
+    if (dx * dx + dz * dz < 1.0) {
+      return _kPlateauHeight;
     }
     return 0.0;
   }
 
+  /// أقرب بقعة صالحة للزرع من ([x]، [z]) — تُستخدم عند تحميل مواضع قديمة
+  /// صارت داخل بحيرة أو جبل بعد تبديل الأرض.
+  List<double> _relocateToPlantable(double x, double z) {
+    if (_isPlantable(x, z)) return <double>[x, z];
+    for (var r = 2.0; r <= 120.0; r += 2.0) {
+      for (var i = 0; i < 24; i++) {
+        final a = i / 24 * pi * 2;
+        final nx = x + r * cos(a);
+        final nz = z + r * sin(a);
+        if (_isPlantable(nx, nz)) return <double>[nx, nz];
+      }
+    }
+    // وسط المرج الشمالي مفتوح دائمًا: احتياط أخير بلا بحث.
+    return <double>[0.0, 24.0];
+  }
+
   void _loadSaved() {
     final raw = _storage.getRewards3D();
+    final now = DateTime.now().millisecondsSinceEpoch;
     _savedEntries.clear();
     bool needsSave = false;
     for (final r in raw) {
       final entry = _SavedEntry.fromJson(r);
+
+      // الزينة المنتهية لا تعود بعد إعادة الفتح: الدورة لا تتجدد تلقائيًا.
+      if (entry.isDecor && entry.expiresAt != null && entry.expiresAt! <= now) {
+        needsSave = true;
+        continue;
+      }
+
       double sx = entry.x;
       double sz = entry.z;
 
-      // 1. Relocate anything in the river corridor (x: -24..24)
-      if (sx.abs() < 24.0) {
-        sx = sx >= 0 ? 35.0 : -35.0;
-        needsSave = true;
-      }
-      // 2. Relocate anything inside outer mountains (|x| > 72 or |z| > 50)
-      if (sx.abs() > 72.0) {
-        sx = 62.0 * sx.sign;
-        needsSave = true;
-      }
-      if (sz.abs() > 50.0) {
-        sz = 42.0 * sz.sign;
+      // 1. أي موضع صار في بحيرة أو على سفح جبل أو خارج مستطيل الزرع بعد
+      // تبديل الأرض يُنقل إلى أقرب بقعة صالحة، والحفظ يحدث مرة واحدة.
+      if (!_isPlantable(sx, sz)) {
+        final spot = _relocateToPlantable(sx, sz);
+        sx = spot[0];
+        sz = spot[1];
         needsSave = true;
       }
 
@@ -270,124 +505,183 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         needsSave = true;
       }
 
-      _savedEntries.add(_SavedEntry(entry.type, sx, sy, sz, tier: entry.tier));
+      _savedEntries.add(
+        _SavedEntry(
+          entry.type,
+          sx,
+          sy,
+          sz,
+          tier: entry.tier,
+          stage: entry.stage,
+          isDecor: entry.isDecor,
+          expiresAt: entry.expiresAt,
+        ),
+      );
     }
     if (needsSave) {
-      _storage.saveRewards3D(_savedEntries.map((e) => e.toJson()).toList());
-      debugPrint('🧹 Cleaned up and elevated 3D rewards on hills');
+      _writeSaved();
+      debugPrint('🧹 Cleaned up 3D rewards (expired decor / hills)');
     }
     debugPrint('📂 Loaded ${_savedEntries.length} 3D entries from storage');
   }
 
-  void _syncFromDhikrRewards() {
-    if (_didSync) return;
-    _didSync = true;
-
-    final allRewards = _storage.getAllRewards();
-    if (allRewards.isEmpty) return;
-
+  /// يطبّق سلّم التطور على المشهد: ١–٩ نسخ من الفسلة، وعند ١٠ تندمج في
+  /// نموذج واحد أكبر قليلًا، ثم يبقى لكل نوع نموذج واحد تتغيّر مرحلته.
+  ///
+  /// الزينة لا تدخل في الحساب: هي نماذج إضافية لها مسارها المؤقت.
+  void _applyEvolution({bool notify = true}) {
+    final rewards = _storage.getAllRewards();
     final byType = <RewardType, int>{};
-    for (final r in allRewards) {
+    for (final r in rewards) {
       byType[r.type] = (byType[r.type] ?? 0) + 1;
     }
 
-    final current3D = <RewardType, int>{};
-    for (final e in _savedEntries) {
-      current3D[e.type] = (current3D[e.type] ?? 0) + 1;
-      // مرحلة الحديقة كما هي محفوظة الآن — بها نعرف هل ارتقى النوع فعلًا.
-      final known = _tierByType[e.type];
-      if (known == null || e.tier > known) _tierByType[e.type] = e.tier;
-    }
+    var changed = false;
 
-    int totalAdded = 0;
     for (final type in RewardType.values) {
-      final totalRewards = byType[type] ?? 0;
-      if (totalRewards <= 0) continue;
+      final earned = byType[type] ?? 0;
+      final previous = _earnedByType[type] ?? 0;
+      _earnedByType[type] = earned;
 
-      final tier = TierSystem.calculate(totalRewards);
-      final previousTier = _tierByType[type];
-      _tierByType[type] = tier;
+      final tier = modelTierForCount(earned);
+      final stage = modelStageForCount(earned);
+      final multiplier = modelScaleMultiplier(earned);
+      final tint = modelTintForCount(earned);
+      final target = modelDisplayCount(earned);
 
-      // إذا ارتقى النوع نرفع الموديلات القائمة نفسها للمرحلة الجديدة. بدون
-      // ذلك يبقى المشهد كله Tier 1 مهما بلغ العدد: الإضافة تتوقف عند
-      // targetCount، والقديم لا يُرقّى أبدًا.
-      var promoted = 0;
-      if (previousTier != null && tier > previousTier) {
-        promoted = _promoteModelsOfType(type, tier);
+      // النماذج المكتملة أولًا، ثم الشتلات المنتظرة للدمج. الترتيب ضروري لأن
+      // الشتلات تُضاف في آخر القائمة، والفرز بالمرحلة يضمن أن الفهرس الأول
+      // يخص النموذج المكتمل حتى لو عاد ترتيب الحفظ مختلفًا.
+      final existing =
+          _animatedModels.where((m) => m.type == type && !m.isDecor).toList()
+            ..sort((a, b) => b.stage.compareTo(a.stage));
+
+      // 1. حدّث النماذج القائمة في مكانها.
+      final fixed = existing.length < target ? existing.length : target;
+      for (var i = 0; i < fixed; i++) {
+        final m = existing[i];
+        final isFull = modelIsFull(earned, i);
+        // الشتلة الفردية تبقى كما هي: بلا تكبير ولا تلوين، مهما كانت المرحلة.
+        final mTier = isFull ? tier : 1;
+        final mStage = isFull ? stage : 0;
+        final mMultiplier = isFull ? multiplier : 1.0;
+        final mTint = isFull ? tint : null;
+        final styleChanged =
+            m.tier != mTier ||
+            m.stage != mStage ||
+            (m.scaleMultiplier - mMultiplier).abs() > 0.0001 ||
+            m.tint != mTint;
+        m.tier = mTier;
+        m.stage = mStage;
+        m.scaleMultiplier = mMultiplier;
+        m.tint = mTint;
+        if (styleChanged) {
+          _restyleModel(m);
+          changed = true;
+        }
+        if (m.entry != null) {
+          m.entry!.tier = mTier;
+          m.entry!.stage = mStage;
+        }
       }
 
-      int targetCount;
-      if (totalRewards < 50) {
-        targetCount = (totalRewards / 10).ceil();
-      } else if (totalRewards < 200) {
-        targetCount = 5 + ((totalRewards - 50) ~/ 30);
-      } else if (totalRewards < 1000) {
-        targetCount = 10 + ((totalRewards - 200) ~/ 100);
-      } else {
-        targetCount = 18 + ((totalRewards - 1000) ~/ 500);
+      // 2. احذف الزائد: الشتلات التسع تندمج في النموذج الجديد عند العتبة.
+      for (var i = existing.length - 1; i >= target; i--) {
+        _removeModel(existing[i]);
+        changed = true;
       }
 
-      targetCount = targetCount.clamp(1, 15);
-
-      final currentCount = current3D[type] ?? 0;
-      final missing = targetCount - currentCount;
-
-      three.Vector3? lastAdded;
-      for (var i = 0; i < missing; i++) {
-        if (_animatedModels.length >= _kMaxSceneModels) break;
-        lastAdded = addModelAt(type: type, tier: tier);
-        totalAdded++;
+      // 3. أضف الناقص، لكل موضع حجمه: مكتمل أو شتلة فردية.
+      for (var i = existing.length; i < target; i++) {
+        final isFull = modelIsFull(earned, i);
+        final pos = addModelAt(
+          type: type,
+          tier: isFull ? tier : 1,
+          stage: isFull ? stage : 0,
+          scaleMultiplier: isFull ? multiplier : 1.0,
+          tint: isFull ? tint : null,
+          persist: false,
+          ignoreCap: true,
+        );
+        if (pos == null) break;
+        changed = true;
       }
 
-      // ارتقاء النوع: وميض ذهبي عند آخر غرسة أُضيفت. أول مزامنة لا تُومض
-      // لأن `previousTier` يكون فارغًا — الوميض لمن ارتقى أمامه لا لمن فتح.
-      if (promoted == 0 &&
-          previousTier != null &&
-          tier > previousTier &&
-          lastAdded != null) {
-        _spawnGoldBurst(lastAdded);
+      // وميض ذهبي عند ارتقاء النوع — لا في أول تحميل.
+      if (previous > 0 &&
+          earned > previous &&
+          modelTierForCount(earned) > modelTierForCount(previous)) {
+        _AnimatedModel? anchor;
+        for (final m in _animatedModels) {
+          if (m.type == type && !m.isDecor) anchor = m;
+        }
+        if (anchor != null) _spawnGoldBurst(anchor.mesh.position);
       }
     }
 
-    if (totalAdded > 0) {
-      debugPrint(
-        '🔄 Synced $totalAdded new 3D rewards according to Tier progression',
-      );
+    if (changed) {
+      _writeSaved();
+      debugPrint('🌱 Evolution applied · ${rewards.length} rewards');
     }
+    if (notify && mounted) setState(() {});
   }
 
-  /// يرفع كل موديلات [type] القائمة إلى [tier] في مكانها نفسه.
-  ///
-  /// استبدال ملف الـGLB داخل المجموعة (لا حذف الغرسة وإعادة زرعها) يحفظ
-  /// مواقع الحديقة التي بناها اللاعب، ويجعل الترقية تُقرأ كنموّ الشجرة نفسها.
-  /// ونحفظ المرحلة الجديدة في `rewards_3d`، فيبقى الارتقاء بعد إعادة الفتح.
-  int _promoteModelsOfType(RewardType type, int tier) {
-    var promoted = 0;
-    three.Vector3? lastPos;
+  /// يحذف موديلًا من المشهد ومن سجل الحفظ معًا.
+  void _removeModel(_AnimatedModel model) {
+    _scene.remove(model.mesh);
+    _animatedModels.remove(model);
+    _sessionDecor.remove(model);
+    if (model.entry != null) _savedEntries.remove(model.entry);
+  }
+
+  void _writeSaved() {
+    _storage.saveRewards3D(_savedEntries.map((e) => e.toJson()).toList());
+  }
+
+  /// الزينة الحقيقية المسجّلة لنوع ما (لها `expiresAt`). ترجع null إذا لم تُغرس
+  /// بعد. الزينة الترحيبية (`expiresAt: null`) لا تُحسب زينة نشطة.
+  _AnimatedModel? _activeDecorOf(RewardType type) {
     for (final m in _animatedModels) {
-      if (m.type != type || m.tier >= tier) continue;
-      m.tier = tier;
-      _enqueueUpgrade(m, tier);
-      lastPos = m.mesh.position;
-      promoted++;
+      if (m.isDecor && m.type == type && m.expiresAt != null) return m;
     }
+    return null;
+  }
 
-    var savedChanged = false;
-    for (final e in _savedEntries) {
-      if (e.type == type && e.tier < tier) {
-        e.tier = tier;
-        savedChanged = true;
-      }
-    }
-    if (savedChanged) {
-      _storage.saveRewards3D(_savedEntries.map((e) => e.toJson()).toList());
-    }
+  bool _decorActiveFor(RewardType type) => _activeDecorOf(type) != null;
 
-    if (promoted > 0) {
-      debugPrint('🌱 Promoted $promoted × ${type.name} to Tier $tier');
-      if (lastPos != null) _spawnGoldBurst(lastPos);
+  /// اكتملت الدورة حين تكون الأنواع الستة كلها مزروعة. غرس نوع واحد لا يمنع
+  /// غرس الأنواع الأخرى، لكن النوع الواحد لا يُكرَّر قبل انتهاء ٢٤ ساعته.
+  bool get _decorCycleActive => RewardType.values.every(_decorActiveFor);
+
+  /// أطول مدة متبقية في الزينة الحالية (للعرض على الزر).
+  Duration get _decorRemaining {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    var maxMs = 0;
+    for (final m in _animatedModels) {
+      final at = m.expiresAt;
+      if (!m.isDecor || at == null) continue;
+      final left = at - now;
+      if (left > maxMs) maxMs = left;
     }
-    return promoted;
+    return Duration(milliseconds: maxMs);
+  }
+
+  /// يزيل الزينة المنتهية أثناء التشغيل. لا يولّد بديلًا: التجديد قرار المستخدم.
+  void _sweepExpiredDecor() {
+    if (!_loaded || _disposed) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final expired = _animatedModels
+        .where((m) => m.isDecor && m.expiresAt != null && m.expiresAt! <= now)
+        .toList();
+    for (final m in expired) {
+      _removeModel(m);
+    }
+    if (expired.isNotEmpty) {
+      _writeSaved();
+      debugPrint('🍂 ${expired.length} decor models expired');
+    }
+    // تحديث العدّاد والعد التنازلي على الزر.
+    if (mounted && (expired.isNotEmpty || _decorCycleActive)) setState(() {});
   }
 
   void initSize(BuildContext context) {
@@ -418,8 +712,25 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
 
     Future.delayed(const Duration(milliseconds: 100), () async {
       await _three3dRender.prepareContext();
+      if (!await _waitForSceneHost()) return;
       initScene();
     });
+  }
+
+  /// لا يُنشأ المشهد قبل أن يكون [DomLikeListenable] في الشجرة.
+  ///
+  /// مُنشئ `OrbitControls` يقرأ `_globalKey.currentState` فورًا
+  /// (`domElement` getter) ويرمي `Unexpected null value` إن لم يُبنَ العنصر
+  /// بعد. في علامة تبويب خلفية يؤجّل Chrome إطارات Flutter، فيسبق مؤقّت
+  /// الـ100ms أول إطار ويبقى المشهد أسود إلى الأبد. ننتظر العنصر بدل الانهيار.
+  Future<bool> _waitForSceneHost() async {
+    for (var i = 0; i < 100; i++) {
+      if (_disposed) return false;
+      if (_globalKey.currentState != null) return true;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    debugPrint('⚠️ scene host never mounted');
+    return false;
   }
 
   void _onResize(double newW, double newH) {
@@ -474,6 +785,12 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     );
     _scene.add(_sunGroup!);
 
+    // قرص الشمس كرة نصف قطرها ١٦ على بعد ~٢٠٠ وحدة من كاميرا الافتتاح: قطره
+    // ٩° أي خمسة أضعاف حجمه في أي مشهد مرجعي، وكان يملأ ربع الشاشة ويُقصّ
+    // عند الحافة العليا. التصغير لا يغيّر لونه ولا موضعه من لوحة النهار، فهو
+    // تصحيح حجم زاوي فقط.
+    _sunGroup!.scale.set(0.5, 0.5, 0.5);
+
     // 3. Floating Stylized Clouds
     _clouds.clear();
     _cloudMat = three.MeshPhongMaterial({
@@ -485,17 +802,40 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       "flatShading": true,
     });
 
+    // سحب القاعدة تُرى من فوق عند أقصى تصغير، والكرة المسطّحة المتعددة
+    // الأوجه تُقرأ صخرةً بيضاء لا سحابة. مادة ناعمة شبه شفافة بلا كتابة
+    // عمق تجعل تراكب الكرات ضبابًا متصلًا.
+    final mistMat = three.MeshPhongMaterial({
+      "color": 0xFFFAF0,
+      "emissive": 0x2A4A38,
+      "shininess": 6,
+      "transparent": true,
+      "opacity": 0.32,
+      "depthWrite": false,
+      "flatShading": false,
+    });
+
     final cloudPositions = [
-      three.Vector3(-110, 75, -50),
-      three.Vector3(-30, 85, 60),
-      three.Vector3(70, 80, -70),
-      three.Vector3(110, 70, 40),
-      three.Vector3(-5, 90, -30),
+      three.Vector3(-240, 118, -120),
+      three.Vector3(-70, 132, 210),
+      three.Vector3(150, 124, -220),
+      three.Vector3(250, 112, 90),
+      three.Vector3(-20, 138, -70),
+      // سحب القاعدة: تحجب النهاية المدبّبة للجرف من الزوايا المنخفضة (وأفق
+      // الكاميرا يسمح بالنزول إلى ~٨٥°)، وتُكمل إحساس الطفو. ارتفاعها تحت
+      // الصفر لأن الجزيرة نفسها بين ٠ و‎-٥٦.
+      three.Vector3(-158, -22, 34),
+      three.Vector3(24, -30, -156),
+      three.Vector3(176, -26, -36),
+      three.Vector3(-44, -36, 148),
+      three.Vector3(104, -40, 18),
     ];
 
     for (final cPos in cloudPositions) {
       final cloud = three.Group();
       cloud.position.copy(cPos);
+      final isMist = cPos.y < 0;
+      if (isMist) cloud.scale.set(1.4, 1.3, 1.4);
 
       final puffSizes = [9.0, 14.0, 10.0, 8.0];
       final puffOffsets = [
@@ -506,8 +846,12 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       ];
 
       for (int p = 0; p < puffSizes.length; p++) {
-        final puffGeo = three.SphereGeometry(puffSizes[p], 7, 6);
-        final puff = three.Mesh(puffGeo, _cloudMat!);
+        // الضباب يُرى من فوق على مسافة قريبة، فكرة بـ٧×٦ قطعة تخرج سداسية
+        // واضحة الزوايا. ١٦×١٢ تعطي حافة ناعمة، وعددها ٢٠ جسمًا فقط.
+        final puffGeo = isMist
+            ? three.SphereGeometry(puffSizes[p], 16, 12)
+            : three.SphereGeometry(puffSizes[p], 7, 6);
+        final puff = three.Mesh(puffGeo, isMist ? mistMat : _cloudMat!);
         puff.position.copy(puffOffsets[p]);
         puff.scale.set(1.4, 0.7, 1.0);
         cloud.add(puff);
@@ -596,6 +940,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     );
     _fillLight?.color?.setHex(spec.fill);
     _fillLight?.intensity = spec.fillIntensity;
+    // ارتداد القاعدة يبقى ظاهرًا في الليل أيضًا، لكنه يخفت مع الإضاءة العامة.
+    final double underIntensity = 0.45 + 0.55 * spec.ambientIntensity;
+    _underLight?.intensity = underIntensity;
+    _underLightB?.intensity = underIntensity;
 
     // الشمس/القمر المرئي
     _sunGroup?.position.set(spec.sunPos[0], spec.sunPos[1], spec.sunPos[2]);
@@ -658,151 +1006,560 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   // 🌿 2. SCULPTED HIGH-CONTRAST TERRAIN & FINE VOLUMETRIC MEADOW
   // =========================================================================
 
+  // ملاحظة محفوظة عن three_dart: `texture.repeat` لا يعمل — الظلّال يعرّف
+  // `uvTransform` لكن المُصيِّر لا ينسخ مصفوفة الخامة إليه، فتظهر الخامة بمقياس
+  // ١:١. تكرار الخامة يُضرب على إحداثيات UV للهندسة نفسها. الأرض الحالية تأتي
+  // بتكرارها محسوبًا داخل المولّد، فلا حاجة لدالة تكرار هنا.
+
+  /// الجزيرة كاملة من مشهد `PP_FreeLowPolyForest_v3.0`.
+  ///
+  /// القوالب السبعة عشر تُحمَّل **مرة واحدة**، ثم كل صف في [kNatureInstances]
+  /// يُنتج نسخة بمصفوفته — ٢٤٥ نسخة، ٢٧٩ ألف مثلث. لو سُطّحت الأصول في ملف
+  /// واحد لصار الحجم ٤٥–٧٢ م.ب؛ النسخ تشترك في الهندسة والخامة فتبقى ~٢ م.ب.
+  ///
+  /// المصفوفات **عمودية** (ترتيب glTF)، فتُنسخ في `Matrix4.elements` مباشرةً
+  /// بلا تبديل. والنسخة تُطبَّع بمصفوفة العالم الكاملة: كل التحويلات (الدوران
+  /// والمقياس الموحّد ١٫٢٥٧٧٥ أو ١٫٥٥٢٢٤) محسوبة في المولّد، فلا حساب هنا.
+  ///
+  /// المواد معالَجة مثل موديلات الجزر الطافية: وجهان (المرج سطح مفتوح يُرى من
+  /// تحت عند أقصى تصغير)، ومعدن صفر (لا خريطة بيئة في المشهد فيسودّ)، ووهج
+  /// رمادي محايد لا أخضر.
+  /// تصغير مجسّمات البيئة وحدها — لا بلاطات الأرض ولا البحيرات — كي تبقى
+  /// الجنة فسيحة: الجبال ٠٫٨٠، الشجر والصخور ٠٫٨٥. تصغير البلاطة يفتح فجوة
+  /// في المرج، لأن الأرض مرصوفة بها بلا تراكب.
+  ///
+  /// المفتاح هو فهرس الشبكة في `kNatureMeshPaths`. التصغير يضرب الأعمدة
+  /// الثلاثة للمصفوفة (٠–٢، ٤–٦، ٨–١٠) ويترك عمود الترجمة (١٢–١٤) كما هو،
+  /// فتنكمش الشجرة حول جذعها ولا تتحرك من موضعها. أصول هذه المجسّمات عند
+  /// القاعدة (min.y = 0 في كل ملف)، فلا تطفو ولا تُدفن بعد التصغير.
+  static const Map<int, double> _kNatureScale = {
+    0: 0.85, // birch_a
+    1: 0.85, // birch_b
+    2: 0.80, // mountain_a
+    3: 0.80, // mountain_b
+    11: 0.85, // rock_moss_a
+    12: 0.85, // rock_moss_b
+    13: 0.85, // rock_pile_a
+    14: 0.85, // rock_pile_b
+    15: 0.85, // tree_a
+    16: 0.85, // tree_b
+  };
+
+  Future<void> _buildNatureIsland(three.Group parent) async {
+    final rowsByMesh = <int, List<List<double>>>{};
+    for (final row in kNatureInstances) {
+      rowsByMesh.putIfAbsent(row[0].toInt(), () => <List<double>>[]).add(row);
+    }
+
+    for (var i = 0; i < kNatureMeshPaths.length; i++) {
+      final rows = rowsByMesh[i];
+      if (rows == null || rows.isEmpty) continue;
+      final path = kNatureMeshPaths[i];
+      try {
+        final gltf = await three_jsm.GLTFLoader()
+            .loadAsync(path)
+            .timeout(const Duration(seconds: 30));
+        if (_disposed) return;
+        final scene = gltf?['scene'];
+        if (scene == null) {
+          debugPrint('⚠️ nature island scene is null: $path');
+          continue;
+        }
+        scene.traverse((child) {
+          if (child is three.Mesh) {
+            final materials = child.material is List
+                ? child.material as List
+                : [child.material];
+            for (final mat in materials) {
+              if (mat == null) continue;
+              mat.side = three.DoubleSide;
+              mat.metalness = 0.0;
+              mat.emissive?.setHex(0x0C0C0C);
+              mat.needsUpdate = true;
+            }
+          }
+        });
+        makeTexturesUploadable(scene);
+        // المؤشرات ٣٢-بت في كل تصدير، و`clone` لا يعرف إلا ١٦-بت: التضييق
+        // يجب أن يسبق التخزين وإلا رمى أول نسخة.
+        makeModelCloneable(scene);
+
+        for (final row in rows) {
+          final matrix = three.Matrix4();
+          final elements = matrix.elements;
+          for (var k = 0; k < 16; k++) {
+            elements[k] = row[k + 1];
+          }
+          final squeeze = _kNatureScale[i] ?? 1.0;
+          if (squeeze != 1.0) {
+            for (final k in const [0, 1, 2, 4, 5, 6, 8, 9, 10]) {
+              elements[k] = elements[k] * squeeze;
+            }
+          }
+          final copy = scene.clone(true);
+          copy.applyMatrix4(matrix);
+          parent.add(copy);
+        }
+        debugPrint('🏝 nature ${rows.length}× $path');
+      } catch (e) {
+        debugPrint('⚠️ nature island failed: $path $e');
+      }
+    }
+    debugPrint('🏝 nature island ready (${kNatureInstances.length} copies)');
+  }
+
   void _buildSculptedTerrain() {
     final terrainGroup = three.Group();
 
-    // 1. Rich Emerald Green Meadows
-    final grassMat = three.MeshPhongMaterial({
-      "color": 0x227744,
-      "emissive": 0x082414,
-      "specular": 0x55C578,
-      "shininess": 22,
-      "flatShading": true,
+    // الجزيرة كاملة — جبال، بحيرتان، ممرات، مرج — من مشهد
+    // `PP_FreeLowPolyForest_v3.0`. تحلّ محل الأرض المسطّحة والنهر المحفور:
+    // الماء هنا بحيرتان مغلقتان، والمرج بلاطات مصمَّمة لا شبكة مولَّدة.
+    unawaited(_buildNatureIsland(terrainGroup));
+
+    // كومة التراب تحت الشجرة: مادة واحدة يشترك فيها كل النماذج، فتُنشأ هنا كي
+    // تلتقط خامة الطحلب عند وصولها بدل أن تُنشأ متأخرًا بلا خامة.
+    _moundMat = three.MeshPhongMaterial({
+      "color": 0x7C8A64,
+      "emissive": 0x0B1208,
+      "shininess": 6,
+      "flatShading": false,
     });
-
-    // 2. Warm Sandy River Shorelines
-    final bankSandMat = three.MeshPhongMaterial({
-      "color": 0xC9A974,
-      "emissive": 0x1E1408,
-      "specular": 0xDDC59A,
-      "shininess": 12,
-      "flatShading": true,
-    });
-
-    // West Bank (Forest & Villas) - from x: -140 to -16
-    final westGeo = three.PlaneGeometry(124, _kGroundD, 16, 16);
-    final westBank = three.Mesh(westGeo, grassMat);
-    westBank.rotation.x = -three.Math.pi / 2;
-    westBank.position.set(-78, 0, 0);
-    terrainGroup.add(westBank);
-
-    // East Bank (Oasis & Palaces) - from x: 16 to 140
-    final eastGeo = three.PlaneGeometry(124, _kGroundD, 16, 16);
-    final eastBank = three.Mesh(eastGeo, grassMat);
-    eastBank.rotation.x = -three.Math.pi / 2;
-    eastBank.position.set(78, 0, 0);
-    terrainGroup.add(eastBank);
-
-    // Sloping Shorelines
-    final slopeGeo = three.PlaneGeometry(7, _kGroundD, 4, 16);
-
-    final leftSlope = three.Mesh(slopeGeo, bankSandMat);
-    leftSlope.rotation.x = -three.Math.pi / 2;
-    leftSlope.rotation.y = 0.26;
-    leftSlope.position.set(-13.5, -0.6, 0);
-    terrainGroup.add(leftSlope);
-
-    final rightSlope = three.Mesh(slopeGeo, bankSandMat);
-    rightSlope.rotation.x = -three.Math.pi / 2;
-    rightSlope.rotation.y = -0.26;
-    rightSlope.position.set(13.5, -0.6, 0);
-    terrainGroup.add(rightSlope);
 
     // Elevated East Bluff for Mosque / Palaces
+    // التلّ نفسه صخرة داكنة، وسطحه المرج: قرص منفصل فوق الأسطوانة. تكرار
+    // الخامة على وجهَي الأسطوانة بمعامل واحد مستحيل عمليًا — الوجه الجانبي
+    // محيطه ~١٩٠ وحدة والغطاء عرضه ٧٣ — فتظهر عصابات على أحدهما. فصل السطح
+    // يسمح لكل منهما بتكراره الصحيح.
     final palacePlateauMat = three.MeshPhongMaterial({
-      "color": 0x2A864D,
-      "specular": 0x55C578,
-      "shininess": 22,
-      "flatShading": true,
+      "color": 0x2A6B44,
+      "emissive": 0x061A0E,
+      "specular": 0x1E3A28,
+      "shininess": 10,
+      "flatShading": false,
     });
-    final palaceBluff = three.Mesh(
-      three.CylinderGeometry(28, 33, 2.5, 12),
-      palacePlateauMat,
+    final palaceBluffGeo = three.CylinderGeometry(28, 33, _kPlateauHeight, 20);
+    palaceBluffGeo.computeVertexNormals();
+    final palaceBluff = three.Mesh(palaceBluffGeo, palacePlateauMat);
+    palaceBluff.position.set(_kPlateauX, _kPlateauHeight / 2, _kPlateauZ);
+    // الأسطوانة دائرية والمطلوب بيضاوي: كل محور يُقاس على نصف قطره الأصلي.
+    palaceBluff.scale.set(
+      _kPlateauRadiusX / 33.0,
+      1.0,
+      _kPlateauRadiusZ / 33.0,
     );
-    palaceBluff.position.set(48, 1.25, -26);
-    palaceBluff.scale.set(1.3, 1.0, 0.9);
+    _plateauBluffMesh = palaceBluff;
     terrainGroup.add(palaceBluff);
 
-    // Distant Outer Mountains
-    final mountainMat = three.MeshPhongMaterial({
-      "color": 0x144C2D,
-      "emissive": 0x081F12,
+    // سطح الهضبة الاحتياطي: قرص مصمت بلون العشب، يظهر فقط إن فشل تحميل
+    // موديل الهضبة (وإلا `_plateauTopMesh.visible = false`). لا خامة عليه،
+    // فتكرار UV لا معنى له.
+    final plateauTopMat = three.MeshPhongMaterial({
+      "color": 0x5E9C6E,
+      "emissive": 0x081A10,
+      "specular": 0x243024,
       "shininess": 8,
-      "flatShading": true,
+      "flatShading": false,
     });
+    final plateauTopGeo = three.CircleGeometry(radius: 28, segments: 40);
+    final plateauTop = three.Mesh(plateauTopGeo, plateauTopMat);
+    plateauTop.rotation.x = -three.Math.pi / 2;
+    plateauTop.position.set(_kPlateauX, _kPlateauHeight + 0.02, _kPlateauZ);
+    plateauTop.scale.set(_kPlateauRadiusX / 28.0, _kPlateauRadiusZ / 28.0, 1);
+    _plateauTopMesh = plateauTop;
+    terrainGroup.add(plateauTop);
 
-    final perimeterMountains = [
-      three.Vector3(-95, 0, -90),
-      three.Vector3(-35, 0, -98),
-      three.Vector3(35, 0, -98),
-      three.Vector3(95, 0, -90),
-      three.Vector3(-95, 0, 90),
-      three.Vector3(-35, 0, 98),
-      three.Vector3(35, 0, 98),
-      three.Vector3(95, 0, 90),
-      three.Vector3(-135, 0, 0),
-      three.Vector3(135, 0, 0),
-    ];
-
-    for (int i = 0; i < perimeterMountains.length; i++) {
-      final pos = perimeterMountains[i];
-      final radius = 32.0 + (i % 3) * 8.0;
-      final height = 18.0 + (i % 4) * 5.0;
-      final cone = three.Mesh(
-        three.ConeGeometry(radius, height, 8),
-        mountainMat,
-      );
-      cone.position.set(pos.x, height * 0.45, pos.z);
-      cone.scale.set(1.4, 0.65, 1.1);
-      terrainGroup.add(cone);
-    }
-
-    // Organic Soil & Moss Patches for Natural Roughness.
-    // These are tonal variation, not holes: a disc drawn at full opacity in a
-    // near-black brown reads as a pit in the lawn, and eight segments make the
-    // edge visibly polygonal. Softer colour, half opacity and a rounder disc
-    // let the meadow show through the patch.
-    final mossMat = three.MeshPhongMaterial({
-      "color": 0x1E5E38,
-      "opacity": 0.55,
-      "transparent": true,
-      "depthWrite": false,
-      "shininess": 12,
-    });
-    final soilPatchMat = three.MeshPhongMaterial({
-      "color": 0x4A3A28,
-      "opacity": 0.45,
-      "transparent": true,
-      "depthWrite": false,
-      "shininess": 8,
-    });
-
-    for (int p = 0; p < 26; p++) {
-      final isEast = p % 2 == 0;
-      final px = isEast
-          ? 25.0 + _rng.nextDouble() * 45.0
-          : -25.0 - _rng.nextDouble() * 45.0;
-      final pz = (_rng.nextDouble() * 95.0) - 47.5;
-      final py = _calculateGroundElevation(px, pz);
-      final pr = 1.6 + _rng.nextDouble() * 3.2;
-      final patchMat = (p % 3 == 0) ? soilPatchMat : mossMat;
-      final patch = three.Mesh(
-        three.CircleGeometry(radius: pr, segments: 24),
-        patchMat,
-      );
-      patch.rotation.x = -three.Math.pi / 2;
-      patch.position.set(px, py + 0.02, pz);
-      patch.scale.set(1.25, 1.0, 0.85);
-      terrainGroup.add(patch);
-    }
+    // بقع الطحلب والتراب لم تبقَ: المرج الآن بلاطات مرسومة فيها الحصى
+    // والأعشاب نفسها، فقرص داكن فوقها يُقرأ وصمة لا تنوّعًا. مادة الكومة
+    // وحدها باقية لأن نماذج الشجر الإجرائية تضعها تحت جذعها.
 
     _scene.add(terrainGroup);
+    _buildIslandShell(terrainGroup);
+    _buildNaturePackIslands(terrainGroup);
+    _buildPlateauModel();
+    // الرصف يُبنى مستقلًا عن تحميل موديل الهضبة: ارتفاعه ثابت ٢٫٧٦ وسطح
+    // الموديل المقيس يقع بين ٢٫٧٥ و٢٫٩٧ في هذا النطاق، فلو تأخّر التحميل
+    // أو فشل يبقى الرصف في مكانه الصحيح على القرص الاحتياطي.
+    _buildPlateauPaving(terrainGroup);
 
     // 3. Fine Volumetric Grass Tufts & Flowers
     _buildMeadowFlora();
 
-    // 4. Crystalline Geode Rock Formations on Riverbanks
+    // 4. Crystalline Geode Rock Formations on the Meadow
     _buildCrystalGeodes();
+
+    // 5. الجسر والزنابق: الماء الآن بحيرتان داخل الجزيرة، فالجسر يعبر الوسطى
+    // والزنابق تطفو على سطحيهما.
+    _buildStoneBridge();
+    _buildWaterLilies();
+
+    // 6. خامات الجرف والكومة: تُحمَّل بعد بناء المواد فلا يتأخر أول إطار.
+    _loadGroundTextures();
+  }
+
+  // =========================================================================
+  // 🏝 2ب. الجزيرة الطافية — جرف صخري تحت المرج وجزر صغيرة حولها
+  // =========================================================================
+
+  /// مركز محيط الجزيرة: نقطة الارتكاز التي تنكمش حولها حلقات الجرف.
+  ///
+  /// المحيط نفسه مُستخرج من مثلثات المرج والجبال والشواطئ في `nature_layout`،
+  /// فهو يطابق حدّ الأرض الفعلي لا مستطيلًا حولها. الشكل الناتج عضوي غير منتظم،
+  /// والانكماش حول المركز يبقيه كذلك في كل حلقة.
+  List<double> get _outlineCenter {
+    var sx = 0.0;
+    var sz = 0.0;
+    for (final p in kNatureOutline) {
+      sx += p[0];
+      sz += p[1];
+    }
+    return <double>[sx / kNatureOutline.length, sz / kNatureOutline.length];
+  }
+
+  /// محيط الجزيرة بعد سحبه للخارج ([scale] > 1) أو للداخل (< 1) حول مركزه.
+  List<double> _scaledOutline(double scale) {
+    final c = _outlineCenter;
+    final out = <double>[];
+    for (final p in kNatureOutline) {
+      out
+        ..add(c[0] + (p[0] - c[0]) * scale)
+        ..add(c[1] + (p[1] - c[1]) * scale);
+    }
+    return out;
+  }
+
+  /// جدار الجزيرة: حلقات متراصّة تبدأ عند حدّ الأرض وتضيق إلى نقطة.
+  ///
+  /// [profile] صفوف `[y, معامل الانكماش]`. الحلقة الأولى عند حدّ المرج نفسه
+  /// بلا زيادة تُذكر (٠٫٤ وحدة): أي فراغ بمحاذاة الحافة يُرى منه ما تحت الجزيرة،
+  /// ثم حلقة **بارزة ٣٪** تهبط ٢٥ سم فقط فتُقرأ من فوق كإطار حجري حول العشب،
+  /// وبعدها تغور القشرة للداخل حتى نقطة على عمق ٥٧.
+  ///
+  /// [tile] طول ضلع المربع الذي تغطيه نسخة واحدة من الخامة (٢٦ وحدة)، فتكرار
+  /// الـUV يُحسب من المحيط الفعلي لا من مساحة المستطيل المحيط به.
+  three.Mesh _islandShellMesh({
+    required List<List<double>> profile,
+    required double tile,
+    required three.Material material,
+  }) {
+    final samples = kNatureOutline.length;
+    final center = _outlineCenter;
+    final positions = <double>[];
+    final uvs = <double>[];
+    final indices = <int>[];
+
+    final first = _scaledOutline(profile.first[1]);
+    var perimeter = 0.0;
+    var avgRadius = 0.0;
+    for (var i = 0; i < samples; i++) {
+      final j = (i + 1) % samples;
+      final dx = first[j * 2] - first[i * 2];
+      final dz = first[j * 2 + 1] - first[i * 2 + 1];
+      perimeter += sqrt(dx * dx + dz * dz);
+      final rx = first[i * 2] - center[0];
+      final rz = first[i * 2 + 1] - center[1];
+      avgRadius += sqrt(rx * rx + rz * rz);
+    }
+    avgRadius /= samples;
+    final uRepeat = max(1.0, (perimeter / tile).roundToDouble());
+
+    var v = 0.0;
+    for (var ring = 0; ring < profile.length; ring++) {
+      final p = profile[ring];
+      if (ring > 0) {
+        final prev = profile[ring - 1];
+        final dy = prev[0] - p[0];
+        final shrink = (prev[1] - p[1]) * avgRadius;
+        v += sqrt(dy * dy + shrink * shrink) / tile;
+      }
+
+      final contour = _scaledOutline(p[1]);
+      // تمويج يظهر مع العمق فقط: الحلقة العليا يجب أن تبقى مطابقة لحدّ الأرض،
+      // وما تحتها يصير صخرًا غير منتظم بدل مخروط رياضي أملس.
+      final depth = -p[0];
+      final wobble = depth <= 4 ? 0.0 : min(0.055, (depth - 4) * 0.0035);
+
+      for (var i = 0; i < samples; i++) {
+        var x = contour[i * 2];
+        var z = contour[i * 2 + 1];
+        if (wobble > 0) {
+          final theta = atan2(z - center[1], x - center[0]);
+          final w =
+              1.0 +
+              wobble *
+                  (0.7 * sin(3.0 * theta + 0.6) + 0.3 * sin(7.0 * theta + 2.2));
+          x = center[0] + (x - center[0]) * w;
+          z = center[1] + (z - center[1]) * w;
+        }
+        positions.addAll([x, p[0], z]);
+        uvs.addAll([i / samples * uRepeat, v]);
+      }
+    }
+
+    for (var ring = 0; ring < profile.length - 1; ring++) {
+      for (var i = 0; i < samples; i++) {
+        final next = (i + 1) % samples;
+        final a = ring * samples + i;
+        final b = ring * samples + next;
+        final c = (ring + 1) * samples + i;
+        final d = (ring + 1) * samples + next;
+        // (a,b,c) و(b,d,c): الناظم إلى الخارج. الترتيب المعتاد (a,c,b) يقلبها
+        // إلى الداخل فيُقصّ الجرف كله ويظهر المشهد بلا قاعدة.
+        indices.addAll([a, b, c, b, d, c]);
+      }
+    }
+
+    // قمة مدبّبة أسفل آخر حلقة. حلقة صغيرة + مروحة أفضل من ١٢٨ نقطة متطابقة:
+    // المثلثات المتطابقة مساحتها صفر فلا تُرسم، ونواظمها تصبح (0,0,0).
+    final lastRing = (profile.length - 1) * samples;
+    final centerIndex = positions.length ~/ 3;
+    positions.addAll([center[0], profile.last[0] - 1.6, center[1]]);
+    uvs.addAll([0.0, v + 1.6 / tile]);
+    for (var i = 0; i < samples; i++) {
+      indices.addAll([centerIndex, lastRing + i, lastRing + (i + 1) % samples]);
+    }
+
+    final geometry = three.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      three.Float32BufferAttribute(Float32Array.from(positions), 3),
+    );
+    geometry.setAttribute(
+      'uv',
+      three.Float32BufferAttribute(Float32Array.from(uvs), 2),
+    );
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    return three.Mesh(geometry, material);
+  }
+
+  /// مادة الجرف، تُنشأ مرة واحدة ويستعملها الجرف وسيقان الجبال.
+  ///
+  /// اللون في الخامة لا في المادة: المادة بيضاء، والخامة باردة، وشمس الظهيرة
+  /// تحذف نصف الأزرق فيخرج الصخر رماديًا دافئًا لا أصفر. `emissive` خفيف لأن
+  /// وجه الجرف يواجه عكس الشمس دائمًا.
+  three.MeshPhongMaterial _cliffMaterial() {
+    return _cliffMat ??= three.MeshPhongMaterial({
+      "color": 0xFFFFFF,
+      "emissive": 0x141A22,
+      "specular": 0x1C2026,
+      "shininess": 5,
+      "flatShading": false,
+    });
+  }
+
+  /// الجرف الذي يحوّل الأرض المسطحة إلى قطعة مقتطعة من جبل.
+  ///
+  /// القاعدة عند المرج ٢٨٠×١٨٠، وأول حلقة مطابقة لحدّه بالضبط (بلا زيادة: أي
+  /// فراغ بمحاذاة الحافة يُرى منه ما تحت الجزيرة)، ثم **حافة صخرية بارزة**
+  /// تتوسّع ٤٫٥ وحدة للخارج وتهبط ٠٫٣٥ فقط، فتُرى من فوق كإطار حجري حول العشب.
+  /// هذه الحافة هي ما يجعل الشكل يُقرأ جزيرةً من زاوية اللاعب: القشرة نفسها
+  /// تهبط للداخل ولا تُرى من أعلى، وقضيب الكاميرا لا ينزل تحت مستوى العشب.
+  /// بعدها تغور القشرة للداخل حتى نقطة على عمق ٥٦.
+  void _buildIslandShell(three.Group parent) {
+    // [y, معامل الانكماش حول مركز المحيط]
+    final profile = <List<double>>[
+      [-0.30, 1.004], // حدّ الأرض نفسه، خارجًا ٠٫٤ وحدة كي لا يتزاحم السطحان
+      [-0.55, 1.030], // حافة صخرية بارزة تُرى من فوق كإطار حجري
+      [-2.20, 1.028],
+      [-5.20, 1.000],
+      [-10.0, 0.970],
+      [-16.0, 0.920],
+      [-24.0, 0.830],
+      [-33.0, 0.700],
+      [-42.0, 0.520],
+      [-49.0, 0.320],
+      [-54.0, 0.130],
+      [-57.0, 0.020],
+    ];
+
+    parent.add(
+      _islandShellMesh(
+        profile: profile,
+        tile: 26.0,
+        material: _cliffMaterial(),
+      ),
+    );
+  }
+
+  /// يثبّت موديلًا من حزمة الطبيعة بعد تحميله.
+  ///
+  /// [baseAligned] يضع **قاعدة** الموديل عند [y] بدل مركزه: الجبال المحيطية
+  /// تُغرس في الأفق فتقف على قاعدتها، والجزر الطافية تُعلَّق حول مركزها.
+  ///
+  /// كل موديلات الحزمة تحمل خامتين مسطّحتين من `prep_nature_pack_glb.py`
+  /// (طحلب علوي وصخر جانبي) بلا أي خريطة، فلا تحتاج `makeTexturesUploadable`
+  /// أكثر من تمريرة آمنة.
+  void _placeNatureModel({
+    required three.Group parent,
+    required String path,
+    required double x,
+    required double y,
+    required double z,
+    required double scale,
+    double tiltX = 0,
+    double tiltZ = 0,
+    double spin = 0,
+    bool baseAligned = false,
+  }) {
+    three_jsm.GLTFLoader()
+        .loadAsync(path)
+        .timeout(const Duration(seconds: 30))
+        .then((gltf) {
+          if (_disposed) return;
+          final scene = gltf?['scene'];
+          if (scene == null) {
+            debugPrint('⚠️ nature scene is null: $path');
+            return;
+          }
+          scene.traverse((child) {
+            if (child is three.Mesh) {
+              final materials = child.material is List
+                  ? child.material as List
+                  : [child.material];
+              for (final mat in materials) {
+                if (mat == null) continue;
+                // الجزر تُرى من تحتها عند أقصى تصغير، ولوح المرج سطح مفتوح
+                // لا صندوق: بدون الوجهين يختفي نصفها.
+                mat.side = three.DoubleSide;
+                mat.metalness = 0.0;
+                // الوهج **رمادي محايد** لا أخضر: نفس السطر على خامة الصخر
+                // كان يصبغ الجبل كله بالأخضر ويمحو الفرق بين الطحلب والصخر.
+                mat.emissive?.setHex(0x0C0C0C);
+                mat.needsUpdate = true;
+              }
+            }
+          });
+          makeTexturesUploadable(scene);
+
+          final box = three.Box3().setFromObject(scene);
+          final center = box.getCenter(three.Vector3());
+          if (!center.x.isFinite || !center.y.isFinite) {
+            debugPrint('⚠️ nature model has no volume: $path');
+            return;
+          }
+
+          // الحاوية تحمل النقطة المحسوبة: أصل الجبل عند قاعدته المدفونة
+          // (−٨٫٦) وأصل المرج عند سطحه، فالتثبيت بالإحداثيات المحلية كان
+          // سيُظهر كل قطعة على ارتفاع مختلف.
+          final holder = three.Group();
+          scene.position.set(
+            -center.x,
+            baseAligned ? -box.min.y : -center.y,
+            -center.z,
+          );
+          holder.add(scene);
+          holder.position.set(x, y, z);
+          holder.rotation.set(tiltX, spin, tiltZ);
+          holder.scale.set(scale, scale, scale);
+          parent.add(holder);
+        })
+        .catchError((Object e) {
+          debugPrint('⚠️ nature model failed: $path $e');
+        });
+  }
+
+  /// أرخبيل صغير طافٍ يسار الجزيرة الأم (حزمة FreeLowPolyNaturePack v3.0).
+  ///
+  /// قطع ديكور ثابتة، **لا** تمرّ عبر `addModelAt`: لا تستهلك
+  /// `_kMaxSceneModels`، ولا تخضع لـ`_kMinSpacing`، ولا تُحفظ في
+  /// `rewards_list` — تُبنى مرة واحدة مع بقية التضاريس.
+  ///
+  /// المواضع محسوبة إسقاطيًا على كادر الافتتاح `(170,130,200)` لا مُقدَّرة.
+  /// الشريط العلوي الزجاجي يحتل ndc y فوق ٠٫٦٤ تقريبًا، فأي جزيرة هناك تختفي
+  /// تحته — ولهذا كل القطع في **الفراغ الأيسر** (ndc x −0.76..−0.45،
+  /// y ٠٫٣٣–٠٫٥٣) حيث السماء مفتوحة فعلًا، لا في «خلفية» الكادر.
+  void _buildNaturePackIslands(three.Group parent) {
+    const islets =
+        <
+          ({
+            String path,
+            double x,
+            double y,
+            double z,
+            double scale,
+            double tiltX,
+            double tiltZ,
+            double spin,
+          })
+        >[
+          // جبل طحلبي هو أكبر القطع وأقربها إلى الكادر.
+          (
+            path: 'assets/3d/floating_moss_1.glb',
+            x: -280,
+            y: 18,
+            z: -10,
+            scale: 1.0,
+            tiltX: 0.05,
+            tiltZ: -0.10,
+            spin: 0.7,
+          ),
+          // لوح مرج بعيد بين الجبلين، مائل ١٠° كي لا يطابق الأفق.
+          (
+            path: 'assets/3d/floating_meadow_1.glb',
+            x: -200,
+            y: 12,
+            z: -60,
+            scale: 1.3,
+            tiltX: -0.10,
+            tiltZ: 0.07,
+            spin: 1.9,
+          ),
+          // جبل ثانٍ أقرب وأصغر: يعطي العمق الثلاثي للأرخبيل.
+          (
+            path: 'assets/3d/floating_moss_2.glb',
+            x: -150,
+            y: 24,
+            z: 45,
+            scale: 0.8,
+            tiltX: 0.08,
+            tiltZ: 0.06,
+            spin: 2.6,
+          ),
+        ];
+
+    for (final spot in islets) {
+      _placeNatureModel(
+        parent: parent,
+        path: spot.path,
+        x: spot.x,
+        y: spot.y,
+        z: spot.z,
+        scale: spot.scale,
+        tiltX: spot.tiltX,
+        tiltZ: spot.tiltZ,
+        spin: spot.spin,
+      );
+    }
+  }
+
+  /// يحمّل خامات الأرض التي ما زالت تبنيها الشيفرة.
+  ///
+  /// مرج الجزيرة وبلاطاته وبحيراته تأتي بخاماتها داخل ملفات الـGLB، فلم يبقَ
+  /// هنا إلا **جرف الجزيرة** (قشرة الصخر تحت المرج) و**كومة التراب** التي تضعها
+  /// نماذج الشجر الإجرائية تحت جذعها.
+  Future<void> _loadGroundTextures() async {
+    if (_groundTexturesRequested) return;
+    _groundTexturesRequested = true;
+
+    final mounds = await loadGroundTexture(kGroundSpotTexture, mirrored: true);
+    final cliff = await loadGroundTexture(kCliffRockTexture);
+
+    if (!mounted) return;
+
+    if (mounds != null) {
+      _moundMat
+        ?..map = mounds
+        ..needsUpdate = true;
+    }
+    if (cliff != null) {
+      // لا تفتيح هنا: الخامة نفسها باردة عمدًا (متوسط ٩٨،١٠٥،١٢٥) كي تخرج
+      // رمادية دافئة تحت شمس 0xFFE082 بدل جدار أصفر.
+      _cliffMat
+        ?..map = cliff
+        ..needsUpdate = true;
+    }
+
+    debugPrint('🌿 ground textures ready');
   }
 
   void _buildMeadowFlora() {
@@ -811,22 +1568,40 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     final flowerGold = three.MeshBasicMaterial({"color": 0xFFD54F});
     final flowerPink = three.MeshBasicMaterial({"color": 0xF48FB1});
 
-    // Fine, natural-scale volumetric grass (280 tufts across meadows)
-    for (int i = 0; i < 280; i++) {
-      final isEast = i % 2 == 0;
-      final x = isEast
-          ? 22.0 + _rng.nextDouble() * 46.0
-          : -22.0 - _rng.nextDouble() * 46.0;
-      final z = (_rng.nextDouble() * 90.0) - 45.0;
+    // ٢٨٠ خصلة على كامل مرج الجزيرة (وليس على ضفّتي نهر). كل موضع يُرفض
+    // إن وقع في بحيرة أو على سفح جبل أو داخل فناء الرصف. سقف المحاولات
+    // يمنع حلقة لا تنتهي لو ضاقت المساحة الصالحة.
+    var placed = 0;
+    var attempts = 0;
+    while (placed < 280 && attempts < 4000) {
+      attempts++;
+      final x = _kPlantMinX + _rng.nextDouble() * (_kPlantMaxX - _kPlantMinX);
+      final z = _kPlantMinZ + _rng.nextDouble() * (_kPlantMaxZ - _kPlantMinZ);
+      if (!_isPlantable(x, z)) continue;
+      final i = placed;
       final groundY = _calculateGroundElevation(x, z);
 
+      // لا عشب داخل فناء الرصف: البلاط يعلو الأرض ٠٫٢ فقط، فخصلة واحدة
+      // تحته تعبر سطحه وتُقرأ شوكة خضراء وسط الحجر. الهامش ١٫٠٦ يترك شريط
+      // عشب رفيع على الحدّ بدل حافة مقصوصة بالسكين.
+      final pdx = (x - _kPlateauX) / _kPavingRadiusX;
+      final pdz = (z - _kPlateauZ) / _kPavingRadiusZ;
+      if (pdx * pdx + pdz * pdz < 1.06) continue;
+
+      placed++;
       final tuftGroup = three.Group();
-      tuftGroup.position.set(x, groundY + 0.02, z);
+      // ٥ سم في الأرض: أسطح بلاطات المرج تتذبذب ±٠٫٢، والخصلة المعلّقة
+      // ٢٠ سم فوق البلاطة تُقرأ شفرة طائرة.
+      tuftGroup.position.set(x, groundY - 0.05, z);
 
       final gMat = three.MeshPhongMaterial({
         "color": grassColors[i % grassColors.length],
         "shininess": 24,
-        "flatShading": true,
+        "flatShading": false,
+        // خصلات العشب مخاريط رأسية: أوجهها الجانبية تُقابل شمسًا في وسط السماء
+        // فتردّ ضوءًا قليلًا وتُقرأ مثلثة سوداء في المرج. إضاءة ذاتية خفيفة من
+        // لونها هي نفسها تمنع ذلك من غير أن تفقد شكلها.
+        "emissive": 0x1E5A28,
       });
 
       // 3 to 4 delicate, fine grass blades
@@ -888,11 +1663,13 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       "shininess": 100,
     });
 
+    // أربعة أصداف موزّعة على المرج حول البحيرتين. الموضع الرابع كان (19، 28)
+    // داخل هضبة القصور الجديدة، فنُقل إلى غرب البحيرة الشمالية.
     final geodePositions = [
       three.Vector3(-18.5, 0.2, 16.0),
-      three.Vector3(18.5, 0.2, -16.0),
+      three.Vector3(22.0, 0.2, -16.0),
       three.Vector3(-19.0, 0.2, -26.0),
-      three.Vector3(19.0, 0.2, 28.0),
+      three.Vector3(-14.0, 0.2, 36.0),
     ];
 
     for (int g = 0; g < geodePositions.length; g++) {
@@ -923,156 +1700,286 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     }
   }
 
-  // =========================================================================
-  // 🌊 3. FLOWING DYNAMIC RIVER & RIPPLES
-  // =========================================================================
+  /// هضبة القصور: موديل الجزيرة العشبية بدل الأسطوانة المسطّحة.
+  ///
+  /// **بمقاس موحّد واحد** على المحاور الثلاثة. الموديل ١٫٨٨ × ٠٫١٩ × ١٫٣٣
+  /// (نسبة ١٫٤١)، فتكبيره بـ`42.9 ÷ 1.88` يعطي ٤٢٫٩ × ٤٫٣٤ × ٣٠٫٤ تلقائيًا:
+  /// الشكل كما صُمِّم، والتكستشر لا يُمطّ ولا تتحول حصى الجرف إلى خطوط.
+  /// الأسطوانة والقرص العشبي يبقيان شبكة أمان حتى يصل الموديل ثم يُخفيان معًا.
+  /// **لا تُستبدل خامتها**: `plateau.jpg` تحمل عشب السطح وجرفه الصخري في أطلس
+  /// واحد، واستبدالها بخامة المرج (`ground_spots`) كان يمحو الجرف ويحوّل
+  /// الهضبة إلى فطيرة باهتة. تكرار UV ×3 كان لمصلحة تلك الخامة لا لهذا الأطلس.
+  void _buildPlateauModel() {
+    const targetWidth = _kPlateauRadiusX * 2;
 
-  void _buildRiverAndFeatures() {
-    // 1. Crystal Turquoise Water Base
-    final waterGeo = three.PlaneGeometry(30, _kGroundD * 1.02, 16, 32);
-    final waterMat = three.MeshPhongMaterial({
-      "color": 0x00B4D8,
-      "emissive": 0x005F73,
-      "specular": 0xFFFFFF,
-      "shininess": 160,
-      "transparent": true,
-      // أقل عتامة = عمق حقيقي: قاع النهر والحصى يظهران تحت السطح بدل سائل
-      // مصمت يغطيهما. القاع موجود فعلًا على y = -1.3.
-      "opacity": 0.58,
-      "side": three.DoubleSide,
-    });
-    _waterMesh = three.Mesh(waterGeo, waterMat);
-    _waterMesh!.rotation.x = -three.Math.pi / 2;
-    _waterMesh!.position.set(0, 0.15, 0);
-    _scene.add(_waterMesh!);
+    three_jsm.GLTFLoader()
+        .loadAsync(kPlateauModel)
+        .timeout(const Duration(seconds: 30))
+        .then((gltf) {
+          if (_disposed) return;
+          final scene = gltf?["scene"];
+          if (scene == null) {
+            debugPrint('⚠️ plateau scene is null');
+            return;
+          }
+          scene.traverse((child) {
+            if (child is three.Mesh) {
+              final materials = child.material is List
+                  ? child.material as List
+                  : [child.material];
+              for (final mat in materials) {
+                if (mat == null) continue;
+                mat.side = three.DoubleSide;
+                // الموديل يصل بخريطة معدن، والخامة بلا خريطة بيئة تسودّ.
+                mat.metalness = 0.0;
+                // الخامة تحمل اللون النهائي بنفسها: العشب فيها مضروب بـ0x2F8A4E
+                // (لون المرج) والحجر بقي رمليًا. أي لون هنا يُصوِّر الحجر
+                // أخضر — وهو ما كان يمحو الجرف ويجعل الهضبة فطيرة عشب.
+                mat.color.setHex(0xFFFFFF);
+                mat.emissive?.setHex(0x0E2416);
+                mat.needsUpdate = true;
+              }
+            }
+          });
+          makeTexturesUploadable(scene);
+          // نُبقي خامة `plateau.jpg` كما صُنعت: عشب السطح وجرفه الصخري في
+          // أطلس واحد. أي خامة واحدة تُركَّب على المجسّم كله تمحو التمييز
+          // وتجعل الجرف طحلبًا باهتًا.
 
-    // 2. Dynamic River Stream Ripple Lines
-    _riverRipples.clear();
-    final rippleMat = three.MeshBasicMaterial({
-      "color": 0xE0F7FA,
-      "transparent": true,
-      "opacity": 0.45,
-      "side": three.DoubleSide,
-    });
+          final box = three.Box3().setFromObject(scene);
+          final size = box.getSize(three.Vector3());
+          if (size.x.abs() < 0.001 ||
+              size.y.abs() < 0.001 ||
+              size.z.abs() < 0.001) {
+            debugPrint('⚠️ plateau has no volume');
+            return;
+          }
+          // مقياس واحد لكل المحاور: أي فرق بينها يشدّ التكستشر.
+          final uniform = targetWidth / size.x.abs();
+          scene.scale.set(uniform, uniform, uniform);
+          scene.updateMatrixWorld(true);
+          final fitted = three.Box3().setFromObject(scene);
+          final cx = (fitted.min.x + fitted.max.x) / 2;
+          final cz = (fitted.min.z + fitted.max.z) / 2;
+          if (!cx.isFinite || !cz.isFinite || !fitted.min.y.isFinite) return;
+          scene.position.set(_kPlateauX - cx, -fitted.min.y, _kPlateauZ - cz);
+          _scene.add(scene);
 
-    for (int r = 0; r < 24; r++) {
-      final rGeo = three.PlaneGeometry(2.5 + _rng.nextDouble() * 4.0, 0.35);
-      final ripple = three.Mesh(rGeo, rippleMat);
-      ripple.rotation.x = -three.Math.pi / 2;
-      ripple.position.set(
-        ((_rng.nextDouble() * 16.0) - 8.0),
-        0.18,
-        (_rng.nextDouble() * _kGroundD) - (_kGroundD / 2),
-      );
-      _riverRipples.add(ripple);
-      _scene.add(ripple);
-    }
-
-    // 3. Sandy Riverbed Floor
-    final bedGeo = three.PlaneGeometry(34, _kGroundD * 1.02, 8, 16);
-    final bedMat = three.MeshPhongMaterial({
-      "color": 0x0C3825,
-      "side": three.DoubleSide,
-    });
-    final bed = three.Mesh(bedGeo, bedMat);
-    bed.rotation.x = -three.Math.pi / 2;
-    bed.position.set(0, -1.3, 0);
-    _scene.add(bed);
-
-    // 4. Riverbed Stones
-    _buildRiverPebbles();
-
-    // 5. White Marble Arched Bridge
-    _buildArchedMarbleBridge();
-
-    // 6. Water Lilies
-    _buildWaterLilies();
+          // الشبكة الاحتياطية تنسحب الآن. القرص العشبي كان يغطي الأسطوانة
+          // المصمتة؛ سطح الموديل عشبي أصلًا، فإبقاؤه يعني قرصًا يطفو فوق
+          // التضاريس أو يتقاطع معها.
+          _plateauBluffMesh?.visible = false;
+          _plateauTopMesh?.visible = false;
+          debugPrint('🏔️ plateau model added');
+        })
+        .catchError((Object e) {
+          debugPrint('⚠️ plateau model failed: $e');
+        });
   }
 
-  void _buildRiverPebbles() {
-    final stoneColors = [0x607D8B, 0x455A64, 0x795548, 0x90A4AE, 0x8D6E63];
+  /// رصف فناء الهضبة: بلاط حجري من حزمة الطبيعة حول مركزها.
+  ///
+  /// البلاطة الأصلية ~٠٫٥ × ٠٫٠٧ × ٠٫٤٤ متر (بلاطة حديقة صغيرة)، فتُكبَّر ×٣٫٩
+  /// لتصير ~١٫٩٥ × ١٫٧٢ مع سماكة ٠٫٢. الشبكة ١٦×١٣ بخطوة ٢٫٠ × ١٫٧٩ تترك
+  /// **مفصل ٠٫٠٥** بين البلاطات: المفصل ٠٫٣ جرّب أولًا فقرأ الفناء شبكةً خضراء
+  /// مخطّطة (العشب يخترق كل صف)، والملاط الرقيق يجعل السطح حجرًا متصلًا.
+  /// القناع البيضاوي ٨ × ٥٫٢ **أصغر** من نصف شبكة ١٥ × ١٠٫٧، وإلا قصّ الأركان
+  /// فقط فخرج الفناء مستطيلًا؛ بهذه النسبة يصير بيضاويًا حقيقيًا ١٦ × ١٠٫٤
+  /// (٥٣٪ من عرض الهضبة) بـ**٣٦ بلاطة**.
+  ///
+  /// **ارتفاع القاعدة ٢٫٧٦ لا ٢٫٨٥**: سطح موديل الهضبة (المقاس من ملفه)
+  /// ٢٫٧٥–٢٫٩٧ في نطاق نصف القطر هذا. البلاطة بسماكة ٠٫١٧ وقاعدة على ٢٫٧٦
+  /// تُدفن جزئيًا عند أعلى التموجات وتكاد تلامس العشب عند أخفضها، فلا فراغ
+  /// ظاهر تحتها ولا تختفي كليًا.
+  ///
+  /// القوالب الأربعة تُحمَّل مرة واحدة ثم تُنسخ: البلاطة ٦٨ مثلثًا فقط، والنسخ
+  /// يشترك في المواد والخامات (لا خامات أصلًا هنا) فلا يكلّف ذاكرة تُذكر.
+  Future<void> _buildPlateauPaving(three.Group parent) async {
+    const paths = [
+      'assets/3d/floor_tile_1.glb',
+      'assets/3d/floor_tile_2.glb',
+      'assets/3d/floor_tile_3.glb',
+      'assets/3d/floor_tile_4.glb',
+    ];
+    // **اللون أزرق-رمادي في الملف ليخرج حجرًا رماديًا على الشاشة.** شمس الظهيرة
+    // 0xFFE082 مع محيط أخضر 0x4A6B56 تعطي للأوجه العلوية ‎(B/R ≈ 0.6)، فأي
+    // رمادي متعادل هنا يصل أصفر رمليًا — وهذا ما حدث فعلًا: 0x9A968C ظهر
+    // «كسكسي» على المرج. القناة الزرقاء مرفوعة لتعويض النقص، ونفس الحيلة
+    // مستخدمة في river_water (٥٣،٩١،١٢٣) وgrass_rocks.
+    const shades = [0x9298C4, 0x8A90BB, 0x9AA0CB, 0x848AB5];
 
-    for (int i = 0; i < 45; i++) {
-      final z = (_rng.nextDouble() * _kGroundD * 0.8) - (_kGroundD * 0.4);
-      final x = ((_rng.nextDouble() * 18.0) - 9.0);
-      final cMat = three.MeshPhongMaterial({
-        "color": stoneColors[i % stoneColors.length],
-        "shininess": 25,
-        "flatShading": true,
-      });
+    final templates = <three.Object3D>[];
+    for (var i = 0; i < paths.length; i++) {
+      try {
+        final gltf = await three_jsm.GLTFLoader()
+            .loadAsync(paths[i])
+            .timeout(const Duration(seconds: 30));
+        if (_disposed) return;
+        final scene = gltf?['scene'];
+        if (scene == null) continue;
 
-      final size = 0.6 + _rng.nextDouble() * 0.9;
-      final stone = three.Mesh(three.DodecahedronGeometry(size), cMat);
-      stone.position.set(x, -1.25 + size * 0.3, z);
-      stone.scale.set(1.3, 0.6, 1.2);
-      stone.rotation.set(
-        _rng.nextDouble() * 3,
-        _rng.nextDouble() * 3,
-        _rng.nextDouble() * 3,
-      );
-      _scene.add(stone);
+        final shade = shades[i % shades.length];
+        scene.traverse((child) {
+          if (child is! three.Mesh) return;
+          final materials = child.material is List
+              ? child.material as List
+              : [child.material];
+          for (final mat in materials) {
+            if (mat == null) continue;
+            mat.side = three.DoubleSide;
+            mat.metalness = 0.0;
+            mat.color.setHex(shade);
+            // نفس الوهج المحايد الذي تأخذه موديلات الحزمة، وإلا بدت البلاطة
+            // داكنة بجانب الجزر الطافية.
+            mat.emissive?.setHex(0x0C0C0C);
+            mat.needsUpdate = true;
+          }
+        });
+        makeModelCloneable(scene);
+        templates.add(scene);
+      } catch (e) {
+        debugPrint('⚠️ paving tile failed: ${paths[i]} $e');
+      }
+    }
+    if (_disposed || templates.isEmpty) return;
+
+    const stepX = 2.0;
+    const stepZ = 1.79;
+    const cols = 16;
+    const rows = 13;
+    // القاعدة على سطح الهضبة المسطّح كما قيس من `plateau.glb`.
+    const baseY = _kPlateauHeight - 0.09;
+    const tileScale = 3.9;
+
+    for (var row = 0; row < rows; row++) {
+      final dz = (row - (rows - 1) / 2) * stepZ;
+      for (var col = 0; col < cols; col++) {
+        final dx = (col - (cols - 1) / 2) * stepX;
+        // **القناع أصغر بكثير من الشبكة** (١١٫٥×٧٫٥ مقابل ١٥×١٠٫٧): أي قناع
+        // قريب من نصف الشبكة يقصّ الأركان فقط فيخرج الفناء مستطيلًا — جرّبنا
+        // ١٠٫٤×٨ على شبكة ٨٫٣×٥٫٩ فظهر بلاطة مستطيلة. هنا تُقصّ الأعمدة
+        // والصفوف الطرفية كلها فيصير القوس بيضاويًا حقيقيًا.
+        final nx = dx / _kPavingRadiusX;
+        final nz = dz / _kPavingRadiusZ;
+        if (nx * nx + nz * nz > 1.0) continue;
+
+        // النوع عشوائي لا بالتناوب: التناوب المنتظم ١-٢-٣-٤ يرسم رقعة
+        // شطرنج مرئية من بعيد، والعشوائية تذيب الفروق في نسج حجري طبيعي.
+        final template = templates[_rng.nextInt(templates.length)];
+        three.Object3D tile;
+        try {
+          tile = template.clone(true);
+        } catch (e) {
+          debugPrint('⚠️ paving clone failed: $e');
+          continue;
+        }
+
+        // حاوية مستقلة: الجذر المنسوخ قد يحمل تحويلات المُصدِّر، فلا نكتب
+        // الدوران/القياس عليه مباشرة.
+        final holder = three.Group();
+        holder.add(tile);
+        holder.position.set(_kPlateauX + dx, baseY, _kPlateauZ + dz);
+        // **لا دوران ٩٠°**: البلاطة ١٫٩٥ × ١٫٧٢ في خانة ٢٫٠ × ١٫٧٩، فإدارتها
+        // تجعل ضلعها الطويل يتجاوز الخانة فيتراكب مع جارتها — وتراكب السطوح
+        // المتساوية يُنتج وميض Z-fighting. الميل البسيط وحده يكسر الهندسة.
+        holder.rotation.y = (_rng.nextDouble() - 0.5) * 0.04;
+        // المحور الرأسي ٠٫٧: سماكة ٠٫٢ بدل ٠٫٢٨، فتبقى البلاطة قريبة من
+        // العشب لا مرتفعة عنه.
+        holder.scale.set(tileScale, tileScale * 0.7, tileScale);
+        parent.add(holder);
+      }
     }
   }
 
-  void _buildArchedMarbleBridge() {
+  void _buildStoneBridge() {
+    // جسر حجري يعبر البحيرة الوسطى. الماء دائرة نصف قطرها ١٤٫٧٥ وشاطئها
+    // ١٧٫١٥، فـ١٦٫٩ يمدّ الموديل (١٫٨٩٧ طولًا) إلى ٣٢ وحدة ويغرس طرفيه في
+    // الشاطئين. **الطول لا يُصغَّر**: أي قيمة أقل تترك الجسر معلّقًا فوق الماء.
+    // التصغير في العرض والارتفاع وحدهما (٨٫٩ → ٨٫٠ و١٠٫٢ → ٨٫٨)، فيصير
+    // أنحف وأخفض ويترك مساحة أكبر للمرج حول البحيرة.
+    const scaleX = 16.9; // 1.897 × 16.9 ≈ 32 طولًا
+    const scaleY = 8.8; // 0.520 × 8.8 ≈ 4.58 ارتفاعًا
+    const scaleZ = 8.0; // 1.126 × 8.0 ≈ 9.0 عرضًا
+
+    three_jsm.GLTFLoader()
+        .loadAsync(kBridgeModel)
+        .timeout(const Duration(seconds: 30))
+        .then((gltf) {
+          if (_disposed) return;
+          final scene = gltf?["scene"];
+          if (scene == null) {
+            debugPrint('⚠️ bridge scene is null');
+            return;
+          }
+          scene.traverse((child) {
+            if (child is three.Mesh) {
+              final materials = child.material is List
+                  ? child.material as List
+                  : [child.material];
+              for (final mat in materials) {
+                if (mat == null) continue;
+                mat.side = three.DoubleSide;
+                // الخامة المرسومة تحمل الظل والعمق، فلا تحتاج خريطة نواظم ولا
+                // معدنًا — والمعدن بلا خريطة بيئة يسودّ.
+                mat.metalness = 0.0;
+                mat.needsUpdate = true;
+              }
+            }
+          });
+          makeTexturesUploadable(scene);
+
+          scene.scale.set(scaleX, scaleY, scaleZ);
+          // المركز عند ١٫٥٤: القاع ١٫٥٤ − ٢٫٢٩ = −٠٫٧٥، أي مستوى الماء
+          // (kNatureWaterY = −٠٫٧٥) بالضبط، والسطح ٣٫٨٣ فوقه بقوس ظاهر.
+          final lake = _centralLake;
+          scene.position.set(lake[0], 1.54, lake[1]);
+          _scene.add(scene);
+          debugPrint('🌉 bridge model added');
+        })
+        .catchError((Object e) {
+          debugPrint('⚠️ bridge model failed: $e');
+          if (!_disposed) _buildFallbackBridge();
+        });
+  }
+
+  /// نسخة الصندوق القديمة تبقى كخطة بديلة إن فشل الموديل في التحميل، حتى لا
+  /// يختفي المعبر من المشهد كله بسبب ملف واحد.
+  void _buildFallbackBridge() {
     final bridgeGroup = three.Group();
-    bridgeGroup.position.set(0, 0, 0);
+    final lake = _centralLake;
+    bridgeGroup.position.set(lake[0], 0, lake[1]);
 
     final marbleMat = three.MeshPhongMaterial({
-      "color": 0xFFFFFF,
-      "emissive": 0x111111,
-      "specular": 0xFFFFFF,
-      "shininess": 80,
+      "color": 0xA79B7E,
+      "emissive": 0x0C0A06,
+      "specular": 0x7A7462,
+      "shininess": 16,
       "flatShading": true,
-    });
-    final goldMat = three.MeshPhongMaterial({
-      "color": 0xFFA000,
-      "emissive": 0x6A4400,
-      "shininess": 100,
     });
 
     // Arch Deck
-    final arch = three.Mesh(three.BoxGeometry(36, 1.2, 7.5), marbleMat);
+    final arch = three.Mesh(three.BoxGeometry(32, 1.2, 7.5), marbleMat);
     arch.position.set(0, 1.6, 0);
     bridgeGroup.add(arch);
 
     // Ramps
     final leftRamp = three.Mesh(three.BoxGeometry(10, 0.9, 7.5), marbleMat);
-    leftRamp.position.set(-20, 0.7, 0);
+    leftRamp.position.set(-15.5, 0.7, 0);
     leftRamp.rotation.z = 0.16;
     bridgeGroup.add(leftRamp);
 
     final rightRamp = three.Mesh(three.BoxGeometry(10, 0.9, 7.5), marbleMat);
-    rightRamp.position.set(20, 0.7, 0);
+    rightRamp.position.set(15.5, 0.7, 0);
     rightRamp.rotation.z = -0.16;
     bridgeGroup.add(rightRamp);
-
-    // Balustrades
-    for (int side in [-1, 1]) {
-      final rail = three.Mesh(three.BoxGeometry(46, 0.6, 0.5), marbleMat);
-      rail.position.set(0, 2.7, side * 3.4);
-      bridgeGroup.add(rail);
-
-      for (int p = -2; p <= 2; p++) {
-        final post = three.Mesh(
-          three.CylinderGeometry(0.3, 0.4, 1.6, 8),
-          p.abs() == 2 ? goldMat : marbleMat,
-        );
-        post.position.set(p * 9.0, 2.4, side * 3.4);
-        bridgeGroup.add(post);
-
-        final lantern = three.Mesh(
-          three.SphereGeometry(0.38, 8, 8),
-          three.MeshBasicMaterial({"color": 0xFFF9C4}),
-        );
-        lantern.position.set(p * 9.0, 3.3, side * 3.4);
-        bridgeGroup.add(lantern);
-      }
-    }
 
     _scene.add(bridgeGroup);
   }
 
+  /// زنابق الماء على سطح البحيرتين، لا في مجرى نهر.
+  ///
+  /// داخل ٧٢٪ من نصف قطر الماء: ما يقرب من الحافة يطفو فوق الشاطئ المرتفع
+  /// (~١٫٢ فوق المرج) فيبدو معلّقًا في الهواء.
   void _buildWaterLilies() {
     final padMat = three.MeshPhongMaterial({
       "color": 0x2E7D32,
@@ -1084,22 +1991,28 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       "shininess": 90,
     });
 
-    for (int i = 0; i < 16; i++) {
-      final z = (_rng.nextDouble() * _kGroundD * 0.8) - (_kGroundD * 0.4);
-      if (z.abs() < 12) continue;
-      final x = ((_rng.nextDouble() * 18.0) - 9.0);
+    for (final lake in kNatureLakes) {
+      for (int i = 0; i < 10; i++) {
+        final r = lake[2] * 0.72 * sqrt(_rng.nextDouble());
+        final a = _rng.nextDouble() * pi * 2;
+        final x = lake[0] + r * cos(a);
+        final z = lake[1] + r * sin(a);
 
-      final lilyGroup = three.Group();
-      lilyGroup.position.set(x, 0.2, z);
+        final lilyGroup = three.Group();
+        lilyGroup.position.set(x, kNatureWaterY + 0.03, z);
 
-      final pad = three.Mesh(three.CylinderGeometry(1.2, 1.2, 0.06, 8), padMat);
-      lilyGroup.add(pad);
+        final pad = three.Mesh(
+          three.CylinderGeometry(1.2, 1.2, 0.06, 8),
+          padMat,
+        );
+        lilyGroup.add(pad);
 
-      final lotus = three.Mesh(three.ConeGeometry(0.5, 0.65, 6), lotusWhite);
-      lotus.position.y = 0.35;
-      lilyGroup.add(lotus);
+        final lotus = three.Mesh(three.ConeGeometry(0.5, 0.65, 6), lotusWhite);
+        lotus.position.y = 0.35;
+        lilyGroup.add(lotus);
 
-      _scene.add(lilyGroup);
+        _scene.add(lilyGroup);
+      }
     }
   }
 
@@ -1722,7 +2635,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   }
 
   bool _isFarEnough(double x, double z) {
-    if (x.abs() < 24.0 || x.abs() > 70.0 || z.abs() > 50.0) return false;
+    if (!_isPlantable(x, z)) return false;
 
     for (final e in _savedEntries) {
       final dx = x - e.x;
@@ -1741,16 +2654,18 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     switch (type) {
       case RewardType.palmTree:
         do {
-          x = 28.0 + _rng.nextDouble() * 40.0;
-          z = (_rng.nextDouble() * 90.0) - 45.0;
+          // النخيل في النصف الشرقي، والشجر في الغربي — التمييز القديم نفسه
+          // لكن على مستطيل الجزيرة الجديد لا على ضفّتي النهر.
+          x = 4.0 + _rng.nextDouble() * 78.0;
+          z = _kPlantMinZ + _rng.nextDouble() * (_kPlantMaxZ - _kPlantMinZ);
           tries++;
         } while (!_isFarEnough(x, z) && tries < 90);
         break;
 
       case RewardType.tree:
         do {
-          x = -28.0 - _rng.nextDouble() * 40.0;
-          z = (_rng.nextDouble() * 90.0) - 45.0;
+          x = -76.0 + _rng.nextDouble() * 80.0;
+          z = _kPlantMinZ + _rng.nextDouble() * (_kPlantMaxZ - _kPlantMinZ);
           tries++;
         } while (!_isFarEnough(x, z) && tries < 90);
         break;
@@ -1758,16 +2673,18 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       case RewardType.palace:
       case RewardType.mosque:
         do {
-          x = 40.0 + _rng.nextDouble() * 22.0;
-          z = -18.0 - _rng.nextDouble() * 22.0;
+          // مستطيل داخل بيضاوي الهضبة (١٥ × ١٠٫٦): أركانه عند نصف قطر طبيعي
+          // ٠٫٦٩، فتظل الظلال على السطح لا في الهواء.
+          x = 17.0 + _rng.nextDouble() * 14.0;
+          z = 17.0 + _rng.nextDouble() * 9.0;
           tries++;
         } while (!_isFarEnough(x, z) && tries < 90);
         break;
 
       case RewardType.house:
         do {
-          x = -32.0 - _rng.nextDouble() * 30.0;
-          z = 15.0 + _rng.nextDouble() * 30.0;
+          x = -76.0 + _rng.nextDouble() * 58.0;
+          z = 10.0 + _rng.nextDouble() * 66.0;
           tries++;
         } while (!_isFarEnough(x, z) && tries < 90);
         break;
@@ -1776,9 +2693,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         do {
           final isEast = _rng.nextBool();
           x = isEast
-              ? 28.0 + _rng.nextDouble() * 36.0
-              : -28.0 - _rng.nextDouble() * 36.0;
-          z = (_rng.nextDouble() * 75.0) - 37.5;
+              ? 10.0 + _rng.nextDouble() * 72.0
+              : -10.0 - _rng.nextDouble() * 66.0;
+          z = _kPlantMinZ + _rng.nextDouble() * (_kPlantMaxZ - _kPlantMinZ);
           tries++;
         } while (!_isFarEnough(x, z) && tries < 90);
         break;
@@ -1788,11 +2705,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     return three.Vector3(x, y, z);
   }
 
-  /// هل تصلح ([x], [z]) لغرسة؟ أرض جافة بين الضفتين، داخل حدود الأرض، وبعيدة
-  /// عن كل موديل قائم بمسافة [_kMinSpacing] على الأقل.
+  /// هل تصلح ([x], [z]) لغرسة؟ مرج الجزيرة، وبعيدة عن كل موديل قائم بمسافة
+  /// [_kMinSpacing] على الأقل.
   bool _hasRoomAt(double x, double z) {
-    if (x.abs() < 24.0 || x.abs() > 108.0) return false; // النهر والضفة
-    if (z.abs() > 62.0) return false;
+    if (!_isPlantable(x, z)) return false;
     for (final e in _savedEntries) {
       final dx = x - e.x;
       final dz = z - e.z;
@@ -2007,7 +2923,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   /// Replaces the model child of [model] with the staged GLB, when the type
   /// and tier have one. Runs through [_glbQueue] so only one model parses at a
   /// time.
-  Future<void> _upgradeToGLB(_AnimatedModel model, int tier) async {
+  Future<void> _upgradeToGLB(_AnimatedModel model) async {
+    final tier = model.tier;
+    final revision = model.revision;
     final path = resolveTierModelPath(model.type, tier);
     if (path == null) return;
     // قد يكون النوع ارتقى بينما كان هذا الطلب في الطابور: تحميل المرحلة
@@ -2021,37 +2939,207 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       // The entry may have been undone, or the screen rebuilt, while the model
       // was parsing.
       if (model.mesh.parent == null) return;
+      if (model.revision != revision || model.tier != tier) return;
+
+      // نضبط المقاس واللون قبل الاستبدال، فلا تظهر نسخة بمقاس خاطئ لإطار.
+      _styleModelChild(model, glb);
       final oldChild = model.modelChild;
       if (oldChild != null) model.mesh.remove(oldChild);
       model.mesh.add(glb);
       model.modelChild = glb;
+      model.glbActive = true;
+      model.glbTier = tier;
       debugPrint('⬆️ Model active: ${model.type} (Tier $tier)');
     } catch (e) {
       debugPrint('⚠️ Upgrade failed for ${model.type} (Tier $tier): $e');
     }
   }
 
-  void _enqueueUpgrade(_AnimatedModel model, int tier) {
+  void _enqueueUpgrade(_AnimatedModel model) {
     _glbQueue = _glbQueue
         .then((_) async {
           if (_disposed) return;
-          await _upgradeToGLB(model, tier);
+          await _upgradeToGLB(model);
         })
         .catchError((Object e) {
           debugPrint('⚠️ GLB queue: $e');
         });
   }
 
+  /// يطبّق ارتفاع المرحلة ولونها على نسخة GLB جديدة (موادها مستقلة).
+  void _styleModelChild(_AnimatedModel model, three.Object3D child) {
+    if (hasTierModels(model.type)) {
+      final height = modelInstanceHeight(
+        model.tier,
+        model.stage,
+        model.scaleMultiplier,
+      );
+      fitModelToGround(
+        child,
+        height,
+        sink: _groundSinkOf(model.type, model.tier, height),
+      );
+    }
+    _applyTint(child, model.tint);
+    model.appliedTint = model.tint;
+  }
+
+  /// كم يُدفن الموديل تحت الأرض: قاعدة النخلة العشبية كبيرة في المرتبة الأولى،
+  /// والشجر جذعه في الأسفل. التفاصيل في `modelGroundSink`.
+  double _groundSinkOf(RewardType type, int tier, double height) =>
+      modelGroundSink(
+        isPalm: type == RewardType.palmTree,
+        tier: tier,
+        height: height,
+      );
+
+  /// يمزج مواد الموديل نحو لون المرحلة. المواد هنا ملك الموديل وحده
+  /// (الإجرائية تُبنى جديدة، و`Mesh.clone` يستنسخ مواد الـGLB)، فلا تتلوّن
+  /// بقية الحديقة معها. نستبعد المادة المكرّرة لأن الموديل الإجرائي يشارك
+  /// بعض المواد بين عدة أجزاء، ولو مزجناها لكل جزء لتضاعف اللون.
+  void _applyTint(three.Object3D root, int? tint) {
+    if (tint == null) return;
+    final target = three.Color(tint);
+    final done = <three.Material>{};
+    root.traverse((node) {
+      if (node is! three.Mesh) return;
+      final raw = node.material;
+      if (raw is List) {
+        for (final mat in raw) {
+          if (mat is three.Material && done.add(mat)) {
+            _tintMaterial(mat, target);
+          }
+        }
+      } else if (raw is three.Material && done.add(raw)) {
+        _tintMaterial(raw, target);
+      }
+    });
+  }
+
+  void _tintMaterial(three.Material mat, three.Color tint) {
+    // اللون هنا يُضرب في صورة الخامة، فالمادة البيضاء تُظهر الصورة كما هي.
+    // 0.8 كان مناسبًا للموديلات الإجرائية المسطّحة، لكنه على نخيل الـGLB يمحو
+    // الخامة: سعف المرتبة ٢ يخرج نعناعيًا والثالثة ليمونيًا. 0.45 يعطي صبغة
+    // واضحة مع بقاء تفاصيل السعف والجذع، والوهج يتولّى بقية الإحساس بالترقية.
+    mat.color.lerp(tint, 0.45);
+    final emissive = mat.emissive;
+    if (emissive != null) emissive.lerp(tint, 0.18);
+    mat.needsUpdate = true;
+  }
+
+  /// يبني الطفل الإجرائي بمقاسات المرحلة والتكبير واللون.
+  three.Object3D _buildModelChild(_AnimatedModel model) {
+    final child = _fallbackForType(model.type, tier: model.tier);
+    if (hasTierModels(model.type)) {
+      final height = modelInstanceHeight(
+        model.tier,
+        model.stage,
+        model.scaleMultiplier,
+      );
+      fitModelToGround(
+        child,
+        height,
+        sink: _groundSinkOf(model.type, model.tier, height),
+      );
+    } else {
+      child.scale.multiplyScalar(model.scaleMultiplier);
+    }
+    _applyTint(child, model.tint);
+    return child;
+  }
+
+  /// مقياس الزينة الأرضية (الظل والكومة) بالنسبة لارتفاع النموذج.
+  double _stageScaleOf(
+    RewardType type,
+    int tier,
+    double multiplier, [
+    int stage = 0,
+  ]) {
+    return hasTierModels(type)
+        ? (modelInstanceHeight(tier, stage, multiplier) / 3.0).clamp(0.35, 3.0)
+        : (1.0 + (tier - 1) * 0.08) * multiplier;
+  }
+
+  void _refreshGroundDressing(_AnimatedModel model) {
+    final stageScale = _stageScaleOf(
+      model.type,
+      model.tier,
+      model.scaleMultiplier,
+      model.stage,
+    );
+    model.shadowChild?.scale.set(stageScale, stageScale, 1);
+    model.moundChild?.scale.set(stageScale, 0.18, stageScale);
+    final ring = model.decorRing;
+    if (ring != null) {
+      final r = 1.0 + stageScale * 0.55;
+      ring.scale.set(r, r, 1);
+    }
+  }
+
+  /// يحدّث موديلًا قائمًا بعد تغيّر مرحلته، دون حذف الغرسة وإعادة زرعها.
+  void _restyleModel(_AnimatedModel model) {
+    model.revision++;
+    _refreshGroundDressing(model);
+
+    final existing = model.modelChild;
+    // إزالة التلوين لا يمكن أن تتم على نفس المادة (اللون تراكمي)، فنعيد بناء
+    // الطفل ونطلب الـGLB من جديد بدل الاكتفاء بإعادة القياس.
+    final clearingTint = model.tint == null && model.appliedTint != null;
+    if (!clearingTint &&
+        model.glbActive &&
+        existing != null &&
+        model.glbTier == model.tier) {
+      // نفس ملف الـGLB: يكفي إعادة ضبط الارتفاع (وقد يتغيّر التكبير وحده).
+      // نفصله لحظة القياس لأن `Box3` يقيس في إحداثيات العالم، والمجموعة
+      // الأم موضوعة على الأرض في مكانها.
+      final parent = existing.parent;
+      parent?.remove(existing);
+      final height = modelInstanceHeight(
+        model.tier,
+        model.stage,
+        model.scaleMultiplier,
+      );
+      fitModelToGround(
+        existing,
+        height,
+        sink: _groundSinkOf(model.type, model.tier, height),
+      );
+      parent?.add(existing);
+      // قد يتغيّر اللون داخل التير نفسه (المرحلة ١ ← ٢)، فنطبّقه مرة واحدة.
+      if (model.appliedTint != model.tint) {
+        _applyTint(existing, model.tint);
+        model.appliedTint = model.tint;
+      }
+      return;
+    }
+
+    final child = _buildModelChild(model);
+    if (existing != null) model.mesh.remove(existing);
+    model.mesh.add(child);
+    model.modelChild = child;
+    model.glbActive = false;
+    model.glbTier = 0;
+    if (hasTierModels(model.type)) _enqueueUpgrade(model);
+  }
+
   three.Vector3? addModelAt({
     RewardType type = RewardType.palmTree,
     int tier = 1,
+    int stage = 0,
+    double scaleMultiplier = 1.0,
+    int? tint,
     double? x,
     double? z,
     double? y,
-    bool fromStorage = false,
+    bool persist = true,
+    bool ignoreCap = false,
     bool reveal = false,
+    bool isDecor = false,
+    int? expiresAt,
+    bool track = true,
+    _SavedEntry? savedEntry,
   }) {
-    if (_animatedModels.length >= _kMaxSceneModels && !fromStorage) {
+    if (_animatedModels.length >= _kMaxSceneModels && !ignoreCap) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -2066,33 +3154,36 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       return null;
     }
 
-    final calculatedPos = (x == null || z == null) && !fromStorage
+    final calculatedPos = (x == null || z == null)
         ? (reveal ? _nextPlantPosForType(type) : _nextSpawnPosForType(type))
-        : three.Vector3(
-            x ?? 0.0,
-            _calculateGroundElevation(x ?? 0.0, z ?? 0.0),
-            z ?? 0.0,
-          );
+        : three.Vector3(x, y ?? _calculateGroundElevation(x, z), z);
 
     final group = three.Group();
     group.position.set(calculatedPos.x, calculatedPos.y, calculatedPos.z);
     group.rotation.y = three.Math.randFloat(0, three.Math.pi * 2);
 
-    final procedural = _fallbackForType(type, tier: tier);
-    // البديل الإجرائي كان يُبنى بمقاسه القديم (نحو ٣ وحدات للمرحلة الأولى)،
-    // فيقفز للأسفل لحظة استبداله بالـGLB المصغّر. نطبّعه على نفس الارتفاع
-    // قبل إضافته للمجموعة، فيصبح التبديل نموًا صامتًا لا انكماشًا مفاجئًا.
-    // (يجب أن يكون بلا أب هنا: Box3 يقيس في إحداثيات العالم.)
-    if (hasTierModels(type)) {
-      fitModelToGround(procedural, tierHeight(tier));
-    }
+    final model = _AnimatedModel(
+      group,
+      DateTime.now().millisecondsSinceEpoch,
+      type,
+      tier: tier,
+      stage: stage,
+      scaleMultiplier: scaleMultiplier,
+      tint: tint,
+      isDecor: isDecor,
+      expiresAt: expiresAt,
+    );
+
+    // البديل الإجرائي يظهر فورًا، ثم يُستبدل بالـGLB عند وصوله. كلاهما
+    // مضبوط على نفس الارتفاع، فلا يحدث انكماش مفاجئ.
+    final procedural = _buildModelChild(model);
     group.add(procedural);
+    model.modelChild = procedural;
+    model.appliedTint = tint;
 
     // مقاسات الظل والكومة تتبع المرحلة بدل ثباتها: كومة بعرض ١٫٣ تحت شجرة
     // ارتفاعها ١٫٢ تجعل الشتلة تبدو غارقة في جبل تراب.
-    final stageScale = hasTierModels(type)
-        ? (tierHeight(tier) / 3.0).clamp(0.35, 3.0)
-        : 1.0;
+    final stageScale = _stageScaleOf(type, tier, scaleMultiplier, stage);
 
     // 1. Soft Dark Contact Shadow Decal on the ground
     final shadowRadius =
@@ -2108,53 +3199,83 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       "side": three.DoubleSide,
     });
     final shadowDecal = three.Mesh(
-      three.CircleGeometry(radius: shadowRadius * stageScale, segments: 14),
+      three.CircleGeometry(radius: shadowRadius, segments: 14),
       shadowMat,
     );
     shadowDecal.rotation.x = -three.Math.pi / 2;
     shadowDecal.position.y = 0.02;
+    shadowDecal.scale.set(stageScale, stageScale, 1);
     group.add(shadowDecal);
+    model.shadowChild = shadowDecal;
 
     // 2. Earthen Root Mound for Trees and Palms
     if (type == RewardType.tree || type == RewardType.palmTree) {
-      final soilMat = three.MeshPhongMaterial({
-        "color": 0x3E2723,
-        "shininess": 10,
-        "flatShading": true,
+      // مادة واحدة مشتركة: كل موديل كان يخصّص مادة خاصة بالكومة، أي ١٢٠ مادة
+      // متطابقة في مشهد مملوء. المشاركة تجعل تحديث الخامة مرة واحدة يكفي.
+      _moundMat ??= three.MeshPhongMaterial({
+        "color": 0x7C8A64,
+        "emissive": 0x0B1208,
+        "shininess": 6,
+        "flatShading": false,
       });
-      final soilMound = three.Mesh(three.DodecahedronGeometry(0.65), soilMat);
+      final soilMound = three.Mesh(three.DodecahedronGeometry(0.65), _moundMat);
       soilMound.scale.set(stageScale, 0.18, stageScale);
       soilMound.position.y = 0.04;
       group.add(soilMound);
+      model.moundChild = soilMound;
+    }
+
+    // 3. حلقة ذهبية خفيفة: علامة الزينة المؤقتة الوحيدة (لا نغيّر لون
+    //    الموديل نفسه حتى لا يختلط بالنماذج الدائمة).
+    if (isDecor) {
+      final ring = three.Mesh(
+        three.TorusGeometry(1, 0.055, 6, 40),
+        three.MeshBasicMaterial({
+          "color": 0xFFD54F,
+          "transparent": true,
+          "opacity": 0.5,
+          "blending": three.AdditiveBlending,
+          "depthWrite": false,
+        }),
+      );
+      ring.rotation.x = -three.Math.pi / 2;
+      ring.position.y = 0.05;
+      final r = 1.0 + stageScale * 0.55;
+      ring.scale.set(r, r, 1);
+      group.add(ring);
+      model.decorRing = ring;
     }
 
     _scene.add(group);
-    final model = _AnimatedModel(
-      group,
-      DateTime.now().millisecondsSinceEpoch,
-      type,
-      tier: tier,
-      modelChild: procedural,
-    );
     _animatedModels.add(model);
+
+    // السجل يُنشأ دائمًا (حتى للنماذج المحمّلة) كي تراه دوال التباعد
+    // و`_writeSaved`؛ `persist` يتحكم بالكتابة فقط. النماذج العرضية (`track:
+    // false`) لا سجل لها أصلًا، فلا تتسرّب إلى الحفظ عند أول كتابة لاحقة.
+    if (track) {
+      final entry =
+          savedEntry ??
+          _SavedEntry(
+            type,
+            calculatedPos.x,
+            calculatedPos.y,
+            calculatedPos.z,
+            tier: tier,
+            stage: stage,
+            isDecor: isDecor,
+            expiresAt: expiresAt,
+          );
+      if (!_savedEntries.contains(entry)) _savedEntries.add(entry);
+      model.entry = entry;
+    }
 
     // The procedural mesh above is what appears immediately; the staged GLB is
     // swapped in asynchronously once it parses, so a slow device never waits on
     // the model before the garden grows.
-    _enqueueUpgrade(model, tier);
+    if (hasTierModels(type)) _enqueueUpgrade(model);
 
-    if (!fromStorage) {
-      _savedEntries.add(
-        _SavedEntry(
-          type,
-          calculatedPos.x,
-          calculatedPos.y,
-          calculatedPos.z,
-          tier: tier,
-        ),
-      );
-      _storage.saveRewards3D(_savedEntries.map((e) => e.toJson()).toList());
-    }
+    if (isDecor && track) _sessionDecor.add(model);
+    if (persist) _writeSaved();
 
     // الغرسة اليدوية وحدها تُحرّك الكاميرا: المزامنة والاسترجاع لا يقفزان
     // بالمستخدم إلى مكان آخر.
@@ -2162,21 +3283,109 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     return calculatedPos;
   }
 
-  void _undoLast() {
-    if (_animatedModels.isEmpty) return;
-    final last = _animatedModels.removeLast();
-    _scene.remove(last.mesh);
-    if (_savedEntries.isNotEmpty) {
-      _savedEntries.removeLast();
-      _storage.saveRewards3D(_savedEntries.map((e) => e.toJson()).toList());
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          textDirection: TextDirection.rtl,
+          style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+        ),
+        backgroundColor: const Color(0xFF1B5E20),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  /// الضغطة العادية: آخر زينة أُضيفت في هذه الجلسة (وليست مكافأة دائمة).
+  void _undoLastDecor() {
+    while (_sessionDecor.isNotEmpty) {
+      final model = _sessionDecor.last;
+      if (!_animatedModels.contains(model)) {
+        _sessionDecor.removeLast();
+        continue;
+      }
+      _removeModel(model);
+      _writeSaved();
+      setState(() {});
+      return;
     }
-    setState(() {});
+    _toast('لا توجد زينة جديدة في هذه الجلسة');
+  }
+
+  /// الضغط المطوّل: حذف آخر مكافأة نهائيًا من السجل وخصمها من عدّاد الذكر.
+  Future<void> _confirmPermanentUndo() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF0D2818),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: const BorderSide(color: Color(0x55FFD700)),
+          ),
+          title: const Text(
+            'تراجع دائم',
+            style: TextStyle(
+              fontFamily: 'Amiri',
+              fontSize: 20,
+              color: Color(0xFFFFD700),
+            ),
+          ),
+          content: const Text(
+            'سيُحذف آخر ذكر من سجل المكافآت، وتُخصم واحدة من عدّاد الذكر '
+            'المرتبط به. لا يمكن التراجع عن هذه الخطوة.',
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 13,
+              height: 1.6,
+              color: Colors.white70,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text(
+                'إلغاء',
+                style: TextStyle(fontFamily: 'Cairo', color: Colors.white70),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text(
+                'احذف',
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+
+    final removed = await _storage.removeLastReward();
+    if (removed == null) {
+      _toast('لا توجد مكافآت للتراجع عنها');
+      return;
+    }
+    final count = _storage.getDhikrCount(removed.dhikrId);
+    if (count > 0) {
+      await _storage.saveDhikrCount(removed.dhikrId, count - 1);
+    }
+    _applyEvolution();
+    _toast('حُذفت آخر مكافأة (${removed.type.displayName}) نهائيًا');
   }
 
   void _resetCamera() {
-    _camera.position.set(38, 44, 52);
-    _camera.lookAt(three.Vector3(0, 2, 0));
-    _controls.target.set(0, 2, 0);
+    _camera.position.set(_kHomeX, _kHomeY, _kHomeZ);
+    _controls.target.set(_kHomeTargetX, _kHomeTargetY, _kHomeTargetZ);
+    _camera.lookAt(_controls.target);
     _controls.update();
   }
 
@@ -2190,14 +3399,40 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     debugPrint('👆 scene pointer bound');
 
     state.addEventListener('pointerdown', (dynamic e) {
-      _sceneTapDown = Offset(
+      final id = (e.pointerId as num).toInt();
+      final down = Offset(
         (e.clientX as num).toDouble(),
         (e.clientY as num).toDouble(),
       );
+      // إصبع ثالث، أو مؤشر سابق لم يصل حدث رفعه: ابدأ إيماءة نظيفة بدل أن
+      // تبقى الحالة عالقة على إصبعين لا وجود لهما.
+      if (_scenePointers.length >= 2 && !_scenePointers.containsKey(id)) {
+        _scenePointers.clear();
+        _endTwoFinger();
+      }
+      _scenePointers[id] = down;
+      _sceneTapDown = down;
       _sceneTapDownMs = DateTime.now().millisecondsSinceEpoch;
+      if (_scenePointers.length == 2) _beginTwoFinger();
+    });
+
+    state.addEventListener('pointermove', (dynamic e) {
+      final id = (e.pointerId as num).toInt();
+      if (!_scenePointers.containsKey(id)) return;
+      _scenePointers[id] = Offset(
+        (e.clientX as num).toDouble(),
+        (e.clientY as num).toDouble(),
+      );
+      _moveTwoFinger();
     });
 
     state.addEventListener('pointerup', (dynamic e) {
+      final id = (e.pointerId as num).toInt();
+      final wasTwoFinger = _twoFingerTouched;
+      _scenePointers.remove(id);
+      if (_scenePointers.length < 2) _endTwoFinger();
+      if (_scenePointers.isEmpty) _twoFingerTouched = false;
+
       final down = _sceneTapDown;
       _sceneTapDown = null;
       if (down == null) return;
@@ -2205,11 +3440,72 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         (e.clientX as num).toDouble(),
         (e.clientY as num).toDouble(),
       );
+      // الإيماءة بإصبعين ليست لمسة فحص، حتى لو رُفعت الأصابع بسرعة.
+      if (wasTwoFinger) return;
       final elapsed = DateTime.now().millisecondsSinceEpoch - _sceneTapDownMs;
       // السحبة تدير الكاميرا، فلا تُفتح بها بطاقة.
       if (elapsed > 450 || (up - down).distance > 14) return;
       _handleSceneTap(up);
     });
+  }
+
+  Offset? _twoFingerMidpoint() {
+    if (_scenePointers.length < 2) return null;
+    final points = _scenePointers.values.take(2).toList(growable: false);
+    return (points[0] + points[1]) / 2;
+  }
+
+  void _beginTwoFinger() {
+    _twoFingerTouched = true;
+    _twoFingerMid = _twoFingerMidpoint();
+    _twoFingerAccum = Offset.zero;
+    _twoFingerMode = _kTwoFingerUndecided;
+  }
+
+  void _endTwoFinger() {
+    _twoFingerMid = null;
+    _twoFingerAccum = Offset.zero;
+    _twoFingerMode = _kTwoFingerUndecided;
+  }
+
+  /// إصبعان: يمين/شمال يدوّر، أعلى/أسفل يقرّب ويبعد.
+  ///
+  /// `OrbitControls` لا يعرف هذا التمييز: `DOLLY_ROTATE` يدوّر بأي اتجاه،
+  /// ويقرّب فقط عند تغيّر المسافة بين الإصبعين. لذلك عُطّل `TWO` في `initPage`
+  /// وتولّينا الإيماءة هنا. الاتجاه يُقفل بعد أول ١٢ بكسل حتى لا تهتز الكاميرا
+  /// بين الدوران والتقريب في السحبة المائلة.
+  void _moveTwoFinger() {
+    final mid = _twoFingerMidpoint();
+    if (mid == null) return;
+    final last = _twoFingerMid;
+    _twoFingerMid = mid;
+    if (last == null) return;
+    final delta = mid - last;
+
+    if (_twoFingerMode == _kTwoFingerUndecided) {
+      _twoFingerAccum += delta;
+      if (_twoFingerAccum.distance < 12) return;
+      _twoFingerMode = _twoFingerAccum.dx.abs() >= _twoFingerAccum.dy.abs()
+          ? _kTwoFingerRotate
+          : _kTwoFingerZoom;
+    }
+
+    if (_twoFingerMode == _kTwoFingerRotate) {
+      final viewportHeight = _controls.domElement.clientHeight;
+      if (viewportHeight <= 0) return;
+      _controls.rotateLeft(
+        2 * pi * delta.dx / viewportHeight * _controls.rotateSpeed,
+      );
+      return;
+    }
+
+    // سحب لأعلى (dy سالب) يقرّب، ولأسفل يبعد. ١٨ بكسل ≈ خطوة عجلة واحدة.
+    final step = pow(0.95, -delta.dy / 18).toDouble();
+    if (step < 1) {
+      _controls.dollyIn(step);
+    } else {
+      _controls.dollyOut(1 / step);
+    }
   }
 
   /// لمسة على المشهد: شعاع من الكاميرا عبر نقطة اللمس، وأول موديل يصيبه
@@ -2249,6 +3545,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         setState(() {
           _inspectedType = m.type;
           _inspectedTier = m.tier;
+          _inspectedStage = m.stage;
+          _inspectedIsDecor = m.isDecor;
+          _inspectedExpiresAt = m.expiresAt;
         });
         return;
       }
@@ -2259,15 +3558,32 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   }
 
   /// بطاقة زجاجية صغيرة تصف الغرسة الملموسة: النوع، مرتبة النماء، وعدد
-  /// المغروس منها هنا وفي الحديقة كلها.
-  Widget _buildInspectCard({required RewardType type, required int tier}) {
-    // مصدران مختلفان: `rewards_list` يكتبه عدّاد الأذكار، و`rewards_3d`
-    // يحفظ ما غُرس فعلًا (بما فيه الزرع اليدوي). الأكبر هو ما يمكن الدفاع
-    // عنه كإجمالي؛ الأخذ من الأول وحده أنتج «٠ إجمالي» وجنبها ١٦ شجرة.
-    final earned = _storage.getTotalByType(type);
-    final planted = _savedEntries.where((e) => e.type == type).length;
-    final total = earned > planted ? earned : planted;
-    final inScene = _animatedModels.where((m) => m.type == type).length;
+  /// المكافآت وراءها.
+  Widget _buildInspectCard({
+    required RewardType type,
+    required int tier,
+    required int stage,
+    required bool isDecor,
+    int? expiresAt,
+  }) {
+    final earned = _earnedByType[type] ?? 0;
+    final permanent = _animatedModels
+        .where((m) => m.type == type && !m.isDecor)
+        .length;
+    final decor = _animatedModels
+        .where((m) => m.type == type && m.isDecor)
+        .length;
+
+    final stageLabel = switch (stage) {
+      1 => 'تكبير',
+      2 => 'تكبير وَلون',
+      _ => 'الفسلة الأساسية',
+    };
+    final hoursLeft = expiresAt == null
+        ? 0
+        : ((expiresAt - DateTime.now().millisecondsSinceEpoch) / 3600000)
+              .ceil()
+              .clamp(0, 24);
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
@@ -2326,8 +3642,12 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                                 ),
                               ),
                               Text(
-                                'مرتبة النماء · المستوى '
-                                '${NumberFormatter.toArabic(tier)}',
+                                isDecor
+                                    ? 'زينة مؤقتة · المرتبة '
+                                          '${NumberFormatter.toArabic(tier)}'
+                                    : 'مرتبة النمو · المستوى '
+                                          '${NumberFormatter.toArabic(tier)}'
+                                          ' · $stageLabel',
                                 style: const TextStyle(
                                   fontFamily: 'Cairo',
                                   fontSize: 11,
@@ -2355,19 +3675,32 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _buildInspectStat(
-                          'في هذا المشهد',
-                          NumberFormatter.toArabic(inScene),
-                        ),
-                        const SizedBox(width: 20),
-                        _buildInspectStat(
-                          'إجمالي المغروس',
-                          NumberFormatter.toArabic(total),
-                        ),
-                      ],
-                    ),
+                    if (isDecor)
+                      _buildInspectStat(
+                        'متبقٍ من الزينة',
+                        hoursLeft == 0
+                            ? 'انتهت'
+                            : '${NumberFormatter.toArabic(hoursLeft)} ساعة',
+                      )
+                    else
+                      Row(
+                        children: [
+                          _buildInspectStat(
+                            'إجمالي المكافآت',
+                            NumberFormatter.toArabic(earned),
+                          ),
+                          const SizedBox(width: 16),
+                          _buildInspectStat(
+                            'في هذا المشهد',
+                            NumberFormatter.toArabic(permanent),
+                          ),
+                          const SizedBox(width: 16),
+                          _buildInspectStat(
+                            'زينة',
+                            NumberFormatter.toArabic(decor),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -2404,15 +3737,23 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     );
   }
 
-  /// بطاقة المكافأة. تُفتح من شريط الفلاتر، أو بلمس موديل في المشهد —
-  /// وفي الحالة الثانية نمرّر مرحلته هو (لا أعلى مرحلة في الحديقة).
+  /// بطاقة المكافأة. تُفتح من شريط الفلاتر بعد اختيار النوع ثانيًا.
   void _showRewardInfoModal(RewardType type, {int? tier, int? count}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        final total = count ?? _storage.getTotalByType(type);
-        final level = tier ?? TierSystem.calculate(total);
+        final total = count ?? (_earnedByType[type] ?? 0);
+        final level = tier ?? modelTierForCount(total);
+        final stage = modelStageForCount(total);
+        final stageLabel = switch (stage) {
+          1 => 'تكبير',
+          2 => 'تكبير وَلون',
+          _ => 'الفسلة الأساسية',
+        };
+        final decorCount = _animatedModels
+            .where((m) => m.type == type && m.isDecor)
+            .length;
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -2460,7 +3801,8 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                             ),
                           ),
                           Text(
-                            'المستوى الحالي: مرتبة النماء (Tier $level)',
+                            'مرتبة النمو: المستوى '
+                            '${NumberFormatter.toArabic(level)} · $stageLabel',
                             style: const TextStyle(
                               fontFamily: 'Cairo',
                               fontSize: 12,
@@ -2483,16 +3825,21 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildInfoStat(
-                        'الإجمالي المغروس',
+                        'إجمالي المكافآت',
                         NumberFormatter.toArabic(total),
                       ),
                       _buildInfoStat(
                         'في المشهد 3D',
                         NumberFormatter.toArabic(
-                          _animatedModels.where((m) => m.type == type).length,
+                          _animatedModels
+                              .where((m) => m.type == type && !m.isDecor)
+                              .length,
                         ),
                       ),
-                      _buildInfoStat('المرتبة', 'المستوى $level'),
+                      _buildInfoStat(
+                        'زينة',
+                        NumberFormatter.toArabic(decorCount),
+                      ),
                     ],
                   ),
                 ),
@@ -2629,6 +3976,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                       child: _buildInspectCard(
                         type: _inspectedType!,
                         tier: _inspectedTier,
+                        stage: _inspectedStage,
+                        isDecor: _inspectedIsDecor,
+                        expiresAt: _inspectedExpiresAt,
                       ),
                     ),
                   ),
@@ -2726,6 +4076,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   }
 
   Widget _buildTopGlassBar() {
+    final permanent = _animatedModels.where((m) => !m.isDecor).length;
+    final decor = _animatedModels.where((m) => m.isDecor).length;
+    final rewards = _earnedByType.values.fold<int>(0, (a, b) => a + b);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
@@ -2771,7 +4124,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                     ),
                   ),
                   Text(
-                    '${NumberFormatter.toArabic(_animatedModels.length)} غرسة مزروعة في رياض الجنة',
+                    '${NumberFormatter.toArabic(rewards)} مكافأة · '
+                    '${NumberFormatter.toArabic(permanent)} غرسة · '
+                    '${NumberFormatter.toArabic(decor)} زينة',
                     style: TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: 11,
@@ -2815,6 +4170,15 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
               ),
               onPressed: _resetCamera,
             ),
+            IconButton(
+              tooltip: 'حقن تجريبي (مؤقت)',
+              icon: const Icon(
+                Icons.science,
+                color: Color(0xFF80CBC4),
+                size: 20,
+              ),
+              onPressed: _openDebugInjector,
+            ),
           ],
         ),
       ),
@@ -2822,10 +4186,8 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   }
 
   Widget _buildBottomGlassPanel() {
-    final counts = <RewardType, int>{};
-    for (final m in _animatedModels) {
-      counts[m.type] = (counts[m.type] ?? 0) + 1;
-    }
+    final decorCount = _animatedModels.where((m) => m.isDecor).length;
+    final decorHours = (_decorRemaining.inMinutes / 60).ceil();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -2838,7 +4200,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: RewardType.values.map((type) {
-                final count = counts[type] ?? 0;
+                final count = _earnedByType[type] ?? 0;
                 final isSelected = _selectedFilter == type;
                 return Padding(
                   padding: const EdgeInsets.only(left: 8),
@@ -2905,7 +4267,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
 
         // Action Toolbar
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: const Color(0xFF0D2818).withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(24),
@@ -2916,31 +4278,59 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
           ),
           child: Directionality(
             textDirection: TextDirection.rtl,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () {
-                    final targetType = _selectedFilter ?? RewardType.palmTree;
-                    // الزرع هنا كان يثبّت المرحلة الأولى دائمًا، فيبقى المشهد
-                    // صغيرًا مهما بلغ عدّ الذكر. المرحلة تُشتق الآن من
-                    // المكافآت الفعلية للنوع، فما يُغرس اليوم يعكس نماءه.
-                    final tier = TierSystem.calculate(
-                      _storage.getTotalByType(targetType),
-                    );
-                    addModelAt(type: targetType, tier: tier, reveal: true);
-                    setState(() {});
-                  },
+                  onPressed: _plantSingleDecor,
                   icon: const Icon(Icons.add, size: 16),
-                  label: Text(
-                    'اغرس ${_selectedFilter?.displayName ?? "نخلة"}',
-                    style: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
+                  label: const Text(
+                    'اغرس زينة',
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),
                     foregroundColor: const Color(0xFFFFD700),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _decorCycleActive ? null : _plantDecorSet,
+                  icon: Icon(
+                    Icons.auto_awesome,
+                    size: 15,
+                    color: _decorCycleActive
+                        ? Colors.white38
+                        : const Color(0xFFFFD700),
+                  ),
+                  label: Text(
+                    _decorCycleActive
+                        ? 'الزينة ${NumberFormatter.toArabic(decorHours)}س'
+                        : 'زينة ٢٤س',
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 12,
+                      color: _decorCycleActive
+                          ? Colors.white38
+                          : const Color(0xFFFFD700),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: const Color(
+                        0xFFFFD700,
+                      ).withValues(alpha: _decorCycleActive ? 0.15 : 0.45),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
                       vertical: 8,
                     ),
                     shape: RoundedRectangleBorder(
@@ -2949,27 +4339,467 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                   ),
                 ),
                 if (_animatedModels.isNotEmpty)
-                  TextButton.icon(
-                    onPressed: _undoLast,
-                    icon: const Icon(Icons.undo, size: 16),
-                    label: const Text(
-                      'تراجع عن آخر غرسة',
-                      style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
-                    ),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red.shade300,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
+                  Tooltip(
+                    message:
+                        'ضغطة: آخر زينة في الجلسة\nضغط مطوّل: حذف آخر مكافأة نهائيًا',
+                    child: InkWell(
+                      onTap: _undoLastDecor,
+                      onLongPress: _confirmPermanentUndo,
+                      borderRadius: BorderRadius.circular(14),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.undo,
+                              size: 16,
+                              color: Colors.red.shade300,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'تراجع',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 12,
+                                color: Colors.red.shade300,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
+                InkWell(
+                  onTap: _openDecorBoard,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.timer_outlined,
+                          size: 14,
+                          color: Color(0xFFFFD54F),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'زينة الجنة (${NumberFormatter.toArabic(decorCount)})',
+                          style: const TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 10,
+                            color: Color(0xFFFFD54F),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ],
     );
+  }
+
+  /// صياغة الوقت المتبقي للزينة بصيغة قصيرة («٣ س ١٢ د» أو «٤٥ د»).
+  String _formatDecorLeft(Duration left) {
+    final h = left.inHours;
+    final m = left.inMinutes % 60;
+    if (h > 0) {
+      return '${NumberFormatter.toArabic(h)} س ${NumberFormatter.toArabic(m)} د';
+    }
+    return '${NumberFormatter.toArabic(m)} د';
+  }
+
+  /// يزيل الزينة الترحيبية (بلا انتهاء) للنوع قبل زرع زينة حقيقية مكانها،
+  /// حتى لا يظهر نوعان من نفس الموديل في نفس الوقت.
+  void _dropWelcomeDecorOf(RewardType type) {
+    final welcome = _animatedModels
+        .where((m) => m.isDecor && m.type == type && m.expiresAt == null)
+        .toList();
+    for (final m in welcome) {
+      _removeModel(m);
+    }
+  }
+
+  /// يغرس زينة واحدة من النوع المحدد بمرتبة ومرحلة عشوائية لمدة ٢٤ ساعة.
+  /// النوع الواحد لا يُكرَّر قبل انتهاء دورته.
+  void _plantSingleDecor() {
+    final type = _selectedFilter ?? RewardType.palmTree;
+    final active = _activeDecorOf(type);
+    if (active != null) {
+      final left = DateTime.fromMillisecondsSinceEpoch(
+        active.expiresAt!,
+      ).difference(DateTime.now());
+      _toast(
+        'زينة ${type.displayName} مزروعة بالفعل · باقي ${_formatDecorLeft(left)}',
+      );
+      return;
+    }
+
+    _dropWelcomeDecorOf(type);
+    final tier = 1 + _rng.nextInt(5);
+    final stage = _rng.nextInt(3);
+    final pos = addModelAt(
+      type: type,
+      tier: tier,
+      stage: stage,
+      scaleMultiplier: modelScaleForStage(tier, stage),
+      tint: modelTintForStage(tier, stage),
+      isDecor: true,
+      expiresAt: DateTime.now().add(_kDecorLifetime).millisecondsSinceEpoch,
+      reveal: true,
+    );
+    if (pos == null) return;
+    setState(() {});
+    _toast(
+      'زينة ${type.displayName} لمدة ٢٤ ساعة · المرتبة '
+      '${NumberFormatter.toArabic(tier)}',
+    );
+  }
+
+  /// يمنح زينة الدورة: نموذج واحد لكل نوع بمرحلة عشوائية، لمدة ٢٤ ساعة.
+  /// يملأ الأنواع الناقصة فقط، فلا يكرر نوعًا ما زال مزروعًا.
+  void _plantDecorSet() {
+    final missing = RewardType.values
+        .where((t) => !_decorActiveFor(t))
+        .toList();
+    if (missing.isEmpty) {
+      _toast('كل الأنواع لديها زينة نشطة — انتظر انتهاء المؤقت');
+      return;
+    }
+    final expiresAt = DateTime.now()
+        .add(_kDecorLifetime)
+        .millisecondsSinceEpoch;
+    var added = 0;
+    for (final type in missing) {
+      _dropWelcomeDecorOf(type);
+      final tier = 1 + _rng.nextInt(5);
+      final stage = _rng.nextInt(3);
+      final pos = addModelAt(
+        type: type,
+        tier: tier,
+        stage: stage,
+        scaleMultiplier: modelScaleForStage(tier, stage),
+        tint: modelTintForStage(tier, stage),
+        isDecor: true,
+        expiresAt: expiresAt,
+        persist: false,
+      );
+      if (pos != null) added++;
+    }
+    if (added == 0) return;
+    _writeSaved();
+    setState(() {});
+    _toast('وُزّعت ${NumberFormatter.toArabic(added)} زينة لمدة ٢٤ ساعة');
+  }
+
+  /// حالة كل نوع كما تعرضها لوحة الزينة (تُقرأ لحظيًا كل ثانية).
+  _DecorSlot _decorSlotOf(RewardType type) {
+    final m = _activeDecorOf(type);
+    return _DecorSlot(
+      type: type,
+      tier: m?.tier,
+      stage: m?.stage,
+      expiresAt: m?.expiresAt,
+    );
+  }
+
+  void _openDecorBoard() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _DecorBoard(
+        slots: () => [for (final t in RewardType.values) _decorSlotOf(t)],
+        onPlant: (type) {
+          _selectedFilter = type;
+          _plantSingleDecor();
+        },
+        onPlantAll: _plantDecorSet,
+      ),
+    );
+  }
+
+  /// عتبات التجربة: كل زر يضبط العدد على «العتبة − ١» ليرى المستخدم ما قبل
+  /// الارتقاء مباشرة. أزرار مؤقتة تُحذف قبل الإصدار.
+  static const List<int> _kDebugThresholds = <int>[
+    9,
+    24,
+    99,
+    199,
+    499,
+    999,
+    1999,
+    2999,
+    4999,
+    5999,
+    7999,
+    9999,
+  ];
+
+  void _openDebugInjector() {
+    var type = _selectedFilter ?? RewardType.palmTree;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            final current = _earnedByType[type] ?? 0;
+            return Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D2818).withValues(alpha: 0.97),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
+                border: Border.all(color: const Color(0x55FFD700)),
+              ),
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.science,
+                            color: Color(0xFF80CBC4),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'حقن تجريبي (مؤقت)',
+                              style: TextStyle(
+                                fontFamily: 'Amiri',
+                                fontSize: 19,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFFFD700),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(
+                              Icons.close,
+                              color: Colors.white54,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        '${type.displayName} · العدد الحالي: '
+                        '${NumberFormatter.toArabic(current)} مكافأة',
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: RewardType.values.map((t) {
+                          final selected = t == type;
+                          return ChoiceChip(
+                            label: Text(
+                              t.displayName,
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11,
+                                color: selected
+                                    ? const Color(0xFFFFD700)
+                                    : Colors.white70,
+                              ),
+                            ),
+                            selected: selected,
+                            onSelected: (_) => setSheet(() => type = t),
+                            selectedColor: const Color(
+                              0xFFFFD700,
+                            ).withValues(alpha: 0.2),
+                            backgroundColor: Colors.black26,
+                            side: BorderSide(
+                              color: selected
+                                  ? const Color(0xFFFFD700)
+                                  : Colors.white24,
+                            ),
+                            showCheckmark: false,
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'اضغط رقمًا لضبط العدد على العتبة − ١:',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          color: Colors.white54,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: _kDebugThresholds.map((n) {
+                          return OutlinedButton(
+                            onPressed: () async {
+                              await _setRewardCount(type, n);
+                              setSheet(() {});
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFFFD54F),
+                              side: const BorderSide(color: Color(0x55FFD700)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              minimumSize: const Size(48, 32),
+                            ),
+                            child: Text(
+                              NumberFormatter.toArabic(n),
+                              style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                await _addOneReward(type);
+                                setSheet(() {});
+                              },
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text(
+                                '+١ مكافأة',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 12,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2E7D32),
+                                foregroundColor: const Color(0xFFFFD700),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                await _clearAllRewards();
+                                setSheet(() {});
+                              },
+                              icon: const Icon(Icons.delete_sweep, size: 16),
+                              label: const Text(
+                                'مسح الكل',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 12,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.redAccent,
+                                side: const BorderSide(
+                                  color: Color(0x55FF5252),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'هذه الأزرار تُحذف قبل الإصدار، ولا تمسّ عدّادات الأذكار.',
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 10,
+                          color: Colors.white38,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _setRewardCount(RewardType type, int count) async {
+    final all = _storage.getAllRewards();
+    all.removeWhere((r) => r.type == type);
+    final now = DateTime.now();
+    final stamp = now.microsecondsSinceEpoch;
+    for (var i = 0; i < count; i++) {
+      all.add(
+        Reward(
+          id: '${stamp}_${type.name}_$i',
+          type: type,
+          posX: 0.5,
+          posY: 0.5,
+          earnedAt: now,
+          dhikrId: 'debug',
+        ),
+      );
+    }
+    await _storage.saveRewards(all);
+    _applyEvolution();
+    _toast('${type.displayName}: ${NumberFormatter.toArabic(count)} مكافأة');
+  }
+
+  Future<void> _addOneReward(RewardType type) async {
+    final all = _storage.getAllRewards();
+    final now = DateTime.now();
+    all.add(
+      Reward(
+        id: '${now.microsecondsSinceEpoch}_${type.name}',
+        type: type,
+        posX: 0.5,
+        posY: 0.5,
+        earnedAt: now,
+        dhikrId: 'debug',
+      ),
+    );
+    await _storage.saveRewards(all);
+    _applyEvolution();
+  }
+
+  Future<void> _clearAllRewards() async {
+    await _storage.saveRewards([]);
+    await _storage.saveRewards3D([]);
+    for (final m in List<_AnimatedModel>.of(_animatedModels)) {
+      _scene.remove(m.mesh);
+    }
+    _animatedModels.clear();
+    _savedEntries.clear();
+    _sessionDecor.clear();
+    _earnedByType.clear();
+    if (mounted) setState(() {});
+    _toast('مُسحت بيانات الاختبار من المشهد والسجل');
   }
 
   void render() {
@@ -3014,30 +4844,22 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       final eased = 1.0 + c3 * u * u * u + c1 * u * u;
       final s = 0.2 + eased * 0.8;
       am.mesh.scale.set(s, s, s);
+
+      // حلقة الزينة تدور ببطء حول الغرسة، فتظل علامة حيّة بلا ضجيج.
+      final ring = am.decorRing;
+      if (ring != null) ring.rotation.z += 0.004;
     }
 
-    // 2. Dynamic River Wave & Flow Current
-    if (_waterMesh != null) {
-      _waterMesh!.position.y = 0.15 + 0.02 * sin(_frameCount * 0.04);
-    }
-    for (int r = 0; r < _riverRipples.length; r++) {
-      final rip = _riverRipples[r];
-      rip.position.z += 0.08; // Flows downstream
-      if (rip.position.z > (_kGroundD / 2)) {
-        rip.position.z = -(_kGroundD / 2);
-      }
-    }
-
-    // 3. Clouds Drifting
+    // 2. Clouds Drifting
     for (int i = 0; i < _clouds.length; i++) {
       final cloud = _clouds[i];
       cloud.position.x += 0.035 * (1 + (i % 2) * 0.4);
-      if (cloud.position.x > 180) {
-        cloud.position.x = -180;
+      if (cloud.position.x > 300) {
+        cloud.position.x = -300;
       }
     }
 
-    // 4. Fluttering Falling Leaves & Petals in the Wind
+    // 3. Fluttering Falling Leaves & Petals in the Wind
     for (int l = 0; l < _fallingLeavesGroup.children.length; l++) {
       if (l < _leafVelocities.length) {
         final leaf = _fallingLeavesGroup.children[l];
@@ -3063,7 +4885,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       }
     }
 
-    // 5. Floating Light Particles
+    // 4. Floating Light Particles
     for (int i = 0; i < _particlesGroup.children.length; i++) {
       if (i < _particleInitialY.length && i < _particleSpeeds.length) {
         final p = _particlesGroup.children[i];
@@ -3074,7 +4896,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       }
     }
 
-    // 6. White Doves Flapping
+    // 5. White Doves Flapping
     for (int b = 0; b < _birdsGroup.children.length; b++) {
       final bird = _birdsGroup.children[b];
       bird.position.x += 0.07;
@@ -3088,7 +4910,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       }
     }
 
-    // 7. 🌅 دورة إضاءة اليوم: انسياب التبديل اليدوي، أو تحديث تلقائي مُخفَّف
+    // 6. 🌅 دورة إضاءة اليوم: انسياب التبديل اليدوي، أو تحديث تلقائي مُخفَّف
     //    (كل [kAutoRefreshFrames] إطارًا ≈ نصف ثانية — بلا فرق بصري وكلفة ~صفر)
     if (_tweenTo != null) {
       _advanceTransition();
@@ -3096,7 +4918,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
       _applySpec(_targetSpec());
     }
 
-    // 8. Starfield Twinkle (يتلألأ كلما ظهرت النجوم)
+    // 7. Starfield Twinkle (يتلألأ كلما ظهرت النجوم)
     if (_starBaseOpacity > 0.0 && _starMat != null) {
       final double pulse =
           starField.twinkleBase +
@@ -3107,7 +4929,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
           _starBaseOpacity * starField.haloOpacityRatio * pulse;
     }
 
-    // 9. وميض الترقية الذهبي
+    // 8. وميض الترقية الذهبي
     for (var i = _goldBursts.length - 1; i >= 0; i--) {
       final burst = _goldBursts[i];
       final t = (now - burst.bornAt) / 1400.0;
@@ -3178,20 +5000,42 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     // كائنان ثابتان تُعدَّل قيمهما مع دورة اليوم (بلا إعادة إنشاء)
     _bgColor = three.Color(0x134C37);
     _scene.background = _bgColor;
-    _fog = three.Fog(0x134C37, 95, 270);
+    // الضباب كان يبدأ عند ١٥٠ لحجب حدّ الأرض المسطّحة. الأرض الآن جزيرة
+    // والحدّ هو ما نريد رؤيته: عند ١٥٠ كان نصف الجزيرة البعيد يذوب في لون
+    // الخلفية نفسه، فيختفي الجرف وتُقرأ الجزيرة بقعة خضراء. ٤٠٠ تُبقي الحافة
+    // واضحة من كادر الافتتاح، و١٠٠٠ تترك الجزر الطافية عند أقصى تصغير (٣٤٠)
+    // شبه صافية.
+    _fog = three.Fog(0x134C37, 400, 1000);
     _scene.fog = _fog;
 
-    _camera = three.PerspectiveCamera(44, _width / _height, 0.1, 1000);
-    _camera.position.set(38, 44, 52);
-    _camera.lookAt(three.Vector3(0, 2, 0));
+    // نصف قطر رؤية أوسع: الرأسي ٥٦ على الهاتف حتى لا يضيق الكادر، والأفقي ٤٤
+    // على سطح المكتب — نفس قاعدة [_onResize] حتى لا يتغيّر الكادر عند أول إطار.
+    final double fov = _width < _height ? 56.0 : 44.0;
+    _camera = three.PerspectiveCamera(fov, _width / _height, 0.1, 1000);
+    _camera.position.set(_kHomeX, _kHomeY, _kHomeZ);
+    _camera.lookAt(three.Vector3(_kHomeTargetX, _kHomeTargetY, _kHomeTargetZ));
 
     _controls = three_jsm.OrbitControls(_camera, _globalKey);
     _controls.enableDamping = true;
-    _controls.dampingFactor = 0.05;
-    _controls.minDistance = 20;
-    _controls.maxDistance = 150;
-    _controls.maxPolarAngle = three.Math.pi / 2.15;
-    _controls.target.set(0, 2, 0);
+    _controls.dampingFactor = 0.06;
+    _controls.minDistance = 18;
+    _controls.maxDistance = 340;
+    // ٨٥° تقريبًا: تسمح بالنزول إلى مستوى الأرض تقريبًا بدل التوقف عند ٧٢°.
+    _controls.maxPolarAngle = 1.483;
+    _controls.panSpeed = 1.0;
+    _controls.screenSpacePanning = true;
+    _controls.rotateSpeed = 0.7;
+    // السحب الأساسي (فأرة يسار / إصبع واحد) = تحريك، لا دوران حول نقطة ثابتة.
+    // التدوير يبقى على الفأرة اليمنى، وإيماءة الإصبعين تُعالج في
+    // `_moveTwoFinger`: يمين/شمال دوران، أعلى/أسفل تقريب وإبعاد. لذلك لا نُعطي
+    // OrbitControls خريطة TWO، وإلا دوّر بأي اتجاه ونافس معالجتنا.
+    _controls.mouseButtons = {
+      'LEFT': three.MOUSE.PAN,
+      'MIDDLE': three.MOUSE.DOLLY,
+      'RIGHT': three.MOUSE.ROTATE,
+    };
+    _controls.touches = {'ONE': three.TOUCH.PAN};
+    _controls.target.set(_kHomeTargetX, _kHomeTargetY, _kHomeTargetZ);
 
     // مصادر الإضاءة — تُنشأ مرة واحدة (بقيم الظهيرة الأصلية) ثم تُعدَّل قيمها
     // مع دورة اليوم في [_applySpec] بلا حذف/إضافة.
@@ -3206,31 +5050,62 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     _fillLight!.position.set(-50, 30, -40);
     _scene.add(_fillLight!);
 
+    // ارتداد السحاب: من الأسفل إلى الأعلى، بارد، فلا يلمس المرج (يواجه السماء)
+    // ويُظهر حصى الجرف الذي يقع ظلّه في الجهة المقابلة للشمس.
+    _underLight = three.DirectionalLight(0x9DB2C4, 0.62);
+    _underLight!.position.set(26, -70, 44);
+    _scene.add(_underLight!);
+    _underLightB = three.DirectionalLight(0x9DB2C4, 0.62);
+    _underLightB!.position.set(-30, -70, -46);
+    _scene.add(_underLightB!);
+
     _buildAtmosphere();
     _buildSculptedTerrain();
-    _buildRiverAndFeatures();
     _buildLightParticlesAndWildlife();
 
     // 🌅 إضاءة اللحظة الحالية (تلقائي حسب ساعة الجهاز، أو وضع ثابت محفوظ)
     _applySpec(_targetSpec());
 
-    for (final e in _savedEntries) {
+    final saved = List<_SavedEntry>.of(_savedEntries);
+    _savedEntries.clear();
+    for (final e in saved) {
       addModelAt(
         type: e.type,
         tier: e.tier,
+        stage: e.stage,
+        scaleMultiplier: modelScaleForStage(e.tier, e.stage),
+        tint: modelTintForStage(e.tier, e.stage),
         x: e.x,
         z: e.z,
         y: e.y,
-        fromStorage: true,
+        isDecor: e.isDecor,
+        expiresAt: e.expiresAt,
+        persist: false,
+        ignoreCap: true,
+        savedEntry: e,
       );
     }
 
-    _syncFromDhikrRewards();
+    // السلّم هو مصدر الحقيقة: عدد المكافآت يحدد ما يُعرض الآن.
+    _applyEvolution(notify: false);
 
-    if (_savedEntries.isEmpty && _animatedModels.isEmpty) {
-      addModelAt(type: RewardType.palmTree, tier: 1);
-      addModelAt(type: RewardType.tree, tier: 1);
-      addModelAt(type: RewardType.treasure, tier: 1);
+    // أول فتح فقط: ثلاث غرسات عرضية بدل حديقة فارغة. ليست مكافآت ولا تُحفظ
+    // كدائمة، وتُعامل كزينة حتى لا تختلط بعدّاد النماء. بلا انتهاء حتى لا
+    // تحجب دورة الزينة الأولى.
+    if (_animatedModels.isEmpty) {
+      for (final type in [
+        RewardType.palmTree,
+        RewardType.tree,
+        RewardType.treasure,
+      ]) {
+        addModelAt(
+          type: type,
+          tier: 1,
+          isDecor: true,
+          persist: false,
+          track: false,
+        );
+      }
     }
 
     _loaded = true;
@@ -3255,6 +5130,12 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         // إلى غرسة جديدة وإلا انحرف مسار الكاميرا.
         _controls.autoRotate = false;
       }
+      // 2. حدود ناعمة لنقطة النظر قبل حساب الأوربت: تمنع السحب الطولي من
+      //    رفع الكاميرا إلى السحب أو قذف النظر خارج حدود الجنة.
+      final t = _controls.target;
+      t.x = t.x.clamp(_kPanMinX, _kPanMaxX).toDouble();
+      t.y = t.y.clamp(_kPanMinY, _kPanMaxY).toDouble();
+      t.z = t.z.clamp(_kPanMinZ, _kPanMaxZ).toDouble();
       _controls.update();
       render();
     }
@@ -3267,8 +5148,285 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     _disposed = true;
     _glbCache.clear();
     _periodTicker?.cancel();
+    _decorTicker?.cancel();
     _clock.stop();
     _three3dRender.dispose();
     super.dispose();
+  }
+}
+
+/// مقعد زينة نوع واحد: مرحلته العشوائية ووقت انتهائه.
+class _DecorSlot {
+  const _DecorSlot({required this.type, this.tier, this.stage, this.expiresAt});
+
+  final RewardType type;
+  final int? tier;
+  final int? stage;
+  final int? expiresAt;
+
+  bool get planted => expiresAt != null;
+}
+
+/// لوحة «زينة الجنة»: صف لكل نوع، بمرتبته ومرحلته العشوائية ومؤقت تنازلي
+/// حتى انتهاء الـ٢٤ ساعة. المؤقت هنا لا يعتمد على تحديث الشاشة الأم، بل
+/// يعيد بناء نفسه كل ثانية.
+class _DecorBoard extends StatefulWidget {
+  const _DecorBoard({
+    required this.slots,
+    required this.onPlant,
+    required this.onPlantAll,
+  });
+
+  final List<_DecorSlot> Function() slots;
+  final void Function(RewardType type) onPlant;
+  final VoidCallback onPlantAll;
+
+  @override
+  State<_DecorBoard> createState() => _DecorBoardState();
+}
+
+class _DecorBoardState extends State<_DecorBoard> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  String _countdown(int? expiresAt) {
+    if (expiresAt == null) return '—';
+    final left = expiresAt - DateTime.now().millisecondsSinceEpoch;
+    if (left <= 0) return 'انتهت';
+    final d = Duration(milliseconds: left);
+    String two(int v) => NumberFormatter.toArabic(v).padLeft(2, '٠');
+    return '${NumberFormatter.toArabic(d.inHours)}:'
+        '${two(d.inMinutes % 60)}:'
+        '${two(d.inSeconds % 60)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final slots = widget.slots();
+    final planted = slots.where((s) => s.planted).length;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        margin: const EdgeInsets.all(10),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D2818).withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.35),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.timer_outlined,
+                      color: Color(0xFFFFD700),
+                      size: 22,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'زينة الجنة',
+                            style: TextStyle(
+                              fontFamily: 'Amiri',
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFFFD700),
+                            ),
+                          ),
+                          Text(
+                            '٢٤ ساعة · عنصر واحد لكل نوع · '
+                            '${NumberFormatter.toArabic(planted)} من '
+                            '${NumberFormatter.toArabic(RewardType.values.length)}',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 10,
+                              color: Colors.white.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close, color: Colors.white54),
+                      iconSize: 20,
+                    ),
+                  ],
+                ),
+                Divider(
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                  height: 18,
+                ),
+                for (final slot in slots)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Image.asset(
+                          GardenAssets.getIconAsset(slot.type),
+                          width: 24,
+                          height: 24,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                slot.type.displayName,
+                                style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                slot.planted
+                                    ? 'المرتبة '
+                                          '${NumberFormatter.toArabic(slot.tier ?? 0)}'
+                                          ' · المرحلة '
+                                          '${NumberFormatter.toArabic(slot.stage ?? 0)}'
+                                    : 'غير مزروعة',
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 9,
+                                  color: slot.planted
+                                      ? const Color(0xFFFFD54F)
+                                      : Colors.white38,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFFFD700,
+                              ).withValues(alpha: slot.planted ? 0.35 : 0.1),
+                            ),
+                          ),
+                          child: Text(
+                            _countdown(slot.expiresAt),
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                              color: slot.planted
+                                  ? const Color(0xFFFFD700)
+                                  : Colors.white24,
+                            ),
+                          ),
+                        ),
+                        if (!slot.planted)
+                          TextButton(
+                            onPressed: () => widget.onPlant(slot.type),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFFFFD700),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
+                              minimumSize: const Size(44, 32),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'اغرس',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 11,
+                              ),
+                            ),
+                          )
+                        else
+                          const SizedBox(width: 44),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: planted == RewardType.values.length
+                        ? null
+                        : widget.onPlantAll,
+                    icon: Icon(
+                      Icons.auto_awesome,
+                      size: 15,
+                      color: planted == RewardType.values.length
+                          ? Colors.white38
+                          : const Color(0xFFFFD700),
+                    ),
+                    label: Text(
+                      planted == RewardType.values.length
+                          ? 'كل الأنواع مزروعة'
+                          : 'أكمل الأنواع الناقصة',
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 12,
+                        color: planted == RewardType.values.length
+                            ? Colors.white38
+                            : const Color(0xFFFFD700),
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: const Color(0xFFFFD700).withValues(
+                          alpha: planted == RewardType.values.length
+                              ? 0.15
+                              : 0.45,
+                        ),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

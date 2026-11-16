@@ -71,11 +71,88 @@ flutter:
     # 3D scene can load is listed by hand. Keep this list in step with
     # kBundledModelAssets in lib/three/asset_map.dart.
     - assets/3d/tier1/palm_seedling.glb
-    - assets/3d/tier1/green_tree_seedling.glb
+    - assets/3d/tier1/tree_seedling.glb
     - assets/3d/tier2/palm_small.glb
-    - assets/3d/tier2/green_tree_small.glb
+    - assets/3d/tier2/tree_sapling.glb
     - assets/3d/tier3/palm_medium.glb
-    - assets/3d/tier3/green_tree_medium.glb
+    - assets/3d/tier3/tree_growing.glb
     - assets/3d/tier4/palm_large.glb
-    - assets/3d/tier5/fantasy_tree.glb
+    - assets/3d/tier4/tree_fruitful.glb
+    - assets/3d/tier5/palm_mature.glb
+    - assets/3d/tier5/tree_celestial.glb
+    # Each staged GLB ships its colour map beside it. three_dart's GLTFLoader
+    # hands an embedded image to the web loader as its own `Blob` wrapper, which
+    # the loader cannot read: it throws and the future never completes, so every
+    # model with an embedded map died on a 15 s timeout. An external `uri` takes
+    # the plain-string path instead. Keep this list in step with
+    # kBundledModelTextures in lib/three/asset_map.dart.
+    - assets/3d/tier1/palm_seedling.png
+    - assets/3d/tier1/tree_seedling.png
+    - assets/3d/tier2/palm_small.png
+    - assets/3d/tier2/tree_sapling.png
+    - assets/3d/tier3/palm_medium.png
+    - assets/3d/tier3/tree_growing.png
+    - assets/3d/tier4/palm_large.png
+    - assets/3d/tier4/tree_fruitful.png
+    - assets/3d/tier5/palm_mature.png
+    - assets/3d/tier5/tree_celestial.png
+    # FreeLowPolyNaturePack: the floating islets behind the main island.
+    # The pack's FBX files reference a colour map that the download does not
+    # contain, so `tool/assets/prep_nature_pack_glb.py` splits every mesh by the
+    # artist's own two UV bands (moss / rock) and gives each band a flat colour
+    # from the pack palette. No texture, so no sidecar PNG.
+    - assets/3d/floating_moss_1.glb
+    - assets/3d/floating_moss_2.glb
+    - assets/3d/floating_meadow_1.glb
+    - assets/3d/floating_meadow_2.glb
+    - assets/3d/floating_meadow_path.glb
+    # FreeLowPolyForest demo scene, one GLB per unique mesh. The scene clones a
+    # template per placement instead of shipping a flattened copy, so each mesh
+    # below is fetched exactly once. Every one carries its palette beside it —
+    # the same external-`uri` rule as the staged models above, for the same
+    # reason. A missing line here is silent: the loader gets a 404, the promise
+    # never completes, and the island simply draws empty.
+    - assets/3d/nature/birch_a.glb
+    - assets/3d/nature/birch_b.glb
+    - assets/3d/nature/grass_a.glb
+    - assets/3d/nature/grass_b.glb
+    - assets/3d/nature/lake_shore.glb
+    - assets/3d/nature/lake_water.glb
+    - assets/3d/nature/meadow_a.glb
+    - assets/3d/nature/meadow_b.glb
+    - assets/3d/nature/meadow_path.glb
+    - assets/3d/nature/mountain_a.glb
+    - assets/3d/nature/mountain_b.glb
+    - assets/3d/nature/rock_moss_a.glb
+    - assets/3d/nature/rock_moss_b.glb
+    - assets/3d/nature/rock_pile_a.glb
+    - assets/3d/nature/rock_pile_b.glb
+    - assets/3d/nature/tree_a.glb
+    - assets/3d/nature/tree_b.glb
+    - assets/3d/nature/birch_a.png
+    - assets/3d/nature/birch_b.png
+    - assets/3d/nature/grass_a.png
+    - assets/3d/nature/grass_b.png
+    - assets/3d/nature/lake_shore.png
+    - assets/3d/nature/lake_water.png
+    - assets/3d/nature/meadow_a.png
+    - assets/3d/nature/meadow_b.png
+    - assets/3d/nature/meadow_path.png
+    - assets/3d/nature/mountain_a.png
+    - assets/3d/nature/mountain_b.png
+    - assets/3d/nature/rock_moss_a.png
+    - assets/3d/nature/rock_moss_b.png
+    - assets/3d/nature/rock_pile_a.png
+    - assets/3d/nature/rock_pile_b.png
+    - assets/3d/nature/tree_a.png
+    - assets/3d/nature/tree_b.png
+    # Hand-painted ground maps (FreeStylized, free for commercial use). Listed
+    # as files, not as the parent folder, so `test/asset_map_test.dart` can keep
+    # checking that every declared asset really exists on disk.
+    - assets/3d/textures/grass_base.png
+    - assets/3d/textures/ground_spots.png
+    - assets/3d/textures/river_water.png
+    - assets/3d/textures/grass_rocks.png
+    # مولَّدة إجرائيًا بـ`tool/assets/prep_cliff_texture.py` — جرف الجزيرة الطافية.
+    - assets/3d/textures/cliff_rock.png
     - assets/audio/

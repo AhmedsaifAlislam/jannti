@@ -85,6 +85,30 @@ class StorageService {
     }
   }
 
+  /// Replaces the whole reward list in one write.
+  ///
+  /// Used by the temporary debug injector and by the permanent undo action;
+  /// writing once avoids N sequential `setString` calls for large test counts.
+  Future<void> saveRewards(List<Reward> rewards) async {
+    try {
+      final jsonList = rewards.map((r) => r.toJson()).toList();
+      await _p.setString('rewards_list', jsonEncode(jsonList));
+      debugPrint('💾 Saved: rewards_list (${rewards.length} items)');
+    } catch (e) {
+      debugPrint('⚠️ saveRewards() failed: $e');
+      rethrow;
+    }
+  }
+
+  /// Removes and returns the newest reward, or null when the list is empty.
+  Future<Reward?> removeLastReward() async {
+    final rewards = getAllRewards();
+    if (rewards.isEmpty) return null;
+    final removed = rewards.removeLast();
+    await saveRewards(rewards);
+    return removed;
+  }
+
   List<Reward> getAllRewards() {
     try {
       final jsonString = _p.getString('rewards_list');

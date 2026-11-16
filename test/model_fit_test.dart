@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jannti/models/reward_type.dart';
 import 'package:jannti/three/asset_map.dart';
+import 'package:jannti/three/model_evolution.dart';
 import 'package:jannti/three/model_fit.dart';
 import 'package:jannti/three/model_texture.dart';
 import 'package:three_dart_flutterflow/three_dart.dart' as three;
@@ -13,13 +14,170 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ارتفاع المراحل', () {
-    test('المراحل ١..٥ ترتفع ١٫٢/٢/٣٫٤/٥٫٥/٩، وأي قيمة غريبة ترجع ٣٫٤', () {
+    test('المراحل ١..٥ ترتفع ٠٫٦/٢٫٣/٣٫٤/٥٫٥/٩، وأي قيمة غريبة ترجع ٣٫٤', () {
       expect(
         [for (var t = 1; t <= 5; t++) tierHeight(t)],
-        [1.2, 2.0, 3.4, 5.5, 9.0],
+        [0.6, 2.3, 3.4, 5.5, 9.0],
       );
       expect(tierHeight(0), 3.4);
       expect(tierHeight(9), 3.4);
+    });
+
+    test('نموذج المرتبة ١ المكتمل أعلى من الفسلة ولا يتجاوز المرتبة ٢', () {
+      final seedling = modelInstanceHeight(1, 0, 1.0);
+      final grown = modelInstanceHeight(1, 1, modelScaleForStage(1, 1));
+      final coloured = modelInstanceHeight(1, 2, modelScaleForStage(1, 2));
+
+      // الفسلة قصيرة: داخل عشب المروج (٠٫٣٥–٠٫٧٠) لا فوقه بكثير.
+      expect(seedling, closeTo(0.6, 1e-9));
+      // النموذج المكتمل يقارب ٢٫٥ ضعف الفسلة، فالفرق يُرى من أول نظرة.
+      expect(grown, greaterThan(seedling * 2.0));
+      expect(coloured, greaterThan(grown));
+      // ولا يسبق المرتبة التالية، فلا يحدث انكماش عند ١٠٠ مكافأة.
+      expect(coloured, lessThan(tierHeight(2)));
+    });
+
+    test('المراتب ٢..٥ تستخدم ارتفاع المرتبة كما هو', () {
+      for (var tier = 2; tier <= 5; tier++) {
+        expect(
+          modelInstanceHeight(tier, 2, 1.13),
+          closeTo(tierHeight(tier) * 1.13, 1e-9),
+        );
+      }
+    });
+  });
+
+  /// القاعدة التي طلبها المستخدم: «أكبر موديل في مرتبة لا يكون أكبر من أصغر
+  /// موديل في المرتبة التالية». الحارس هنا يقيس الطرفين عند عتبة الترقية
+  /// الفعلية (٩٩ ← ١٠٠ … ٩٩٩٩ ← ١٠٠٠٠)، لا القيم النظرية فقط.
+  group('سلّم الأحجام لا ينكمش عند الترقية', () {
+    double heightAt(int count) => modelInstanceHeight(
+      modelTierForCount(count),
+      modelStageForCount(count),
+      modelScaleMultiplier(count),
+    );
+
+    test('داخل المرتبة: كل مرحلة أطول من التي قبلها', () {
+      for (var tier = 1; tier <= 5; tier++) {
+        final heights = <double>[
+          for (var stage = 0; stage <= 2; stage++)
+            modelInstanceHeight(tier, stage, modelScaleForStage(tier, stage)),
+        ];
+        expect(
+          heights[0],
+          lessThan(heights[1]),
+          reason: 'تير $tier: المرحلة ١ ليست أطول من ٠',
+        );
+        expect(
+          heights[1],
+          lessThan(heights[2]),
+          reason: 'تير $tier: المرحلة ٢ ليست أطول من ١',
+        );
+      }
+    });
+
+    test('عند كل عتبة ترقية: الموديل الجديد أطول ٢٠٪ على الأقل', () {
+      for (var tier = 1; tier < 5; tier++) {
+        final lastOfTier = heightAt(kModelTierStarts[tier] - 1);
+        final firstOfNext = heightAt(kModelTierStarts[tier]);
+        expect(
+          firstOfNext,
+          greaterThanOrEqualTo(lastOfTier * 1.2),
+          reason:
+              'الترقية $tier ← ${tier + 1}: '
+              '${lastOfTier.toStringAsFixed(2)} ← '
+              '${firstOfNext.toStringAsFixed(2)} أقل من ٢٠٪',
+        );
+      }
+    });
+
+    test('سقف المرتبة الخامسة ١١٫٢٥ وحدة ولا يزيد بعد ٤٠٠٠٠', () {
+      expect(modelInstanceHeight(5, 2, 1.25), closeTo(11.25, 1e-9));
+      // ٣٠٠٠٠ يأخذ دفعة واحدة فقط (1.24)، والسقف 1.25 يُدرَك عند ٤٠٠٠٠.
+      expect(modelScaleMultiplier(30000), closeTo(1.24, 1e-9));
+      expect(modelScaleMultiplier(40000), closeTo(1.25, 1e-9));
+      expect(modelScaleMultiplier(999999), closeTo(1.25, 1e-9));
+    });
+  });
+
+  /// الدفن يخفّض الارتفاع المرئي، فيجب أن تبقى قاعدة «الترقية لا تُقصّر»
+  /// محققة بعد الدفن أيضًا لا قبله فقط.
+  group('الدفن في الأرض', () {
+    test('نسب الدفن: نخلة ٤٠/١٦/١٣/١٣/١٥٪، شجرة ١٠٪', () {
+      const heights = <double>[0.6, 2.3, 3.4, 5.5, 9.0];
+      for (var tier = 1; tier <= 5; tier++) {
+        final h = heights[tier - 1];
+        expect(
+          modelGroundSink(isPalm: true, tier: tier, height: h),
+          closeTo(h * kPalmGroundSink[tier - 1], 1e-9),
+          reason: 'تير $tier',
+        );
+        expect(
+          modelGroundSink(isPalm: false, tier: tier, height: h),
+          closeTo(h * kTreeGroundSink, 1e-9),
+          reason: 'شجرة تير $tier',
+        );
+      }
+    });
+
+    test('الارتفاع الظاهر بعد الدفن يظل تصاعديًا عبر العتبات', () {
+      double visibleAt(int count) {
+        final tier = modelTierForCount(count);
+        final height = modelInstanceHeight(
+          tier,
+          modelStageForCount(count),
+          modelScaleMultiplier(count),
+        );
+        return height -
+            modelGroundSink(isPalm: true, tier: tier, height: height);
+      }
+
+      for (var tier = 1; tier < 5; tier++) {
+        final lastOfTier = visibleAt(kModelTierStarts[tier] - 1);
+        final firstOfNext = visibleAt(kModelTierStarts[tier]);
+        expect(
+          firstOfNext,
+          greaterThanOrEqualTo(lastOfTier * 1.2),
+          reason:
+              'بعد الدفن، الترقية $tier ← ${tier + 1}: '
+              '${lastOfTier.toStringAsFixed(2)} ← '
+              '${firstOfNext.toStringAsFixed(2)} أقل من ٢٠٪',
+        );
+      }
+    });
+
+    test('الدفن لا يبتلع الموديل: يبقى ارتفاع ظاهر موجب', () {
+      for (var tier = 1; tier <= 5; tier++) {
+        for (var stage = 0; stage <= 2; stage++) {
+          final height = modelInstanceHeight(
+            tier,
+            stage,
+            modelScaleForStage(tier, stage),
+          );
+          final sink = modelGroundSink(
+            isPalm: true,
+            tier: tier,
+            height: height,
+          );
+          expect(sink, lessThan(height), reason: 'تير $tier مرحلة $stage');
+          expect(height - sink, greaterThan(0));
+        }
+      }
+    });
+
+    test('المرتبة الأولى وحدها تُدفن ٤٠٪ لأن عشبها ٥٧٪ من الموديل', () {
+      expect(
+        modelGroundSink(isPalm: true, tier: 1, height: 1.0),
+        closeTo(0.40, 1e-9),
+      );
+      expect(
+        modelGroundSink(isPalm: true, tier: 0, height: 1.0),
+        closeTo(0.40, 1e-9),
+      );
+      expect(
+        modelGroundSink(isPalm: true, tier: 99, height: 1.0),
+        closeTo(0.15, 1e-9),
+      );
     });
   });
 
@@ -39,9 +197,18 @@ void main() {
           final scene = gltf?["scene"];
           expect(scene, isNotNull, reason: 'الملف ما اتحلّش: ${c.path}');
 
-          // الملف الخام لا يقف على نقطة الأصل — نتحقق إن التصحيح شغال.
+          // الملف الخام مش لازم يكون بطول المرتبة ولا على نقطة الأصل — الفسلة
+          // مثلًا ٠٫١٧ فقط. المهم إن فيه هندسة حقيقية: صندوق فاضي بيرجّع
+          // ارتفاعًا غير منتهٍ، و`fitModelToGround` بعدها يقيس صفرًا ويترك
+          // الموديل كما هو. الطول النهائي هو اللي بيثبت إن الضبط اشتغل.
           final before = three.Box3().setFromObject(scene);
-          expect(before.getSize(three.Vector3()).y, greaterThan(0.5));
+          final rawHeight = before.getSize(three.Vector3()).y;
+          expect(rawHeight.isFinite, isTrue, reason: 'صندوق فاضي: ${c.path}');
+          expect(
+            rawHeight,
+            greaterThan(0),
+            reason: 'الملف بلا هندسة: ${c.path}',
+          );
 
           final target = tierHeight(c.tier);
           // نفس ترتيب _loadGLB بالحرف: توسيع الفهرس ثم ضبط المحور ثم النسخ.
@@ -97,6 +264,39 @@ void main() {
             reason: 'النسخة مش على الأرض',
           );
 
+          // إعادة الضبط على نسخة خرجت من الكاش مضبوطة أصلًا لازم تفضل بنفس
+          // الارتفاع. `scale.set(...)` كان يمحو الضبط السابق، فترتد النخلة إلى
+          // 10.74 وحدة أصلية وتظهر الشتلات أضخم من النموذج المكتمل.
+          fitModelToGround(copy, target);
+          final refitBox = three.Box3().setFromObject(copy);
+          expect(
+            refitBox.getSize(three.Vector3()).y,
+            closeTo(target, target * 0.01),
+            reason: 'إعادة الضبط رجّعت الموديل لحجمه الخام',
+          );
+          expect(
+            refitBox.min.y.abs(),
+            lessThan(0.05),
+            reason: 'النسخة طلعت من الأرض',
+          );
+
+          if (c.tier == 1) {
+            // وبعد الدمج: النموذج المكتمل أعلى من الشتلة، لا أصغر منها.
+            final grown = modelInstanceHeight(1, 1, modelScaleForStage(1, 1));
+            fitModelToGround(copy, grown);
+            final grownBox = three.Box3().setFromObject(copy);
+            expect(
+              grownBox.getSize(three.Vector3()).y,
+              closeTo(grown, grown * 0.01),
+              reason: 'ارتفاع النموذج المكتمل',
+            );
+            expect(
+              grownBox.min.y.abs(),
+              lessThan(0.05),
+              reason: 'النموذج المكتمل مش على الأرض',
+            );
+          }
+
           // النسخة لازم تكون مستقلة: تدوير واحدة ما لازمش يحرّك الأصل.
           copy.scale.set(1, 1, 1);
           expect(scene.scale.x, isNot(1.0));
@@ -148,8 +348,12 @@ void main() {
               reason: 'أبعاد البكسلات مش مطابقة للصورة: $path',
             );
 
-            // قصّ الأوراق معتمد على القناة الشفافة، فلازم الصورة تحتوي
-            // بكسلات مقصوصة وبكسلات ظاهرة معًا.
+            // قصّ الأوراق معتمد على القناة الشفافة، لكن مش كل موديل بيقصّ:
+            // خامة النخيل معتمة بالكامل (`alphaMode` غائب = OPAQUE)، فطلب
+            // بكسلات مقصوصة منها بيفشل على الفاضي. الشرط بيتفعّل بس على مادة
+            // بتعلن قصًّا — `MASK` بيوصل هنا كـalphaTest، و`BLEND` كـtransparent.
+            final cutout = mat.alphaTest > 0 || mat.transparent == true;
+
             var opaque = 0;
             var transparent = 0;
             var colored = 0;
@@ -166,11 +370,13 @@ void main() {
               }
             }
             expect(opaque, greaterThan(0), reason: 'مفيش بكسلات ظاهرة: $path');
-            expect(
-              transparent,
-              greaterThan(0),
-              reason: 'مفيش بكسلات مقصوصة: $path',
-            );
+            if (cutout) {
+              expect(
+                transparent,
+                greaterThan(0),
+                reason: 'مفيش بكسلات مقصوصة: $path',
+              );
+            }
             expect(
               colored,
               greaterThan(0),

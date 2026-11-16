@@ -46,3 +46,15 @@ app.*.map.json
 
 # Session artifacts (brainstorm/tool state, never commit)
 .superpowers/
+
+# مصادر النماذج الخام — محلية فقط، لا تُودَع.
+# ما يبنيه التطبيق فعليًا هو assets/3d/* المُجهَّز فقط.
+# بعض الملفات الخام تتجاوز 100 MB (حد GitHub) لذلك استثناؤها إلزامي.
+/assets/*.glb
+/assets/*.fbx
+/assets/*.blend
+/assets/*.blend1
+/assets/اضافي/
+
+# المصدر اليدوي لخامة الماء؛ المولَّد هو assets/3d/textures/river_water.png
+/assets/3d/textures/River Material.PNG

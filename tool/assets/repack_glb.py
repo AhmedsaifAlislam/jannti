@@ -18,10 +18,18 @@ Safety
 ------
 The repack never touches accessor values. It only:
   * copies the byte span each bufferView is actually read from,
-  * re-encodes the PNG at the requested size,
+  * re-encodes the PNG at the requested size and writes it as a **sidecar
+    PNG** next to the GLB instead of leaving it inside the binary chunk,
   * rewrites offsets.
 `verify()` decodes both files and asserts the geometry is bit-identical
 (position, normal, uv, indices), so a regression cannot go unnoticed.
+
+The texture has to leave the file. `three_dart`'s `GLTFLoader` passes an
+embedded image to its web loader as its own `Blob` wrapper, and that loader only
+understands `String` and `html.Blob`. It falls through to `url.startsWith(...)`
+on the wrapper, throws inside the image `onLoad` callback, and the load future
+never completes — every model with an embedded map used to die on a 15 s
+timeout. An external `uri` takes the plain-string path.
 
 Usage
 -----
@@ -153,13 +161,35 @@ def repack(src: str, dst: str, size: int | None) -> Dict[str, Any]:
     index_map: Dict[int, int] = {}
     offsets: Dict[int, int] = {}
 
+    # الصور تخرج من الـBIN إلى ملف PNG جانبي. الـGLTFLoader في three_dart
+    # يمرّر الصورة المدفونة إلى محمّل الويب كـ`Blob` خاص به لا يعرفه المحمّل،
+    # فيرمي استثناءً داخل `onLoad` ولا يكتمل الـFuture أبدًا. أما `uri` خارجي
+    # فيأخذ مسار النص العادي ويعمل.
+    sidecars: Dict[str, bytes] = {}
+    for old_index, img in img_refs.items():
+        raw = _slice(binary, gltf["bufferViews"][old_index])
+        name = f"{os.path.splitext(os.path.basename(dst))[0]}.png"
+        sidecars[name] = resize_png(raw, size) if size else raw
+        del img["bufferView"]
+        img["uri"] = name
+
+    # ملفات سبق فصل صورتها: تُنقل الصورة إلى مجلد الخرج كما هي (أو بمقاس جديد).
+    for img in gltf.get("images", []):
+        uri = img.get("uri")
+        if not uri or "bufferView" in img:
+            continue
+        existing = os.path.join(os.path.dirname(src), uri)
+        if not os.path.exists(existing):
+            continue
+        with open(existing, "rb") as f:
+            raw = f.read()
+        sidecars[uri] = resize_png(raw, size) if size else raw
+
     out = bytearray()
     for old_index, view in enumerate(gltf.get("bufferViews", [])):
         if old_index in img_refs:
-            raw = _slice(binary, view)
-            data = resize_png(raw, size) if size else raw
-            start = 0
-        elif old_index in acc_refs:
+            continue
+        if old_index in acc_refs:
             start, end = used_span(gltf, old_index, acc_refs[old_index])
             data = _slice(binary, view)[start:end]
         else:
@@ -194,6 +224,9 @@ def repack(src: str, dst: str, size: int | None) -> Dict[str, Any]:
 
     os.makedirs(os.path.dirname(dst) or ".", exist_ok=True)
     write_glb(dst, gltf, bytes(out))
+    for name, data in sidecars.items():
+        with open(os.path.join(os.path.dirname(dst) or ".", name), "wb") as f:
+            f.write(data)
     return gltf
 
 
@@ -240,8 +273,16 @@ def geometry_fingerprint(path: str) -> Dict[str, Any]:
         )
     images = []
     for img in gltf.get("images", []):
-        view = gltf["bufferViews"][img["bufferView"]]
-        raw = _slice(binary, view)
+        raw = None
+        if "bufferView" in img:
+            raw = _slice(binary, gltf["bufferViews"][img["bufferView"]])
+        elif img.get("uri"):
+            sidecar = os.path.join(os.path.dirname(path), img["uri"])
+            if os.path.exists(sidecar):
+                with open(sidecar, "rb") as f:
+                    raw = f.read()
+        if raw is None:
+            continue
         image = Image.open(io.BytesIO(raw))
         images.append({"size": image.size, "mode": image.mode})
     return {"primitives": primitives, "materials": materials, "images": images}
