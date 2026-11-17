@@ -7,6 +7,32 @@ import 'package:jannti/three/asset_map.dart';
 import 'package:jannti/three/ground_texture.dart';
 import 'package:jannti/three/nature_layout.dart';
 
+/// عرض/ارتفاع JPEG من علامة `SOF` بلا فكّ ترميز كامل — كما في فحص PNG أعلاه.
+(int, int) _jpegSize(List<int> bytes) {
+  expect(
+    bytes.length > 4 && bytes[0] == 0xFF && bytes[1] == 0xD8,
+    isTrue,
+    reason: 'ملف JPEG غير صالح',
+  );
+  var i = 2;
+  while (i + 8 < bytes.length) {
+    if (bytes[i] != 0xFF) {
+      i++;
+      continue;
+    }
+    final marker = bytes[i + 1];
+    if (marker == 0xC0 || marker == 0xC1 || marker == 0xC2 || marker == 0xC3) {
+      final height = (bytes[i + 5] << 8) | bytes[i + 6];
+      final width = (bytes[i + 7] << 8) | bytes[i + 8];
+      return (width, height);
+    }
+    final length = (bytes[i + 2] << 8) | bytes[i + 3];
+    if (length < 2) break;
+    i += 2 + length;
+  }
+  throw StateError('لا علامة SOF في الصورة');
+}
+
 /// The staged-model table is the only place that knows where a tier's GLB
 /// lives, and `pubspec.yaml` is the only place that decides whether it reaches
 /// the APK. If those two drift apart the scene silently keeps drawing its
@@ -232,6 +258,94 @@ void main() {
         );
         expect(File(mesh).existsSync(), isTrue, reason: 'ناقص: $mesh');
       }
+    });
+  });
+
+  group('الهضبة', () {
+    test('خامتها أطلسها الأصلي ٢٠٤٨×٢٠٤٨ لا خامة مفردة', () {
+      // `plateau.jpg` تحمل عشب السطح وجرفه الصخري في صورة واحدة. استبدالها
+      // بخامة المرج (`ground_spots`) جُرِّب في 2026-11-16 فمحا الجرف وحوّل
+      // الهضبة إلى فطيرة باهتة — والحراسة هنا تمنع رجوع التجربة بصمت.
+      final model = File(kPlateauModel);
+      expect(model.existsSync(), isTrue, reason: kPlateauModel);
+
+      final bytes = model.readAsBytesSync();
+      final jsonLength =
+          bytes[12] | (bytes[13] << 8) | (bytes[14] << 16) | (bytes[15] << 24);
+      final json =
+          jsonDecode(utf8.decode(bytes.sublist(20, 20 + jsonLength)))
+              as Map<String, dynamic>;
+
+      final images = (json['images'] as List?) ?? const [];
+      expect(images, hasLength(1), reason: 'الهضبة أطلس واحد');
+      final image = images.first as Map<String, dynamic>;
+      expect(
+        image.containsKey('bufferView'),
+        isFalse,
+        reason: 'الصورة مدفونة داخل GLB فلن يكتمل تحميلها',
+      );
+      expect(image['uri'], 'plateau.jpg');
+
+      final sidecar = File('assets/3d/plateau.jpg');
+      expect(sidecar.existsSync(), isTrue, reason: 'الأطلس الجانبي مفقود');
+      final (width, height) = _jpegSize(sidecar.readAsBytesSync());
+      // ٢٠٤٨ لا ٥١٢: الهضبة ٤٢٫٩ وحدة عرضًا، وأي تصغير يمحو حبيبات الجرف
+      // ويحوّله إلى لون مصمت. الحجم ٩٦٧ ك.ب ولا يُحمَّل إلا مرة واحدة.
+      expect(width, 2048, reason: 'عرض الأطلس');
+      expect(height, 2048, reason: 'ارتفاع الأطلس');
+    });
+
+    test('الأطلس مدمج عبر مجلد assets/3d', () {
+      final declared = File(
+        'pubspec.yaml',
+      ).readAsLinesSync().map((line) => line.trim()).toSet();
+      expect(
+        declared.contains('- assets/3d/') ||
+            declared.contains('- assets/3d/plateau.jpg'),
+        isTrue,
+        reason: 'لا مدخل في pubspec يغطي assets/3d/plateau.jpg',
+      );
+    });
+
+    test('لا استبدال لخامة الهضبة ولا حلقة صخور حولها', () {
+      final source = File(
+        'lib/screens/jannati_3d_screen.dart',
+      ).readAsStringSync();
+
+      // تكرار UV ×3 كان لمصلحة خامة المرج لا لأطلس الهضبة، وحلقة الصخور
+      // خرجت بيضاء فوق حدّ يملك صخره أصلًا.
+      expect(
+        source.contains('_tileModelUv'),
+        isFalse,
+        reason: '_tileModelUv حُذفت مع خامة المرج',
+      );
+      expect(
+        source.contains('_buildPlateauRocks'),
+        isFalse,
+        reason: '_buildPlateauRocks حُذفت مع الحلقة البيضاء',
+      );
+
+      final start = source.indexOf('Future<void> _buildPlateauModel()');
+      final end = source.indexOf('Future<void> _buildPlateauPaving(');
+      expect(start, greaterThan(0), reason: 'دالة الهضبة لم تعد موجودة');
+      expect(end, greaterThan(start));
+
+      final body = source.substring(start, end);
+      expect(
+        body.contains('ground_spots'),
+        isFalse,
+        reason: 'الهضبة لا تُكسى بخامة المرج',
+      );
+      expect(
+        body.contains('kGroundSpotTexture'),
+        isFalse,
+        reason: 'الهضبة لا تُكسى بخامة المرج',
+      );
+      expect(
+        body.contains('plateau.jpg'),
+        isTrue,
+        reason: 'التعليق التوثيقي لماذا تبقى خامتها الأصلية',
+      );
     });
   });
 }

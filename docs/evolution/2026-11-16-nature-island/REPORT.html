@@ -93,7 +93,7 @@
     <div class="kpi"><b>١٧</b><small>شبكة GLB</small></div>
     <div class="kpi"><b>٢٤٥</b><small>نسخة في المشهد</small></div>
     <div class="kpi bad"><b>١٧</b><small>طلب ٤٠٤ قبل الإصلاح</small></div>
-    <div class="kpi ok"><b>٨٧/٨٧</b><small>اختبار ناجح</small></div>
+    <div class="kpi ok"><b>٩٧/٩٧</b><small>اختبار ناجح</small></div>
     <div class="kpi ok"><b>٠</b><small>مشكلة في analyze</small></div>
   </div>
 
@@ -217,8 +217,25 @@ network: 0 × 404</pre>
     <img src="05-plateau-rim.png" alt="الهضبة عن قرب بعد الإصلاح — الخامة الأصلية بلا حلقة صخور">
     <div class="cap">
       <span class="tag good">بعد الإصلاح</span>
-      <span>الهضبة بعد إرجاع خامتها: سطح أخضر داكن، الرصف الحجري في وسطه، وحدّ الجرف البيج تحته — بلا حلقة صخور. مقتطع مكبّر ×٣ من لقطة التحقق.</span>
+      <span>الهضبة في المشهد: سطح أخضر داكن، الرصف الحجري في وسطه، وحدّ الجرف البيج تحته — بلا حلقة صخور. مقتطع مكبّر ×٣، وأُعيد التحقق من الشكل نفسه على بناء <code>--release</code> في ٢٠٢٦-١١-١٧.</span>
     </div>
+  </div>
+
+  <div class="shot">
+    <img src="06-plateau-atlas.jpg" alt="أطلس الهضبة الأصلي — عشب وجرف صخري في صورة واحدة">
+    <div class="cap">
+      <span class="tag mid">الدليل</span>
+      <span><code>plateau.jpg</code> ٢٠٤٨×٢٠٤٨: العشب الفيروزي والجرف الرملي في أطلس واحد. لهذا لا تصلح خامة واحدة لكل الهضبة — واستبدالها يمحو نصف الصورة ويفقد الجرف حبّيبه.</span>
+    </div>
+  </div>
+
+  <div class="note good">
+    <strong>مثبَّت باختبار:</strong> مجموعة «الهضبة» في <code>test/asset_map_test.dart</code>
+    تحرس ثلاثة أشياء: أن الموديل ما زال يشير إلى <code>plateau.jpg</code> خارجية بمقاس
+    <strong>٢٠٤٨×٢٠٤٨</strong> (لا صورة مدفونة داخل GLB)، وأن الأطلس مغطّى بمدخل
+    <code>assets/3d/</code> في <code>pubspec.yaml</code>، وأن
+    <code>_tileModelUv</code> و<code>_buildPlateauRocks</code> لا تعودان إلى الشاشة.
+    أي محاولة لإرجاع تجربة خامة المرج تفشل قبل أن تصل إلى العين.
   </div>
 
   <h2>عطل ثانٍ اكتُشف أثناء التحقق: المشهد الأسود</h2>
@@ -240,10 +257,11 @@ network: 0 × 404</pre>
   <h2>حالة الشجرة الآن</h2>
   <ul>
     <li><code>flutter analyze</code> ← <strong>No issues found</strong></li>
-    <li><code>flutter test</code> ← <strong>٨٧ / ٨٧</strong></li>
+    <li><code>flutter test</code> ← <strong>٩٧ / ٩٧</strong> — بينها <strong>٣</strong> حراسات هضبة أُضيفت اليوم</li>
     <li>الشبكة: <strong>٢٥٠ موردًا · صفر ٤٠٤ · صفر خطأ صفحة</strong></li>
-    <li>الكونسول: <code>👆 scene pointer bound</code> · <code>🏔️ plateau model added</code> · <code>🌿 ground textures ready</code></li>
-    <li>كل التعديلات <strong>مُودعة</strong> في 2026-11-16 — كوميت الميزة <code>8e66e54</code> — راجع <a href="../../../PROJECT.md">PROJECT.md</a></li>
+    <li>الكونسول: <code>👆 scene pointer bound</code> · <code>🏔️ plateau model added</code> · <code>🌿 ground textures ready</code> · <code>✅ scene ready (5/5)</code></li>
+    <li>حراسات الهضبة الثلاث أُضيفت <strong>٢٠٢٦-١١-١٧</strong> بعد تحقق بصري على بناء <code>--release</code> منفصل عن كوميت الميزة</li>
+    <li>تعديلات الجلسة الأصلية <strong>مُودعة</strong> في 2026-11-16 — كوميت الميزة <code>8e66e54</code> — راجع <a href="../../../PROJECT.md">PROJECT.md</a></li>
   </ul>
 
   <div class="pager">
@@ -261,8 +279,10 @@ network: 0 × 404</pre>
     وإصلاح <code>_waitForSceneHost</code>) · <code>AGENTS.md</code> ·
     <code>PROJECT.md</code> · <code>README.md</code> · <code>docs/evolution/</code>.
     اللقطات من تبويب حقيقي: <code>01</code> بـ٤٠١×٦٥٣ (×٢ جهاز)، و<code>02–03</code> بـ٨٠٢×١٣٠٦،
-    و<code>04</code> بـ٤١١×٦٥٣ (DPR 1)، و<code>05</code> مقتطع مكبّر ٥٧٠×٤٢٠.
-    كل التعديلات مُودعة في 2026-11-16 — كوميت الميزة <code>8e66e54</code>.
+    و<code>04</code> بـ٤١١×٦٥٣ (DPR 1)، و<code>05</code> مقتطع مكبّر ٥٧٠×٤٢٠،
+    و<code>06</code> هو أطلس <code>plateau.jpg</code> نفسه مصغّرًا إلى ٦٤٠×٦٤٠.
+    تعديلات الجلسة مُودعة في 2026-11-16 — كوميت الميزة <code>8e66e54</code> —<br>
+    وحراسات الهضبة الثلاث ووثيقتها في كوميت منفصل بتاريخ 2026-11-17.
   </footer>
 
 </div>
