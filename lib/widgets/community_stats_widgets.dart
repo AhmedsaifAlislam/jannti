@@ -63,7 +63,6 @@ class _CommunityStatsChipState extends State<CommunityStatsChip> {
                   Text(
                     '${NumberFormatter.toArabicCompact(value)} يذكرون الآن',
                     style: TextStyle(
-                      fontFamily: 'Cairo',
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: color,

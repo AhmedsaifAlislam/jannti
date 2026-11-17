@@ -88,6 +88,7 @@ lib/
 │   └── stats_screen.dart
 ├── services/         # Business logic
 │   └── storage_service.dart
+├── theme/            # Cairo والأدوار الطباعية (AppType)
 ├── utils/            # Helpers
 │   ├── garden_assets.dart
 │   └── number_formatter.dart
@@ -97,7 +98,7 @@ lib/
 assets/
 ├── 3d/               # المُجهَّز فقط: مراحل، جزيرة، جسر، هضبة، أرضيات
 ├── images/           # أيقونات الأنواع الستة فقط (لا خلفيات 2D)
-└── fonts/            # Amiri + Cairo
+└── fonts/            # Cairo فقط (300/500/700)
 
 > المصادر الخام (`assets/*.glb`، `assets/اضافي/`) محلية ومستثناة في `.gitignore`.
 
@@ -164,7 +165,7 @@ TBD - Project under active development.
 
 🙏 Acknowledgments
 3D models from Quaternius via Poly Pizza (CC0)
-Arabic fonts: Amiri & Cairo
+Arabic fonts: Cairo (OFL 1.1)
 Built with Flutter & love ❤️
 text
 

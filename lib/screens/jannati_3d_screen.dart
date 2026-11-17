@@ -3152,7 +3152,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
           content: Text(
             '🌟 بلغت جنتك أوج نضارتها وازدهارها!',
             textDirection: TextDirection.rtl,
-            style: TextStyle(fontFamily: 'Amiri', fontSize: 16),
+            style: TextStyle(fontSize: 16),
           ),
           backgroundColor: Color(0xFF1B5E20),
           duration: Duration(seconds: 2),
@@ -3297,7 +3297,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         content: Text(
           message,
           textDirection: TextDirection.rtl,
-          style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+          style: const TextStyle(fontSize: 13),
         ),
         backgroundColor: const Color(0xFF1B5E20),
         duration: const Duration(seconds: 3),
@@ -3335,28 +3335,19 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
           ),
           title: const Text(
             'تراجع دائم',
-            style: TextStyle(
-              fontFamily: 'Amiri',
-              fontSize: 20,
-              color: Color(0xFFFFD700),
-            ),
+            style: TextStyle(fontSize: 20, color: Color(0xFFFFD700)),
           ),
           content: const Text(
             'سيُحذف آخر ذكر من سجل المكافآت، وتُخصم واحدة من عدّاد الذكر '
             'المرتبط به. لا يمكن التراجع عن هذه الخطوة.',
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              fontSize: 13,
-              height: 1.6,
-              color: Colors.white70,
-            ),
+            style: TextStyle(fontSize: 13, height: 1.6, color: Colors.white70),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text(
                 'إلغاء',
-                style: TextStyle(fontFamily: 'Cairo', color: Colors.white70),
+                style: TextStyle(color: Colors.white70),
               ),
             ),
             TextButton(
@@ -3364,7 +3355,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
               child: const Text(
                 'احذف',
                 style: TextStyle(
-                  fontFamily: 'Cairo',
                   color: Colors.redAccent,
                   fontWeight: FontWeight.bold,
                 ),
@@ -3642,7 +3632,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                               Text(
                                 type.displayName,
                                 style: const TextStyle(
-                                  fontFamily: 'Amiri',
                                   fontSize: 17,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFFFFD700),
@@ -3656,7 +3645,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                                           '${NumberFormatter.toArabic(tier)}'
                                           ' · $stageLabel',
                                 style: const TextStyle(
-                                  fontFamily: 'Cairo',
                                   fontSize: 11,
                                   color: Colors.white70,
                                 ),
@@ -3725,7 +3713,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         Text(
           value,
           style: const TextStyle(
-            fontFamily: 'Cairo',
             fontSize: 14,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -3734,11 +3721,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(
-            fontFamily: 'Cairo',
-            fontSize: 10,
-            color: Colors.white54,
-          ),
+          style: const TextStyle(fontSize: 10, color: Colors.white54),
         ),
       ],
     );
@@ -3801,7 +3784,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                           Text(
                             '${type.displayName} في رياض الجنة',
                             style: const TextStyle(
-                              fontFamily: 'Amiri',
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFFFFD700),
@@ -3811,7 +3793,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                             'مرتبة النمو: المستوى '
                             '${NumberFormatter.toArabic(level)} · $stageLabel',
                             style: const TextStyle(
-                              fontFamily: 'Cairo',
                               fontSize: 12,
                               color: Colors.white70,
                             ),
@@ -3865,7 +3846,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         Text(
           value,
           style: const TextStyle(
-            fontFamily: 'Amiri',
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Color(0xFFFFD700),
@@ -3874,11 +3854,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         const SizedBox(height: 2),
         Text(
           title,
-          style: const TextStyle(
-            fontFamily: 'Cairo',
-            fontSize: 11,
-            color: Colors.white60,
-          ),
+          style: const TextStyle(fontSize: 11, color: Colors.white60),
         ),
       ],
     );
@@ -3915,11 +3891,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
               Text(
                 '🌿 جارٍ فتح أبواب جنتك النورانية...',
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: 'Amiri',
-                  fontSize: 18,
-                  color: Color(0xFFFFD700),
-                ),
+                style: TextStyle(fontSize: 18, color: Color(0xFFFFD700)),
               ),
             ],
           ),
@@ -4063,7 +4035,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
               Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'Cairo',
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                   color: accent,
@@ -4074,7 +4045,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                 Text(
                   subLabel,
                   style: TextStyle(
-                    fontFamily: 'Cairo',
                     fontSize: 8.5,
                     color: accent.withValues(alpha: 0.8),
                   ),
@@ -4135,7 +4105,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                   const Text(
                     'جنتي ثلاثية الأبعاد 🌊🌴✨',
                     style: TextStyle(
-                      fontFamily: 'Amiri',
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFFFFD700),
@@ -4146,7 +4115,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                     '${NumberFormatter.toArabic(permanent)} غرسة · '
                     '${NumberFormatter.toArabic(decor)} زينة',
                     style: TextStyle(
-                      fontFamily: 'Cairo',
                       fontSize: 11,
                       color: Colors.white.withValues(alpha: 0.75),
                     ),
@@ -4262,7 +4230,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                           Text(
                             '${type.displayName} (${NumberFormatter.toArabic(count)})',
                             style: TextStyle(
-                              fontFamily: 'Cairo',
                               fontSize: 11,
                               fontWeight: isSelected
                                   ? FontWeight.bold
@@ -4306,7 +4273,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text(
                     'اغرس زينة',
-                    style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
+                    style: TextStyle(fontSize: 12),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),
@@ -4334,7 +4301,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                         ? 'الزينة ${NumberFormatter.toArabic(decorHours)}س'
                         : 'زينة ٢٤س',
                     style: TextStyle(
-                      fontFamily: 'Cairo',
                       fontSize: 12,
                       color: _decorCycleActive
                           ? Colors.white38
@@ -4381,7 +4347,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                             Text(
                               'تراجع',
                               style: TextStyle(
-                                fontFamily: 'Cairo',
                                 fontSize: 12,
                                 color: Colors.red.shade300,
                               ),
@@ -4411,7 +4376,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                         Text(
                           'زينة الجنة (${NumberFormatter.toArabic(decorCount)})',
                           style: const TextStyle(
-                            fontFamily: 'Cairo',
                             fontSize: 10,
                             color: Color(0xFFFFD54F),
                           ),
@@ -4603,7 +4567,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                             child: Text(
                               'حقن تجريبي (مؤقت)',
                               style: TextStyle(
-                                fontFamily: 'Amiri',
                                 fontSize: 19,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFFFFD700),
@@ -4624,7 +4587,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                         '${type.displayName} · العدد الحالي: '
                         '${NumberFormatter.toArabic(current)} مكافأة',
                         style: const TextStyle(
-                          fontFamily: 'Cairo',
                           fontSize: 12,
                           color: Colors.white70,
                         ),
@@ -4639,7 +4601,6 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                             label: Text(
                               t.displayName,
                               style: TextStyle(
-                                fontFamily: 'Cairo',
                                 fontSize: 11,
                                 color: selected
                                     ? const Color(0xFFFFD700)
@@ -4664,11 +4625,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                       const SizedBox(height: 14),
                       const Text(
                         'اضغط رقمًا لضبط العدد على العتبة − ١:',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11,
-                          color: Colors.white54,
-                        ),
+                        style: TextStyle(fontSize: 11, color: Colors.white54),
                       ),
                       const SizedBox(height: 6),
                       Wrap(
@@ -4691,10 +4648,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                             ),
                             child: Text(
                               NumberFormatter.toArabic(n),
-                              style: const TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 11,
-                              ),
+                              style: const TextStyle(fontSize: 11),
                             ),
                           );
                         }).toList(),
@@ -4711,10 +4665,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                               icon: const Icon(Icons.add, size: 16),
                               label: const Text(
                                 '+١ مكافأة',
-                                style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 12,
-                                ),
+                                style: TextStyle(fontSize: 12),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF2E7D32),
@@ -4732,10 +4683,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                               icon: const Icon(Icons.delete_sweep, size: 16),
                               label: const Text(
                                 'مسح الكل',
-                                style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 12,
-                                ),
+                                style: TextStyle(fontSize: 12),
                               ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.redAccent,
@@ -4750,11 +4698,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                       const SizedBox(height: 8),
                       const Text(
                         'هذه الأزرار تُحذف قبل الإصدار، ولا تمسّ عدّادات الأذكار.',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 10,
-                          color: Colors.white38,
-                        ),
+                        style: TextStyle(fontSize: 10, color: Colors.white38),
                       ),
                     ],
                   ),
@@ -5276,7 +5220,6 @@ class _DecorBoardState extends State<_DecorBoard> {
                           const Text(
                             'زينة الجنة',
                             style: TextStyle(
-                              fontFamily: 'Amiri',
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFFFFD700),
@@ -5287,7 +5230,6 @@ class _DecorBoardState extends State<_DecorBoard> {
                             '${NumberFormatter.toArabic(planted)} من '
                             '${NumberFormatter.toArabic(RewardType.values.length)}',
                             style: TextStyle(
-                              fontFamily: 'Cairo',
                               fontSize: 10,
                               color: Colors.white.withValues(alpha: 0.65),
                             ),
@@ -5325,7 +5267,6 @@ class _DecorBoardState extends State<_DecorBoard> {
                               Text(
                                 slot.type.displayName,
                                 style: const TextStyle(
-                                  fontFamily: 'Cairo',
                                   fontSize: 12,
                                   color: Colors.white,
                                 ),
@@ -5338,7 +5279,6 @@ class _DecorBoardState extends State<_DecorBoard> {
                                           '${NumberFormatter.toArabic(slot.stage ?? 0)}'
                                     : 'غير مزروعة',
                                 style: TextStyle(
-                                  fontFamily: 'Cairo',
                                   fontSize: 9,
                                   color: slot.planted
                                       ? const Color(0xFFFFD54F)
@@ -5365,7 +5305,6 @@ class _DecorBoardState extends State<_DecorBoard> {
                           child: Text(
                             _countdown(slot.expiresAt),
                             style: TextStyle(
-                              fontFamily: 'Cairo',
                               fontSize: 11,
                               fontFeatures: const [
                                 FontFeature.tabularFigures(),
@@ -5389,10 +5328,7 @@ class _DecorBoardState extends State<_DecorBoard> {
                             ),
                             child: const Text(
                               'اغرس',
-                              style: TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 11,
-                              ),
+                              style: TextStyle(fontSize: 11),
                             ),
                           )
                         else
@@ -5419,7 +5355,6 @@ class _DecorBoardState extends State<_DecorBoard> {
                           ? 'كل الأنواع مزروعة'
                           : 'أكمل الأنواع الناقصة',
                       style: TextStyle(
-                        fontFamily: 'Cairo',
                         fontSize: 12,
                         color: planted == RewardType.values.length
                             ? Colors.white38

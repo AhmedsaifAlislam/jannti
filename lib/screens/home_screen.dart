@@ -11,6 +11,7 @@ import '../models/reward_type.dart';
 import '../services/app_update_service.dart';
 import '../services/community_stats_service.dart';
 import '../services/storage_service.dart';
+import '../theme/app_typography.dart';
 import '../utils/garden_assets.dart';
 import '../utils/number_formatter.dart';
 import '../widgets/community_stats_widgets.dart';
@@ -374,7 +375,6 @@ class _HomeScreenState extends State<HomeScreen>
                     const Text(
                       'أوراد الذكر والغراس 🌿',
                       style: TextStyle(
-                        fontFamily: 'Amiri',
                         fontSize: 21,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -410,7 +410,6 @@ class _HomeScreenState extends State<HomeScreen>
                             Text(
                               'خلط 🔀',
                               style: TextStyle(
-                                fontFamily: 'Cairo',
                                 fontSize: 10,
                                 color: Color(0xFFFFD700),
                                 fontWeight: FontWeight.bold,
@@ -440,7 +439,6 @@ class _HomeScreenState extends State<HomeScreen>
                           child: Text(
                             '${_filterType!.displayName} ✕',
                             style: const TextStyle(
-                              fontFamily: 'Cairo',
                               fontSize: 10,
                               color: Color(0xFFFFD700),
                               fontWeight: FontWeight.bold,
@@ -492,20 +490,14 @@ class _HomeScreenState extends State<HomeScreen>
                       Color(0xFFFFA000),
                     ],
                   ).createShader(bounds),
-                  child: const Text(
+                  child: Text(
                     'جَنَّتِي 🌴',
-                    style: TextStyle(
-                      fontFamily: 'Amiri',
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                    style: AppType.brandMark.copyWith(color: Colors.white),
                   ),
                 ),
                 Text(
                   '${NumberFormatter.toArabic(totalRewards)} غرسة مباركة في رياضك',
                   style: const TextStyle(
-                    fontFamily: 'Cairo',
                     fontSize: 12,
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
@@ -628,7 +620,6 @@ class _HomeScreenState extends State<HomeScreen>
                     Text(
                       NumberFormatter.toArabic(count),
                       style: const TextStyle(
-                        fontFamily: 'Amiri',
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFFFFEB3B),
@@ -640,7 +631,6 @@ class _HomeScreenState extends State<HomeScreen>
                     Text(
                       type.arabicSingular,
                       style: const TextStyle(
-                        fontFamily: 'Cairo',
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -701,7 +691,6 @@ class _HomeScreenState extends State<HomeScreen>
                     Text(
                       'جنتي 3D',
                       style: TextStyle(
-                        fontFamily: 'Cairo',
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -748,7 +737,6 @@ class _HomeScreenState extends State<HomeScreen>
                     Text(
                       'إذاعة السكينة',
                       style: TextStyle(
-                        fontFamily: 'Cairo',
                         fontSize: 11,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -825,7 +813,6 @@ class _HomeScreenState extends State<HomeScreen>
                               child: Text(
                                 badgeLabel,
                                 style: const TextStyle(
-                                  fontFamily: 'Cairo',
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF1B5E20),
@@ -856,7 +843,6 @@ class _HomeScreenState extends State<HomeScreen>
                                     Text(
                                       'تغيير 🎲',
                                       style: TextStyle(
-                                        fontFamily: 'Cairo',
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                         color: Color(0xFF2E7D32),
@@ -882,7 +868,6 @@ class _HomeScreenState extends State<HomeScreen>
                   Text(
                     featuredDhikr.arabicText,
                     style: const TextStyle(
-                      fontFamily: 'Amiri',
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF0A2E18), // Deep Rich Emerald
@@ -907,7 +892,6 @@ class _HomeScreenState extends State<HomeScreen>
                       child: Text(
                         featuredDhikr.hadith,
                         style: const TextStyle(
-                          fontFamily: 'Cairo',
                           fontSize: 11,
                           color: Color(0xFF33691E),
                           height: 1.5,
@@ -921,7 +905,6 @@ class _HomeScreenState extends State<HomeScreen>
                       Text(
                         'الإجمالي: ${NumberFormatter.toArabic(count)} ${featuredDhikr.rewardType.arabicSingular}',
                         style: const TextStyle(
-                          fontFamily: 'Cairo',
                           fontSize: 13,
                           color: Color(0xFF2E7D32),
                           fontWeight: FontWeight.bold,
@@ -934,7 +917,6 @@ class _HomeScreenState extends State<HomeScreen>
                         label: const Text(
                           'ابدأ التسبيح',
                           style: TextStyle(
-                            fontFamily: 'Cairo',
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1014,7 +996,6 @@ class _HomeScreenState extends State<HomeScreen>
                         child: Text(
                           'قبس من رياض الجنة • ${wisdom['title']}',
                           style: const TextStyle(
-                            fontFamily: 'Cairo',
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF558B2F),
@@ -1031,7 +1012,6 @@ class _HomeScreenState extends State<HomeScreen>
                   Text(
                     wisdom['quote']!,
                     style: const TextStyle(
-                      fontFamily: 'Amiri',
                       fontSize: 16,
                       color: Color(0xFF1B5E20),
                       fontWeight: FontWeight.bold,
@@ -1108,7 +1088,6 @@ class _HomeScreenState extends State<HomeScreen>
                     Text(
                       dhikr.arabicText,
                       style: const TextStyle(
-                        fontFamily: 'Amiri',
                         fontSize: 19,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -1121,7 +1100,6 @@ class _HomeScreenState extends State<HomeScreen>
                     Text(
                       'يغرس: ${dhikr.rewardType.arabicSingular} • الإجمالي ${NumberFormatter.toArabic(count)}',
                       style: const TextStyle(
-                        fontFamily: 'Cairo',
                         fontSize: 11,
                         color: Color(0xFFFFD700),
                         fontWeight: FontWeight.bold,
@@ -1238,7 +1216,6 @@ class _HomeScreenState extends State<HomeScreen>
               Text(
                 label,
                 style: const TextStyle(
-                  fontFamily: 'Cairo',
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,

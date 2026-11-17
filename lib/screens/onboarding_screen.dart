@@ -85,7 +85,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: Text(
                           'تخطي',
                           style: TextStyle(
-                            fontFamily: 'Cairo',
                             fontSize: 14,
                             color: Colors.white.withValues(alpha: 0.6),
                           ),
@@ -151,7 +150,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             child: Text(
                               item.badge,
                               style: const TextStyle(
-                                fontFamily: 'Cairo',
                                 fontSize: 12,
                                 color: Color(0xFFFFD700),
                                 fontWeight: FontWeight.bold,
@@ -166,7 +164,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             item.title,
                             textAlign: TextAlign.center,
                             style: const TextStyle(
-                              fontFamily: 'Amiri',
                               fontSize: 26,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -180,7 +177,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             item.description,
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontFamily: 'Cairo',
                               fontSize: 14,
                               height: 1.6,
                               color: Colors.white.withValues(alpha: 0.75),
@@ -251,7 +247,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: Text(
                           isLast ? 'ابدأ رحلتك الروحانية 🌴' : 'التالي',
                           style: const TextStyle(
-                            fontFamily: 'Cairo',
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),

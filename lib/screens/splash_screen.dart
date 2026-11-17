@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../services/community_stats_service.dart';
 import '../services/storage_service.dart';
+import '../theme/app_typography.dart';
 import '../utils/number_formatter.dart';
 import '../widgets/jannati_logo.dart';
 import 'home_screen.dart';
@@ -119,24 +120,17 @@ class _SplashScreenState extends State<SplashScreen>
                             Color(0xFFFFA000),
                           ],
                         ).createShader(bounds),
-                        child: const Text(
+                        child: Text(
                           'جَنَّتِي',
-                          style: TextStyle(
-                            fontFamily: 'Amiri',
-                            fontSize: 46,
-                            fontWeight: FontWeight.bold,
+                          style: AppType.brandTitle.copyWith(
                             color: Colors.white,
-                            letterSpacing: 2,
                           ),
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'وَاحَةُ الذِّكْرِ وَغِرَاسُ الجَنَّة',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 14,
-                          letterSpacing: 1.5,
+                        style: AppType.brandSubtitle.copyWith(
                           color: const Color(
                             0xFFFFD700,
                           ).withValues(alpha: 0.85),
@@ -164,7 +158,6 @@ class _SplashScreenState extends State<SplashScreen>
                               '«أَلَا أَدُلُّكَ عَلَى غِرَاسٍ خَيْرٍ مِنْ هَذَا؟»',
                               textDirection: TextDirection.rtl,
                               style: TextStyle(
-                                fontFamily: 'Amiri',
                                 fontSize: 15,
                                 fontStyle: FontStyle.italic,
                                 color: Colors.white70,
@@ -173,10 +166,8 @@ class _SplashScreenState extends State<SplashScreen>
                             const SizedBox(height: 14),
                             Text(
                               '👥 ينضم إليك الآن ${NumberFormatter.toArabicCompact(CommunityStatsService().trueBase)} يغرسون جنّتهم',
-                              style: const TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 11,
-                                color: Color(0xFFFFD700),
+                              style: AppType.caption.copyWith(
+                                color: const Color(0xFFFFD700),
                               ),
                             ),
                           ],

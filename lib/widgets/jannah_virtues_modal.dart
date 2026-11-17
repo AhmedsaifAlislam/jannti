@@ -159,7 +159,6 @@ class JannahVirtuesModal extends StatelessWidget {
                             const Text(
                               'أَسْرَارُ وَفَضَائِلُ غِرَاسِ الجَنَّةِ 📜✨',
                               style: TextStyle(
-                                fontFamily: 'Amiri',
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFFFFD700),
@@ -170,7 +169,6 @@ class JannahVirtuesModal extends StatelessWidget {
                             Text(
                               'الكنوز النبوية الصحيحة الواردة في بناء دار الخلود',
                               style: TextStyle(
-                                fontFamily: 'Cairo',
                                 fontSize: 11,
                                 color: Colors.white.withValues(alpha: 0.75),
                               ),
@@ -263,7 +261,6 @@ class JannahVirtuesModal extends StatelessWidget {
                       Text(
                         item.title,
                         style: const TextStyle(
-                          fontFamily: 'Amiri',
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFFFFD700),
@@ -274,7 +271,6 @@ class JannahVirtuesModal extends StatelessWidget {
                       Text(
                         item.dhikrText,
                         style: const TextStyle(
-                          fontFamily: 'Amiri',
                           fontSize: 14,
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -305,7 +301,6 @@ class JannahVirtuesModal extends StatelessWidget {
                   Text(
                     item.hadith,
                     style: const TextStyle(
-                      fontFamily: 'Amiri',
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -318,7 +313,6 @@ class JannahVirtuesModal extends StatelessWidget {
                     child: Text(
                       '• ${item.narrator}',
                       style: TextStyle(
-                        fontFamily: 'Cairo',
                         fontSize: 10,
                         color: const Color(0xFFFFD700).withValues(alpha: 0.9),
                         fontWeight: FontWeight.bold,
@@ -340,7 +334,6 @@ class JannahVirtuesModal extends StatelessWidget {
                   child: Text(
                     item.wisdom,
                     style: TextStyle(
-                      fontFamily: 'Cairo',
                       fontSize: 11,
                       color: Colors.white.withValues(alpha: 0.9),
                       height: 1.4,

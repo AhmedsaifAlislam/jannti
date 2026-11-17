@@ -151,7 +151,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
         content: Text(
           message,
           style: const TextStyle(
-            fontFamily: 'Cairo',
             fontSize: 13,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -197,7 +196,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
         title: const Text(
           'إذاعة السكينة ورياض الجنة 🎵✨',
           style: TextStyle(
-            fontFamily: 'Amiri',
             fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Color(0xFFFFD700),
@@ -233,7 +231,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
                 'اضغط أكثر من صوت لتشغيلها معًا — ويتبادل أحدها البروز كل حين 🌿',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontFamily: 'Cairo',
                   fontSize: 10,
                   color: Colors.white.withValues(alpha: 0.55),
                 ),
@@ -316,7 +313,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontFamily: 'Amiri',
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: isSelected
@@ -330,7 +326,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontFamily: 'Cairo',
                                   fontSize: 11,
                                   color: Colors.white.withValues(alpha: 0.75),
                                 ),
@@ -419,7 +414,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
             Text(
               isLeader ? 'البارز' : '',
               style: const TextStyle(
-                fontFamily: 'Cairo',
                 fontSize: 9,
                 color: Color(0xFFFFD700),
                 fontWeight: FontWeight.bold,
@@ -469,7 +463,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontFamily: 'Cairo',
             fontSize: 11,
             fontWeight: FontWeight.bold,
             color: isSelected ? Colors.black : Colors.white70,
@@ -589,7 +582,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontFamily: 'Amiri',
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF0A2E18),
@@ -602,7 +594,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontFamily: 'Cairo',
                     fontSize: 11,
                     color: Color(0xFF2E7D32),
                   ),
@@ -671,7 +662,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
           const Text(
             'الجهارة',
             style: TextStyle(
-              fontFamily: 'Cairo',
               fontSize: 11,
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -707,7 +697,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
               '$percent٪',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontFamily: 'Cairo',
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFFFFD700),
@@ -739,7 +728,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
               Text(
                 'مؤقت السكون:',
                 style: TextStyle(
-                  fontFamily: 'Cairo',
                   fontSize: 11,
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -771,7 +759,6 @@ class _AudioSanctuaryScreenState extends State<AudioSanctuaryScreen>
                     child: Text(
                       label,
                       style: TextStyle(
-                        fontFamily: 'Cairo',
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         color: isSel ? Colors.black : Colors.white,

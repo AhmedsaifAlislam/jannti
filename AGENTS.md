@@ -42,7 +42,7 @@
 - **2D World**: ~~GardenWorldManager + InteractiveViewer (5000×2000)~~ **حُذف 2026-11-17** مع تبويب «الواحة 2.5D» — لا تعده.
 - **3D World**: three_dart_flutterflow + flutter_gl_flutterflow + HUD - **ACTIVE DEV**
 - **Audio**: `SpiritualAudioService` + platform players (one `MediaPlayer` / `AudioElement` per key) - **ACTIVE DEV**
-- **UI**: Glassmorphism + Luxury Spiritual Aesthetic (Amiri + Cairo)
+- **UI**: Glassmorphism + Luxury Spiritual Aesthetic (Cairo فقط — الأدوار في `lib/theme/app_typography.dart`)
 
 ---
 
@@ -329,11 +329,12 @@
 - The public repo no longer carries the tier-models zip, `.blend` sources or `lib/3d/`.
   `AssetDownloadService.remoteZipUrl` points at the **`models-v1` Release asset** — that
   Release must never be deleted, or the download button breaks in already-installed apps.
-- Fonts are **Cairo (OFL 1.1)** + Amiri. `GESSTwo` (alias to the same Cairo files)
-  was **removed** with the 2D screen on 2026-11-17. Never add a commercial font back to
-  the repo.
-  **Pending decision:** drop Amiri entirely and ship Cairo only
-  (see `PROJECT.md` §3.6/B1); update this line when it actually ships.
+- Fonts are **Cairo only (OFL 1.1)** — Light 300 / Medium 500 / Bold 700.
+  Amiri (1.19 MB) and `GESSTwo` were **removed 2026-11-17**; every text style
+  inherits Cairo from `ThemeData(fontFamily: 'Cairo')` (`PROJECT.md` §3.6/B1).
+  **Typography lives in `lib/theme/app_typography.dart`** (`AppType` roles);
+  no `fontFamily`/ad-hoc scale outside `lib/theme` — `test/typography_test.dart`
+  guards this. Never add a commercial font or a second family back to the repo.
 - **Never commit a keystore / `key.properties`** — releases are still signed with debug keys.
 - **المصادر الخام لا تُودَع.** `assets/*.glb` (مثل `trees.glb` 171.8 MB و
   `نخيل.glb` 108.6 MB)، و`assets/اضافي/`، و

@@ -141,7 +141,6 @@ class AppUpdateService {
           message,
           textDirection: TextDirection.rtl,
           style: TextStyle(
-            fontFamily: 'Cairo',
             fontSize: 13,
             fontWeight: FontWeight.bold,
             color: isGold ? const Color(0xFFFFD700) : Colors.white,

@@ -173,7 +173,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                 child: RichText(
                   text: TextSpan(
                     style: const TextStyle(
-                      fontFamily: 'Amiri',
                       fontSize: 18,
                       color: Colors.white,
                       height: 1.4,
@@ -302,7 +301,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
           title: const Text(
             'إعادة ضبط عداد الجلسة',
             style: TextStyle(
-              fontFamily: 'Amiri',
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Color(0xFFFFD700),
@@ -312,7 +310,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
           content: Text(
             'سيتم تصفير عداد هذه الجلسة فقط، بينما يظل إجمالي غراسك (${NumberFormatter.toArabic(_totalCount)} ${widget.dhikr.rewardType.arabicSingular}) محفوظاً في رياض الجنة.',
             style: const TextStyle(
-              fontFamily: 'Cairo',
               fontSize: 13,
               color: Colors.white70,
               height: 1.6,
@@ -342,7 +339,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
               child: const Text(
                 'تصفير',
                 style: TextStyle(
-                  fontFamily: 'Cairo',
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -392,7 +388,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                   const Text(
                     'فضل الذكر في السنة النبوية',
                     style: TextStyle(
-                      fontFamily: 'Amiri',
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFFFFD700),
@@ -404,7 +399,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
               Text(
                 widget.dhikr.hadith,
                 style: const TextStyle(
-                  fontFamily: 'Amiri',
                   fontSize: 18,
                   color: Colors.white,
                   height: 1.8,
@@ -427,7 +421,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                 child: Text(
                   '🌱 يغرس لك: ${widget.dhikr.rewardType.arabicSingular}',
                   style: const TextStyle(
-                    fontFamily: 'Cairo',
                     fontSize: 12,
                     color: Color(0xFFFFD700),
                   ),
@@ -449,7 +442,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                   child: const Text(
                     'إغلاق',
                     style: TextStyle(
-                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -591,7 +583,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                                   Text(
                                     NumberFormatter.toArabic(_sessionCount),
                                     style: const TextStyle(
-                                      fontFamily: 'Amiri',
                                       fontSize: 48,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFFFFD700),
@@ -601,7 +592,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                                   Text(
                                     widget.dhikr.actionLabel,
                                     style: TextStyle(
-                                      fontFamily: 'Cairo',
                                       fontSize: 13,
                                       color: Colors.white.withValues(
                                         alpha: 0.9,
@@ -684,7 +674,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                 Text(
                   'غرس: ${widget.dhikr.rewardType.arabicSingular}',
                   style: const TextStyle(
-                    fontFamily: 'Cairo',
                     fontSize: 12,
                     color: Color(0xFFFFD700),
                     fontWeight: FontWeight.bold,
@@ -728,7 +717,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
           Text(
             widget.dhikr.arabicText,
             style: const TextStyle(
-              fontFamily: 'Cairo',
               fontSize: 26,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -750,7 +738,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                   Text(
                     'عرض فضل الذكر والحديث الشريف',
                     style: TextStyle(
-                      fontFamily: 'Cairo',
                       fontSize: 12,
                       color: Color(0xFFFFD700),
                     ),
@@ -797,7 +784,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                 child: Text(
                   label,
                   style: TextStyle(
-                    fontFamily: 'Cairo',
                     fontSize: 12,
                     fontWeight: isSelected
                         ? FontWeight.bold
@@ -846,7 +832,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                     Text(
                       'إجمالي رصيد الغراس',
                       style: TextStyle(
-                        fontFamily: 'Cairo',
                         fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.6),
                       ),
@@ -854,7 +839,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                     Text(
                       '${NumberFormatter.toArabic(_totalCount)} ${widget.dhikr.rewardType.arabicSingular}',
                       style: const TextStyle(
-                        fontFamily: 'Amiri',
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFFFFD700),
@@ -923,7 +907,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
               child: Text(
                 '+${NumberFormatter.toArabic(1)} ${seed.rewardType.arabicSingular}',
                 style: const TextStyle(
-                  fontFamily: 'Cairo',
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFFFFD700),
@@ -1141,7 +1124,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                                     Text(
                                       'الدورة: ${NumberFormatter.toArabic(currentInCycle)} / ${NumberFormatter.toArabic(activeCycleTarget)}',
                                       style: const TextStyle(
-                                        fontFamily: 'Cairo',
                                         fontSize: 12,
                                         color: Color(0xFFFFD700),
                                         fontWeight: FontWeight.bold,
@@ -1198,7 +1180,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                           widget.dhikr.arabicText,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            fontFamily: 'Cairo',
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -1305,7 +1286,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                                 Text(
                                   NumberFormatter.toArabic(_sessionCount),
                                   style: const TextStyle(
-                                    fontFamily: 'Amiri',
                                     fontSize: 58,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFFFFF4D6),
@@ -1322,7 +1302,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                                 Text(
                                   widget.dhikr.actionLabel,
                                   style: const TextStyle(
-                                    fontFamily: 'Cairo',
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFFFFD700),
@@ -1358,7 +1337,6 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                               Text(
                                 'المس في أي مكان على الشاشة للتسبيح المبارك',
                                 style: TextStyle(
-                                  fontFamily: 'Cairo',
                                   fontSize: 11,
                                   color: Colors.white70,
                                 ),

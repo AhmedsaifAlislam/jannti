@@ -120,7 +120,6 @@ class _JannatiUpdateDialogState extends State<JannatiUpdateDialog> {
                     widget.versionInfo.title,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontFamily: 'Amiri',
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -142,7 +141,6 @@ class _JannatiUpdateDialogState extends State<JannatiUpdateDialog> {
                   child: Text(
                     'الإصدار الجديد: v${widget.versionInfo.versionName}',
                     style: const TextStyle(
-                      fontFamily: 'Cairo',
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFFFFD700),
@@ -158,7 +156,6 @@ class _JannatiUpdateDialogState extends State<JannatiUpdateDialog> {
                     child: Text(
                       'ما الجديد في هذا الإصدار المبارك:',
                       style: TextStyle(
-                        fontFamily: 'Cairo',
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: Colors.white.withValues(alpha: 0.9),
@@ -193,7 +190,6 @@ class _JannatiUpdateDialogState extends State<JannatiUpdateDialog> {
                                   child: Text(
                                     note,
                                     style: const TextStyle(
-                                      fontFamily: 'Cairo',
                                       fontSize: 12,
                                       height: 1.4,
                                       color: Colors.white70,
@@ -235,7 +231,6 @@ class _JannatiUpdateDialogState extends State<JannatiUpdateDialog> {
                         Text(
                           'تحميل وتثبيت التحديث الآن ⚡',
                           style: TextStyle(
-                            fontFamily: 'Cairo',
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF03140C),
@@ -263,7 +258,6 @@ class _JannatiUpdateDialogState extends State<JannatiUpdateDialog> {
                             child: const Text(
                               'تذكيري لاحقاً',
                               style: TextStyle(
-                                fontFamily: 'Cairo',
                                 fontSize: 11,
                                 color: Colors.white30,
                               ),
