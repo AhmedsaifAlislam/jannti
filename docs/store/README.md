@@ -30,10 +30,11 @@ python -m http.server 8099 -d build/web
 لذلك: صفحة لم تُحمَّل فيها النسخة بعد، ثم:
 
 ```js
-await page.setViewportSize({ width: 540, height: 960 }); // أو 645×1398
+const viewport = { width: 540, height: 960 }; // أو { width: 645, height: 1398 }
+await page.setViewportSize(viewport);
 const cdp = await page.context().newCDPSession(page);
 await cdp.send('Emulation.setDeviceMetricsOverride', {
-  width: 540, height: 960, deviceScaleFactor: 2, mobile: false,
+  ...viewport, deviceScaleFactor: 2, mobile: false,
 });
 await page.goto('http://127.0.0.1:8099/');
 ```
