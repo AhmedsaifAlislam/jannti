@@ -51,18 +51,6 @@ flutter:
         - asset: assets/fonts/Cairo-Bold.ttf
           weight: 700
 
-    # اسم قديم محفوظ كمرادف فقط: الشاشة 2D مجمّدة وتستعمل 'GESSTwo'،
-    # فنسجّلها على ملفات Cairo نفسها دون لمس تلك الشاشة.
-    # (الخط الأصلي GE SS Two تجاري وأُزيل من المشروع.)
-    - family: GESSTwo
-      fonts:
-        - asset: assets/fonts/Cairo-Light.ttf
-          weight: 300
-        - asset: assets/fonts/Cairo-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Cairo-Bold.ttf
-          weight: 700
-
   assets:
     - assets/fonts/
     - assets/images/

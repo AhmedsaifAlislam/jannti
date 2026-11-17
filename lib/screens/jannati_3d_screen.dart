@@ -133,7 +133,14 @@ class _SavedEntry {
 }
 
 class Jannati3DScreen extends StatefulWidget {
-  const Jannati3DScreen({super.key});
+  const Jannati3DScreen({super.key, this.embedded = false, this.onExit});
+
+  /// عند التضمين تُعرض الشاشة كتبويب داخل [HomeScreen] بدل مسار مستقل:
+  /// لا `Scaffold` ثانٍ ولا `Navigator.pop`، والخروج يعود للرئيسية عبر [onExit].
+  final bool embedded;
+
+  /// زر الرجوع في الشريط العلوي عند التضمين. يُتجاهل في المسار المستقل.
+  final VoidCallback? onExit;
 
   @override
   State<Jannati3DScreen> createState() => _Jannati3DScreenState();
@@ -3879,15 +3886,20 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF071B12),
-      body: Builder(
-        builder: (BuildContext context) {
-          initSize(context);
-          return _buildSceneWithOverlay(context);
-        },
-      ),
+    final Widget scene = Builder(
+      builder: (BuildContext context) {
+        initSize(context);
+        return _buildSceneWithOverlay(context);
+      },
     );
+
+    // كتبويب داخل الرئيسية: الرئيسية تملك الـScaffold والشريط السفلي، فإدخال
+    // Scaffold آخر يضيف طبقة Material ويغيّر insets بلا داعٍ.
+    if (widget.embedded) {
+      return ColoredBox(color: const Color(0xFF071B12), child: scene);
+    }
+
+    return Scaffold(backgroundColor: const Color(0xFF071B12), body: scene);
   }
 
   Widget _buildSceneWithOverlay(BuildContext context) {
@@ -4106,7 +4118,13 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                 color: Colors.white70,
                 size: 18,
               ),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                if (widget.embedded) {
+                  widget.onExit?.call();
+                } else {
+                  Navigator.pop(context);
+                }
+              },
             ),
             const SizedBox(width: 4),
             Expanded(

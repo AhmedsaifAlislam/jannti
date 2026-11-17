@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -18,9 +19,7 @@ import '../widgets/jannah_virtues_modal.dart';
 import '../widgets/jannati_logo.dart';
 import 'audio_sanctuary_screen.dart';
 import 'dhikr_counter_screen.dart';
-import 'garden_screen.dart';
 import 'jannati_3d_screen.dart';
-import 'jannati_isometric_screen.dart';
 import 'notification_settings_screen.dart';
 import 'onboarding_screen.dart';
 import 'stats_screen.dart';
@@ -99,12 +98,22 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   final StorageService _storage = StorageService();
-  final GlobalKey<GardenScreenState> _gardenKey = GlobalKey();
 
   Map<RewardType, int> _rewardCounts = {};
   Map<String, int> _dhikrCounts = {};
   int _currentIndex = 0;
   RewardType? _filterType;
+
+  /// تبويب «جنتي» يُبنى عند أول زيارة فقط، ثم يبقى حيًّا داخل [IndexedStack]
+  /// حتى لا يُعاد إنشاء سياق WebGL وتحميل ١٧ GLB في كل تبديل.
+  bool _gardenOpened = false;
+
+  /// داخل «جنتي» يختفي الشريط السفلي بعد ثوانٍ ليصبح المشهد شبه ملء الشاشة.
+  bool _navVisible = true;
+  Timer? _navHideTimer;
+
+  /// ثواني بقاء الشريط ظاهرًا بعد دخول «جنتي» قبل أن ينسحب.
+  static const Duration _kNavAutoHideDelay = Duration(seconds: 3);
 
   late List<Dhikr> _shuffledAdhkar;
   int _featuredDhikrIndex = 0;
@@ -146,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _cancelNavAutoHide();
     CommunityStatsService().stop();
     _ambientGlowController.dispose();
     super.dispose();
@@ -179,14 +189,47 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _onNavTap(int index) {
     if (index == _currentIndex) return;
-    setState(() {
-      if (index == 0) {
-        _loadData();
-      } else if (index == 1) {
-        _gardenKey.currentState?.refreshGarden();
-      }
-      _currentIndex = index;
+    HapticFeedback.selectionClick();
+
+    if (index == 1) {
+      // أول زيارة تُنشئ سياق WebGL؛ بعدها يبقى التبويب حيًّا داخل IndexedStack.
+      _gardenOpened = true;
+      _showNavThenAutoHide();
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      _cancelNavAutoHide();
+      _navVisible = true;
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
+
+    if (index == 0) _loadData();
+    setState(() => _currentIndex = index);
+  }
+
+  /// يُظهر الشريط فورًا ثم يخفيه بعد [_kNavAutoHideDelay] ما دام داخل «جنتي».
+  void _showNavThenAutoHide() {
+    _navHideTimer?.cancel();
+    _navVisible = true;
+    _navHideTimer = Timer(_kNavAutoHideDelay, () {
+      if (!mounted || _currentIndex != 1) return;
+      setState(() => _navVisible = false);
     });
+  }
+
+  void _cancelNavAutoHide() {
+    _navHideTimer?.cancel();
+    _navHideTimer = null;
+  }
+
+  /// الخروج من «جنتي»: سهم الشاشة العلوي أو زر الرجوع في النظام.
+  void _exitGarden() {
+    if (_currentIndex != 1) return;
+    HapticFeedback.selectionClick();
+    _cancelNavAutoHide();
+    _navVisible = true;
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    setState(() => _currentIndex = 0);
+    _loadData();
   }
 
   bool get _isFriday => DateTime.now().weekday == DateTime.friday;
@@ -220,53 +263,77 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF03140C),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Background Celestial Radial Glow
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _ambientGlowController,
-              builder: (context, _) {
-                final glow = 0.2 + _ambientGlowController.value * 0.12;
-                return Container(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: const Alignment(0, -0.6),
-                      radius: 0.9,
-                      colors: [
-                        const Color(0xFF1B5E34).withValues(alpha: glow),
-                        const Color(0xFF072417),
-                        const Color(0xFF020E08),
-                      ],
+    return PopScope(
+      // داخل «جنتي» زر الرجوع يعود للرئيسية أولًا بدل إغلاق التطبيق.
+      canPop: _currentIndex != 1,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        _exitGarden();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF03140C),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background Celestial Radial Glow
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _ambientGlowController,
+                builder: (context, _) {
+                  final glow = 0.2 + _ambientGlowController.value * 0.12;
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: const Alignment(0, -0.6),
+                        radius: 0.9,
+                        colors: [
+                          const Color(0xFF1B5E34).withValues(alpha: glow),
+                          const Color(0xFF072417),
+                          const Color(0xFF020E08),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
 
-          // Main Screen Switcher
-          IndexedStack(
-            index: _currentIndex,
-            children: [
-              _buildBentoMainContent(),
-              const JannatiIsometricScreen(),
-              const AudioSanctuaryScreen(),
-              const StatsScreen(),
-            ],
-          ),
+            // Main Screen Switcher
+            IndexedStack(
+              index: _currentIndex,
+              children: [
+                _buildBentoMainContent(),
+                // «جنتي» لا تُبنى إلا عند أول زيارة: سياق WebGL وتحميل ١٧ GLB
+                // ليسا شيئًا ندفعه عند فتح التطبيق. وبعدها تبقى حيّة.
+                _gardenOpened
+                    ? Jannati3DScreen(embedded: true, onExit: _exitGarden)
+                    : const SizedBox.shrink(),
+                const AudioSanctuaryScreen(),
+                const StatsScreen(),
+              ],
+            ),
 
-          // Bottom Glass Navigation Bar
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _buildLuxuryBottomNav(),
-          ),
-        ],
+            // Bottom Glass Navigation Bar — ينسحب داخل «جنتي» بعد ٣ ثوانٍ.
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                ignoring: !_navVisible,
+                child: AnimatedSlide(
+                  offset: _navVisible ? Offset.zero : const Offset(0, 1.4),
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeInOutCubic,
+                  child: AnimatedOpacity(
+                    opacity: _navVisible ? 1 : 0,
+                    duration: const Duration(milliseconds: 260),
+                    child: _buildLuxuryBottomNav(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -601,18 +668,11 @@ class _HomeScreenState extends State<HomeScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
         children: [
-          // 2.5D World Button
+          // جنتي ثلاثية الأبعاد — نفس تبويب «جنتي» في الشريط السفلي.
           Expanded(
             flex: 11,
             child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const JannatiIsometricScreen(),
-                  ),
-                );
-              },
+              onTap: () => _onNavTap(1),
               borderRadius: BorderRadius.circular(18),
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -639,7 +699,7 @@ class _HomeScreenState extends State<HomeScreen>
                     Text('🌿', style: TextStyle(fontSize: 16)),
                     SizedBox(width: 4),
                     Text(
-                      'واحة 2.5D',
+                      'جنتي 3D',
                       style: TextStyle(
                         fontFamily: 'Cairo',
                         fontSize: 11,
@@ -692,51 +752,6 @@ class _HomeScreenState extends State<HomeScreen>
                         fontSize: 11,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-
-          // 3D World Button
-          Expanded(
-            flex: 8,
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const Jannati3DScreen()),
-                );
-              },
-              borderRadius: BorderRadius.circular(18),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0D2818).withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: const Color(0xFFFFD700).withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Text('🌌', style: TextStyle(fontSize: 14)),
-                    SizedBox(width: 3),
-                    Text(
-                      'عالم 3D',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 10,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -1182,7 +1197,7 @@ class _HomeScreenState extends State<HomeScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildNavItem(0, 'الأذكار', Icons.auto_stories),
-                  _buildNavItem(1, 'الواحة 2.5D', Icons.park_outlined),
+                  _buildNavItem(1, 'جنتي', Icons.forest_outlined),
                   _buildNavItem(2, 'السكينة 🎵', Icons.graphic_eq),
                   _buildNavItem(3, 'الإحصائيات', Icons.military_tech_outlined),
                 ],

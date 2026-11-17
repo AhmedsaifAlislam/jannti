@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>جنتي — تقرير تبويب جنتي ٢٠٢٦-١١-١٧</title>
+<style>
+  :root{
+    --bg:#08201A; --panel:#0E2E24; --panel2:#103A2C;
+    --gold:#E8C97A; --gold-dim:#B99C57; --txt:#EAF3EE; --muted:#9FB8AD;
+    --bad:#E36A5A; --good:#4FD08A; --line:rgba(232,201,122,.18);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px 64px; background:
+      radial-gradient(1200px 600px at 80% -10%, #14493A 0%, transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, #0C3529 0%, transparent 55%),
+      var(--bg);
+    color:var(--txt);
+    font-family:"Cairo","Segoe UI",Tahoma,system-ui,sans-serif;
+    line-height:1.75;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  .eyebrow{color:var(--gold-dim);letter-spacing:.14em;font-size:12px;margin-bottom:10px}
+  h1{font-size:30px;margin:0 0 6px;font-weight:800;letter-spacing:-.01em}
+  h1 span{color:var(--gold)}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:28px}
+  h2{font-size:19px;margin:40px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);font-weight:700}
+  h2::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;
+    background:var(--gold);margin-inline-end:10px;transform:rotate(45deg)}
+  p{margin:0 0 12px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:22px 0 8px}
+  .kpi{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:14px;padding:16px 14px;text-align:center}
+  .kpi b{display:block;font-size:26px;color:var(--gold);line-height:1.2}
+  .kpi small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+  .kpi.ok b{color:var(--good)}
+  .kpi.bad b{color:var(--bad)}
+  table{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:10px 12px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06)}
+  th{background:rgba(232,201,122,.10);color:var(--gold);font-weight:700;font-size:13px}
+  tr:last-child td{border-bottom:none}
+  code,pre{font-family:"Cascadia Mono",Consolas,monospace;direction:ltr;text-align:left}
+  code{background:rgba(255,255,255,.07);padding:2px 6px;border-radius:5px;font-size:12.5px;color:#D8F3E6;
+    direction:ltr;unicode-bidi:isolate}
+  pre{background:#06170F;border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    overflow:auto;font-size:12.5px;line-height:1.65;color:#CFE9DC;margin:12px 0}
+  .shot{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin:16px 0 26px}
+  .shot img{width:100%;display:block;border-radius:10px;border:1px solid rgba(0,0,0,.35)}
+  .shot .cap{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--muted)}
+  .tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid}
+  .tag.bad{color:var(--bad);border-color:rgba(227,106,90,.45);background:rgba(227,106,90,.10)}
+  .tag.mid{color:#E9B44C;border-color:rgba(233,180,76,.45);background:rgba(233,180,76,.10)}
+  .tag.good{color:var(--good);border-color:rgba(79,208,138,.45);background:rgba(79,208,138,.10)}
+  .note{border-inline-start:3px solid var(--gold);background:rgba(232,201,122,.07);
+    padding:12px 16px;border-radius:0 10px 10px 0;font-size:14px;margin:14px 0}
+  .note.warn{border-color:var(--bad);background:rgba(227,106,90,.08)}
+  ul{margin:8px 0 14px;padding-inline-start:22px}
+  li{margin:6px 0}
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+  .topnav{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:26px;
+    padding:10px 14px;background:rgba(14,46,36,.85);border:1px solid var(--line);border-radius:14px}
+  .topnav a{color:var(--txt);text-decoration:none;font-size:13.5px;font-weight:700;
+    padding:7px 14px;border-radius:999px;border:1px solid rgba(232,201,122,.28);white-space:nowrap}
+  .topnav a:hover{background:rgba(232,201,122,.12);border-color:var(--gold)}
+  .topnav a.home{background:rgba(232,201,122,.16);border-color:var(--gold);color:var(--gold)}
+  .topnav .spacer{flex:1}
+  .topnav .here{color:var(--muted);font-size:12px}
+  .pager{display:flex;justify-content:space-between;gap:12px;margin-top:40px;padding-top:18px;
+    border-top:1px solid var(--line)}
+  .pager a{color:var(--gold);text-decoration:none;font-size:13.5px;font-weight:700;
+    padding:9px 16px;border:1px solid rgba(232,201,122,.3);border-radius:999px}
+  .pager a:hover{background:rgba(232,201,122,.12)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topnav">
+    <a class="home" href="../index.html">الفهرس</a>
+    <a href="../2026-11-16-nature-island/REPORT.html">→ السابق: بيئة الجزيرة</a>
+    <a href="../index.html">كل المراحل ←</a>
+    <span class="spacer"></span>
+    <span class="here">المرحلة ٥ من ٥</span>
+  </div>
+
+  <div class="eyebrow">جَنَّتِي · سجل تطوّر المشهد · المرحلة ٥</div>
+  <h1>تبويب «جنتي»: <span>الواحة 2.5D تصبح المشهد ثلاثي الأبعاد</span></h1>
+  <div class="sub">تقرير جلسة ١٧ نوفمبر ٢٠٢٦ — الخيار (ب): تبويب كامل للمشهد، فل سكرين بعد ٣ ثوانٍ، وحذف ٣ ملفات و٢٠ صورة بلا فقد بيانات.</div>
+
+  <div class="kpis">
+    <div class="kpi"><b>٤</b><small>تبويبات (كانت ٤ أيضًا)</small></div>
+    <div class="kpi"><b>٣</b><small>ملفات Dart محذوفة</small></div>
+    <div class="kpi"><b>٢٠</b><small>صورة محذوفة · ٠٫٧٤ MB</small></div>
+    <div class="kpi"><b>٣</b><small>ثوانٍ قبل اختفاء الشريط</small></div>
+    <div class="kpi ok"><b>٨٧/٨٧</b><small>اختبار ناجح</small></div>
+    <div class="kpi ok"><b>٠</b><small>مشكلة في analyze</small></div>
+  </div>
+
+  <h2>الطلب</h2>
+  <p>
+    «تبويب الواحة 2.5D هيكون جنتي، وبعد ثواني من دخول جنتي يدخل ما يشبه الفل سكرين
+    وتختفي التبويبات.» — نُفِّذ حرفيًا: التبويب الثاني اسمه الآن <strong>«جنتي»</strong>
+    ويعرض <code>Jannati3DScreen</code> نفسه، لا نسخة منه ولا صفحة جديدة.
+  </p>
+
+  <h2>لماذا كان الحذف آمنًا</h2>
+  <p>
+    الشاشتان المحذوفتان كانتا <strong>تقرآن</strong> من التخزين فقط ولا تكتبان فيه.
+    الكتابة في <code>rewards_list</code> تأتي من العدّاد وشاشة 3D وحدهما، و
+    <code>stats_screen.dart</code> يقرأ <code>getAllRewards()</code> مباشرة ولا يستورد
+    أيًّا منهما، فلم تكن هناك «إحصاءة داخل الواحة» كي تُنقل.
+  </p>
+  <table>
+    <tr><th>الملف</th><th>الحجم</th><th>من كان يستورده</th><th>يكتب في التخزين؟</th><th>الحكم</th></tr>
+    <tr><td><code>jannati_isometric_screen.dart</code></td><td>40.6 KB</td><td><code>home_screen</code> و<code>garden_screen</code></td><td>لا — قراءة فقط</td><td>حُذف</td></tr>
+    <tr><td><code>garden_screen.dart</code></td><td>26.3 KB</td><td><code>home_screen</code> فقط، ولا يُنشأ أبدًا</td><td>لا</td><td>حُذف</td></tr>
+    <tr><td><code>garden_world_manager.dart</code></td><td>4.3 KB</td><td><code>garden_screen</code> فقط</td><td>لا</td><td>حُذف</td></tr>
+    <tr><td>٢٠ صورة في <code>assets/images/</code></td><td>0.74 MB</td><td>الشاشتان فقط</td><td>—</td><td>حُذفت</td></tr>
+    <tr><td><code>GESSTwo</code> في <code>pubspec.yaml</code></td><td>—</td><td>٦ مواضع كلها في <code>garden_screen</code></td><td>—</td><td>حُذف</td></tr>
+  </table>
+  <div class="note warn">
+    <strong>الخطر الذي كان يمنع الحذف الجزئي:</strong> <code>garden_screen.dart</code>
+    يستورد <code>jannati_isometric_screen.dart</code> ويفتحه. حذف الأيزومترك وحده
+    يكسر الترجمة، فحُذف الاثنان في تغيير واحد.
+  </div>
+
+  <h2>الشل الجديد: ٤ تبويبات لا ٣</h2>
+  <pre>الأذكار 0 · جنتي 1 · السكينة 2 · الإحصاءات 3</pre>
+  <ul>
+    <li>«جنتي» = <code>Jannati3DScreen(embedded: true, onExit: _exitGarden)</code> داخل <code>IndexedStack</code>.</li>
+    <li>لا تُبنى إلا عند أول زيارة (<code>_gardenOpened</code>)، ثم تبقى حيّة — لا إعادة تهيئة WebGL ولا تحميل ١٧ GLB في كل تبديل.</li>
+    <li>بطاقة «واحة 2.5D» في الرئيسية صارت «جنتي 3D» وتُبدّل التبويب. بطاقة «عالم 3D» الصغيرة حُذفت لأن التبويب يغني عنها.</li>
+    <li><code>embedded</code> يمنع <code>Scaffold</code> ثانيًا و<code>Navigator.pop</code>؛ سهم الشاشة يستدعي <code>onExit</code>.</li>
+  </ul>
+
+  <h2>الفل سكرين: ٣ ثوانٍ ثم ينسحب الشريط</h2>
+  <ul>
+    <li>عند الدخول: <code>SystemUiMode.immersiveSticky</code> + مؤقّت <code>_kNavAutoHideDelay = 3s</code>.</li>
+    <li>الانسحاب: <code>AnimatedSlide</code> + <code>AnimatedOpacity</code> + <code>IgnorePointer</code> — لا اختفاء مفاجئ.</li>
+    <li>الخروج: سهم الشاشة أو زر النظام (<code>PopScope</code> يعيد للتبويب 0)، وكلاهما يعيد <code>edgeToEdge</code> ويُظهر الشريط ويقرأ <code>rewards_list</code> من جديد.</li>
+  </ul>
+
+  <h2>اللقطات</h2>
+
+  <div class="shot">
+    <img src="01-home-4-tabs.jpg" alt="الرئيسية بعد التعديل: أربعة تبويبات وبطاقة جنتي 3D">
+    <div class="cap"><span class="tag good">بعد</span> الرئيسية: <strong>جنتي 3D</strong> بدل «واحة 2.5D»، والشريط أربعة تبويبات.</div>
+  </div>
+
+  <div class="shot">
+    <img src="02-garden-tab-nav.jpg" alt="دخول جنتي: المشهد 3D والشريط لا يزال ظاهرًا">
+    <div class="cap"><span class="tag mid">٣ ثوانٍ</span> الدخول: المشهد يبدأ التحميل والشريط لا يزال ظاهرًا قبل أن ينسحب.</div>
+  </div>
+
+  <div class="shot">
+    <img src="03-garden-immersive.jpg" alt="جنتي بعد اختفاء الشريط: مشهد شبه ملء الشاشة">
+    <div class="cap"><span class="tag good">فل سكرين</span> بعد ٣ ثوانٍ: لا شريط تبويبات، والمشهد وحده بشريطه العلوي.</div>
+  </div>
+
+  <div class="shot">
+    <img src="04-stats-tab.jpg" alt="تبويب الإحصاءات يعمل بعد أن ظل مشهد 3D حيًّا">
+    <div class="cap"><span class="tag good">تحقق</span> الإحصاءات تعمل والمشهد 3D حيّ في الخلفية — لا كانفاس يغطي الواجهة ولا يسرق اللمس.</div>
+  </div>
+
+  <div class="shot">
+    <img src="05-back-home.jpg" alt="العودة للرئيسية بعد سهم الخروج، الشريط عاد">
+    <div class="cap"><span class="tag good">خروج</span> سهم الشاشة يعيد للرئيسية ويُظهر الشريط، بلا فقد لسياق 3D (الدخول التالي فوري).</div>
+  </div>
+
+  <h2>قرارات رُفضت</h2>
+  <ul>
+    <li><strong>٣ تبويبات</strong> (الأذكار · السكينة · الإحصاءات + بطاقة 3D): مرفوض — الطلب كان تبويبًا كاملًا لـ«جنتي».</li>
+    <li><strong>إعادة بناء 3D عند كل زيارة</strong>: مرفوض — يعيد تحميل ١٧ GLB ويهدم سياق WebGL؛ أُبقي حيًّا داخل <code>IndexedStack</code>.</li>
+    <li><strong>مسار <code>Navigator.push</code> لـ3D</strong>: مرفوض — التبويبات تختفي فورًا لا بعد ٣ ثوانٍ، ولا يبقى للتبويب معنى.</li>
+    <li><strong>إبقاء بطاقة «عالم 3D»</strong>: مرفوض — مدخلان لشيء واحد بعد أن صار التبويب هو المدخل.</li>
+  </ul>
+
+  <h2>ملاحظة تقنية: <code>IndexedStack</code> و<code>HtmlElementView</code></h2>
+  <p>
+    مشهد 3D على الويب عنصر DOM حقيقي، والسؤال المشروع: هل يبقى كانفاس WebGL فوق
+    تبويب آخر إذا ظل الودجت حيًّا؟ محرّك Flutter 3.44 يزيل
+    <code>flt-platform-view-slot</code> من الـDOM لأي عرض غير موجود في تركيب
+    الإطار الحالي:
+  </p>
+  <pre>unusedViews.forEach(disposeView);   // platform_views/embedder.dart</pre>
+  <p>
+    و<code>disposeView</code> ينزع <code>clipChain.root</code> من الـDOM. لذلك
+    اللقطة رقم ٤ (الإحصاءات والمشهد حيّ في الخلفية) تخرج نظيفة. لا تُحوّل «جنتي»
+    إلى <code>Offstage</code>/<code>Visibility</code> بلا إعادة هذا الفحص.
+  </p>
+
+  <h2>التحقق</h2>
+  <ul>
+    <li><code>flutter analyze</code> — لا مشاكل.</li>
+    <li><code>flutter test</code> — ٨٧/٨٧.</li>
+    <li><code>flutter build web</code> — نجح، ثم فُحص التطبيق المبني في Chrome حقيقي (لقطات أعلاه).</li>
+    <li>اختبار يدوي: التبويبات الأربعة · جنتي من الشريط ومن البطاقة · اختفاء الشريط · سهم الخروج · العودة الفورية · الإحصاءات · العدّاد.</li>
+  </ul>
+
+  <div class="note">
+    <strong>ما لم يُنفَّذ بعد:</strong> بقية ملاحظات الجلسة — Cairo وحده (B1)، لقطة
+    المتجر الأولى (B2)، حاجب أول إقلاع (B3)، الأرخبيل (B4)، مقاييس الجبال (B5)،
+    والريج (B8). كلها مسجّلة في <code>PROJECT.md</code> §3.6.
+  </div>
+
+  <div class="pager">
+    <a href="../2026-11-16-nature-island/REPORT.html">→ بيئة الجزيرة</a>
+    <a href="../index.html">الفهرس ←</a>
+  </div>
+
+  <footer>
+    لقطات من Chrome حقيقي على <code>127.0.0.1:8099</code> (بناء <code>flutter build web</code>)،
+    مضغوطة JPEG بجودة ٨٨٪ وعرض ١٢٠٠px. تقرير جلسة ١٧ نوفمبر ٢٠٢٦.
+  </footer>
+
+</div>
+</body>
+</html>

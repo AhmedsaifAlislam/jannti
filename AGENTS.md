@@ -39,7 +39,7 @@
 ### Layers:
 - **State Management**: setState (planned migration to Riverpod)
 - **Storage**: SharedPreferences via StorageService singleton
-- **2D World**: GardenWorldManager + InteractiveViewer (5000×2000) - **FROZEN**
+- **2D World**: ~~GardenWorldManager + InteractiveViewer (5000×2000)~~ **حُذف 2026-11-17** مع تبويب «الواحة 2.5D» — لا تعده.
 - **3D World**: three_dart_flutterflow + flutter_gl_flutterflow + HUD - **ACTIVE DEV**
 - **Audio**: `SpiritualAudioService` + platform players (one `MediaPlayer` / `AudioElement` per key) - **ACTIVE DEV**
 - **UI**: Glassmorphism + Luxury Spiritual Aesthetic (Amiri + Cairo)
@@ -48,9 +48,10 @@
 
 ## Key Files
 
-### Frozen (Don't Touch):
-- `lib/screens/garden_screen.dart` - 2D world (frozen after Phase 4H)
-- `lib/utils/garden_world_manager.dart` - world dimensions/logic
+### محذوف بقصد (لا تعده):
+- `lib/screens/garden_screen.dart` · `lib/utils/garden_world_manager.dart` ·
+  `lib/screens/jannati_isometric_screen.dart` — حُذفت 2026-11-17 مع 20 صورة
+  و`GESSTwo` (‏`PROJECT.md` §3.6/B7). أي مرجع لواحد منها يكسر الترجمة.
 
 ### Active Development:
 - `lib/screens/jannati_3d_screen.dart` - 3D scene (Tiers + Biomes + HUD)
@@ -72,7 +73,7 @@
 
 ### ✅ Working:
 - Storage system (SharedPreferences + Persistent Chrome Profile)
-- 2D garden display (frozen)
+- تبويب «جنتي»: مشهد 3D داخل `IndexedStack`، يُبنى عند أول زيارة ثم يبقى حيًّا، ويختفي الشريط السفلي بعد ٣ ثوانٍ
 - 3D scene with Tier progression (Tiers 1-5), Biome distribution, Anti-cluttering (min spacing 8.5), and Luxury HUD
 - Celestial day cycle (dawn / noon / dusk / night) driven by the device clock, with a persisted manual mode
 - Corrected 3D Asset paths in `asset_map.dart`
@@ -306,6 +307,13 @@
 - الشريط السفلي في `home_screen.dart` زجاج حقيقي: `ClipRRect` → `BackdropFilter`
   (sigma 12) → خلفية `Colors.black.withAlpha(40)` وحد `Colors.white.withAlpha(30)`.
   لا ترجع إلى لون معتم `0.95`.
+- **شِل التطبيق أربعة تبويبات**: الأذكار 0 · جنتي 1 · السكينة 2 · الإحصاءات 3.
+  «جنتي» هو `Jannati3DScreen(embedded: true, onExit: _exitGarden)` داخل
+  `IndexedStack`، ويُبنى عند أول زيارة فقط (`_gardenOpened`) ثم يبقى حيًّا حتى
+  لا يُعاد سياق WebGL ولا تحميل ١٧ GLB في كل تبديل. الشريط ينسحب بعد ٣ ثوانٍ
+  (`_kNavAutoHideDelay`) عبر `AnimatedSlide` + `IgnorePointer`، ويعود بسهم
+  الشاشة (`onExit`) أو زر النظام (`PopScope` في `home_screen`). لا تحذف
+  `embedded`/`onExit` ولا تُعِد `Navigator.push` لشاشة 3D من بطاقات الرئيسية.
 - `io.flutter.embedding.android.EnableImpeller = true` في `AndroidManifest.xml`
   مفعّل إجباريًا — لا تحذفه.
 
@@ -321,8 +329,9 @@
 - The public repo no longer carries the tier-models zip, `.blend` sources or `lib/3d/`.
   `AssetDownloadService.remoteZipUrl` points at the **`models-v1` Release asset** — that
   Release must never be deleted, or the download button breaks in already-installed apps.
-- Fonts are **Cairo (OFL 1.1)** + Amiri. `GESSTwo` survives only as an alias to the same
-  Cairo files for the frozen 2D screen. Never add a commercial font back to the repo.
+- Fonts are **Cairo (OFL 1.1)** + Amiri. `GESSTwo` (alias to the same Cairo files)
+  was **removed** with the 2D screen on 2026-11-17. Never add a commercial font back to
+  the repo.
   **Pending decision:** drop Amiri entirely and ship Cairo only
   (see `PROJECT.md` §3.6/B1); update this line when it actually ships.
 - **Never commit a keystore / `key.properties`** — releases are still signed with debug keys.
@@ -348,6 +357,6 @@
 ## See Also
 - `PROJECT.md` → **المصدر الوحيد** للحالة الحالية، الخطة، التسليم، والمؤجلات
 - `README.md` → setup & development guide
-- `docs/evolution/index.html` → السجل البصري للمراحل الأربع
+- `docs/evolution/index.html` → السجل البصري للمراحل الخمس
 - `docs/SPIRITUAL_COMMUNITY_ROADMAP.md` → تفاصيل ميزة المجتمع
 - `docs/IN_APP_UPDATES_GUIDE.md` → دليل محرك التحديث الذاتي

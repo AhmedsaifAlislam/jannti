@@ -82,15 +82,13 @@ lib/
 ├── models/           # Data models
 ├── data/             # Static data (adhkar list)
 ├── screens/          # UI screens
-│   ├── home_screen.dart
-│   ├── garden_screen.dart        # 2D world (frozen)
-│   ├── jannati_3d_screen.dart    # 3D world (active dev)
+│   ├── home_screen.dart          # 4 tabs: الأذكار · جنتي · السكينة · الإحصاءات
+│   ├── jannati_3d_screen.dart    # جنتي: 3D world (embedded tab OR route)
 │   ├── dhikr_counter_screen.dart
 │   └── stats_screen.dart
 ├── services/         # Business logic
 │   └── storage_service.dart
 ├── utils/            # Helpers
-│   ├── garden_world_manager.dart
 │   ├── garden_assets.dart
 │   └── number_formatter.dart
 └── three/            # 3D utilities
@@ -98,19 +96,20 @@ lib/
 
 assets/
 ├── 3d/               # المُجهَّز فقط: مراحل، جزيرة، جسر، هضبة، أرضيات
-├── images/           # 2D sprites
+├── images/           # أيقونات الأنواع الستة فقط (لا خلفيات 2D)
 └── fonts/            # Amiri + Cairo
 
 > المصادر الخام (`assets/*.glb`، `assets/اضافي/`) محلية ومستثناة في `.gitignore`.
 
 ## 🎯 Current Status
 
-- ✅ التخزين (SharedPreferences)، عالم 2D، عدّاد الذكر، الشريط السفلي
+- ✅ التخزين (SharedPreferences)، عدّاد الذكر، الشريط السفلي
+- ✅ «جنتي»: المشهد 3D داخل التبويب الثاني، يختفي الشريط بعده بـ٣ ثوانٍ
 - ✅ عالم 3D: جزيرة FreeLowPolyForest، المراحل 1–5، بطاقة الفحص، الجزيئات
 - ✅ نظام النمو: كل 10 مكافآت = نموذج مكتمل، والباقي شتلات
 - ✅ الإحصاءات والأوسمة، وإذاعة السكينة (4 طبقات + قرآن)
 - ✅ `flutter analyze` نظيف و`flutter test` 87/87
-- 🔒 2D zoom/pan مجمّد بقصد بعد Phase 4H
+- 🔒 الشاشة 2D و«الواحة 2.5D» حُذفتا بقصد (‏`PROJECT.md` §3.6/B7) — لا تعدهما
 
 ## 📚 Documentation
 
@@ -133,7 +132,8 @@ Don't clear unless you want a hard reset
 - التفاصيل الكاملة في `AGENTS.md` §«Model invariants».
 
 Black borders around the world in 2D?
-Should not happen after Phase 4H. If you see them, check boundaryMargin in garden_screen.dart (should be EdgeInsets.symmetric(horizontal: 20, vertical: 10)).
+The 2D world was removed on 2026-11-17 (see `PROJECT.md` §3.6/B7); there is no
+`garden_screen.dart` or `garden_world_manager.dart` anymore. «جنتي» is the 3D scene.
 
 ## 🛠️ Useful Tools for Development
 
