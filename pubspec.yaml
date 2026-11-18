@@ -36,6 +36,7 @@ flutter:
   uses-material-design: true
 
   fonts:
+    # Cairo: واجهة التطبيق (أزرار، عناوين، أرقام، HUD).
     - family: Cairo
       fonts:
         - asset: assets/fonts/Cairo-Light.ttf
@@ -43,6 +44,13 @@ flutter:
         - asset: assets/fonts/Cairo-Medium.ttf
           weight: 500
         - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 700
+    # Amiri: النص الروحاني فقط (الشعار، الأذكار، الآيات) — OFL 1.1.
+    - family: Amiri
+      fonts:
+        - asset: assets/fonts/Amiri-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Amiri-Bold.ttf
           weight: 700
 
   assets:

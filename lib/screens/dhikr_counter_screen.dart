@@ -9,6 +9,7 @@ import '../models/dhikr.dart';
 import '../models/reward.dart';
 import '../models/reward_type.dart';
 import '../services/storage_service.dart';
+import '../theme/app_typography.dart';
 import '../utils/garden_assets.dart';
 import '../utils/number_formatter.dart';
 import '../widgets/islamic_pattern_overlay.dart';
@@ -338,9 +339,7 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
               ),
               child: const Text(
                 'تصفير',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -398,11 +397,7 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
               const Divider(color: Colors.white12, height: 24),
               Text(
                 widget.dhikr.hadith,
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: Colors.white,
-                  height: 1.8,
-                ),
+                style: AppType.hadithBody.copyWith(color: Colors.white),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -441,9 +436,7 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                   ),
                   child: const Text(
                     'إغلاق',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -716,12 +709,7 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
         children: [
           Text(
             widget.dhikr.arabicText,
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              height: 1.7,
-            ),
+            style: AppType.verseCounter.copyWith(color: Colors.white),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -737,10 +725,7 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                   SizedBox(width: 6),
                   Text(
                     'عرض فضل الذكر والحديث الشريف',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFFFFD700),
-                    ),
+                    style: TextStyle(fontSize: 12, color: Color(0xFFFFD700)),
                   ),
                 ],
               ),
@@ -1179,12 +1164,9 @@ class _DhikrCounterScreenState extends State<DhikrCounterScreen>
                         child: Text(
                           widget.dhikr.arabicText,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
+                          style: AppType.verseHero.copyWith(
                             color: Colors.white,
-                            height: 1.6,
-                            shadows: [
+                            shadows: const [
                               Shadow(color: Color(0xFFFFD700), blurRadius: 16),
                               Shadow(
                                 color: Colors.black,

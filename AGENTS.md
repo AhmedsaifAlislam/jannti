@@ -55,7 +55,7 @@
 - **2D World**: ~~GardenWorldManager + InteractiveViewer (5000×2000)~~ **حُذف 2026-11-17** مع تبويب «الواحة 2.5D» — لا تعده.
 - **3D World**: three_dart_flutterflow + flutter_gl_flutterflow + HUD - **ACTIVE DEV**
 - **Audio**: `SpiritualAudioService` + platform players (one `MediaPlayer` / `AudioElement` per key) - **ACTIVE DEV**
-- **UI**: Glassmorphism + Luxury Spiritual Aesthetic (Cairo فقط — الأدوار في `lib/theme/app_typography.dart`)
+- **UI**: Glassmorphism + Luxury Spiritual Aesthetic (Cairo للواجهة + Amiri للنص الروحاني فقط — الأدوار في `lib/theme/app_typography.dart`)
 
 ---
 
@@ -342,12 +342,16 @@
 - The public repo no longer carries the tier-models zip, `.blend` sources or `lib/3d/`.
   `AssetDownloadService.remoteZipUrl` points at the **`models-v1` Release asset** — that
   Release must never be deleted, or the download button breaks in already-installed apps.
-- Fonts are **Cairo only (OFL 1.1)** — Light 300 / Medium 500 / Bold 700.
-  Amiri (1.19 MB) and `GESSTwo` were **removed 2026-11-17**; every text style
-  inherits Cairo from `ThemeData(fontFamily: 'Cairo')` (`PROJECT.md` §3.6/B1).
-  **Typography lives in `lib/theme/app_typography.dart`** (`AppType` roles);
-  no `fontFamily`/ad-hoc scale outside `lib/theme` — `test/typography_test.dart`
-  guards this. Never add a commercial font or a second family back to the repo.
+- Fonts are **two OFL 1.1 families with separate scopes**:
+  **Cairo** (300/500/700) for the whole UI, and **Amiri** (400/700) for the
+  spiritual text only — logo, adhkar, verses, hadith — restored 2026-11-17
+  after the visual review (B1). `GESSTwo` stays **removed**.
+  **Typography lives in `lib/theme/app_typography.dart`** (`AppType` roles):
+  `AppType.family` = Cairo, `AppType.spiritualFamily` = Amiri, and
+  `AppType.spiritualRoles` is the **only** set allowed to wear Amiri.
+  No `fontFamily`/ad-hoc scale outside `lib/theme` — `test/typography_test.dart`
+  guards the scope, the role sizes, and the two font files. Never add a
+  commercial font, and never let Amiri reach a button, a number or a HUD label.
 - **Never commit a keystore / `key.properties`** — releases are still signed with debug keys.
 - **المصادر الخام لا تُودَع.** `assets/*.glb` (مثل `trees.glb` 171.8 MB و
   `نخيل.glb` 108.6 MB)، و`assets/اضافي/`، و

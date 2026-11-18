@@ -8,16 +8,43 @@ import 'package:jannti/theme/app_typography.dart';
 ///
 /// الهدف ليس تجميل الكود: أي انحراف هنا يعني أن شاشة ما عادت ترث Cairo، أو أن
 /// دورًا صار يحمل لونًا (واللون من مخطط الألوان لا من الطباعة)، أو أن حجمًا
-/// خرج عن السلّم فصار أكبر من مكانه.
+/// خرج عن السلّم فصار أكبر من مكانه، أو أن Amiri تسلّل خارج النص الروحاني.
 void main() {
-  test('كل دور يستخدم Cairo وحده', () {
+  test('Cairo للواجهة وAmiri للنص الروحاني وحدهما', () {
     expect(AppType.all, isNotEmpty);
+    expect(AppType.spiritualRoles, hasLength(9));
     for (final entry in AppType.all.entries) {
+      final expected = AppType.spiritualRoles.contains(entry.key)
+          ? AppType.spiritualFamily
+          : AppType.family;
       expect(
         entry.value.fontFamily,
-        AppType.family,
-        reason: '${entry.key} لا يستخدم ${AppType.family}',
+        expected,
+        reason: '${entry.key} يجب أن يستخدم $expected',
       );
+    }
+  });
+
+  test('Amiri لا يخرج عن الأدوار الروحانية', () {
+    for (final entry in AppType.all.entries) {
+      if (AppType.spiritualRoles.contains(entry.key)) continue;
+      expect(
+        entry.value.fontFamily,
+        isNot(AppType.spiritualFamily),
+        reason: '${entry.key} ليس نصًا روحانيًا فلا يلبس Amiri',
+      );
+    }
+  });
+
+  test('ملفا Amiri معلنان في pubspec وموجودان', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    expect(pubspec, contains('family: Amiri'));
+    for (final path in const [
+      'assets/fonts/Amiri-Regular.ttf',
+      'assets/fonts/Amiri-Bold.ttf',
+    ]) {
+      expect(pubspec, contains(path), reason: 'pubspec لا يعلن $path');
+      expect(File(path).existsSync(), isTrue, reason: '$path مفقود');
     }
   });
 
@@ -81,18 +108,5 @@ void main() {
       isEmpty,
       reason: 'العائلة تُضبط في lib/theme فقط: ${offenders.join(', ')}',
     );
-  });
-
-  test('لا تعود Amiri إلى الكود أو الحزمة', () {
-    final amiriFamily = RegExp(r'''fontFamily:\s*['"]Amiri['"]''');
-    final offenders = <String>[];
-    for (final entity in Directory('lib').listSync(recursive: true)) {
-      if (entity is! File || !entity.path.endsWith('.dart')) continue;
-      if (amiriFamily.hasMatch(entity.readAsStringSync())) {
-        offenders.add(entity.path.replaceAll('\\', '/'));
-      }
-    }
-
-    expect(offenders, isEmpty, reason: offenders.join(', '));
   });
 }

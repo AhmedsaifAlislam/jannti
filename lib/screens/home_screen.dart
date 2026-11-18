@@ -867,11 +867,8 @@ class _HomeScreenState extends State<HomeScreen>
                   const SizedBox(height: 14),
                   Text(
                     featuredDhikr.arabicText,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0A2E18), // Deep Rich Emerald
-                      height: 1.6,
+                    style: AppType.verse.copyWith(
+                      color: const Color(0xFF0A2E18), // Deep Rich Emerald
                     ),
                   ),
                   if (_isFriday) ...[
@@ -1011,11 +1008,8 @@ class _HomeScreenState extends State<HomeScreen>
                   const SizedBox(height: 4),
                   Text(
                     wisdom['quote']!,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF1B5E20),
-                      fontWeight: FontWeight.bold,
-                      height: 1.5,
+                    style: AppType.quote.copyWith(
+                      color: const Color(0xFF1B5E20),
                     ),
                   ),
                 ],
@@ -1087,12 +1081,7 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     Text(
                       dhikr.arabicText,
-                      style: const TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        height: 1.5,
-                      ),
+                      style: AppType.verseCompact.copyWith(color: Colors.white),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),

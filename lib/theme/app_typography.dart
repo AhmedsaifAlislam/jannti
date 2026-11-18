@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 /// استثناء موثّق (رموز تعبيرية، أو سطر قرآني واحد له طابع خاص).
 ///
 /// ## القواعد
-/// 1. **العائلة واحدة:** Cairo (Light 300 / Medium 500 / Bold 700) — B1.
+/// 1. **العائلتان:** Cairo لواجهة التطبيق (Light 300 / Medium 500 / Bold 700)،
+///    وAmiri **للنص الروحاني فقط** — الشعار والأذكار والآيات (400 / 700).
+///    لا يُلبس Amiri زرًا ولا رقمًا ولا تسمية HUD.
 /// 2. **الطباعة لا تحمل ألوانًا.** اللون من مخطط الألوان أو من السطح نفسه:
 ///    `AppType.cardTitle.copyWith(color: gold)`.
 /// 3. **الدور يتبع المكان لا الرقم.** لا تستخدم `cardTitle` لعنوان شاشة، ولا
@@ -21,9 +23,9 @@ import 'package:flutter/material.dart';
 ///
 /// | الدور | الحجم/الوزن | مكانه |
 /// |---|---|---|
-/// | [brandTitle] | 46 Bold · تباعد 2 | شعار شاشة الافتتاح |
+/// | [brandTitle] | Amiri 46 Bold · 1.6 · تباعد 2 | شعار شاشة الافتتاح |
 /// | [brandSubtitle] | 14 · تباعد 1.5 | سطر «واحة الذكر» تحت الشعار |
-/// | [brandMark] | 26 Bold | «جَنَّتِي» في رأس الرئيسية |
+/// | [brandMark] | Amiri 26 Bold · 1.6 | «جَنَّتِي» في رأس الرئيسية |
 /// | [onboardingTitle] | 26 Bold | عنوان شريحة التعريف |
 /// | [screenTitle] | 22 Bold | عنوان AppBar لكل شاشة |
 /// | [cardTitleLarge] | 22 Bold | عنوان بطاقة بارزة (إذاعة السكينة) |
@@ -32,12 +34,13 @@ import 'package:flutter/material.dart';
 /// | [sectionTitle] | 20 Bold | عنوان قسم داخل شاشة أو بطاقة |
 /// | [cardTitle] | 18 Bold | عنوان بطاقة عادي |
 /// | [cardTitleSmall] | 16 Bold | عنوان بطاقة صغيرة/وسم |
-/// | [verseHero] | 32 Bold · 1.6 | الذكر في وضع الزن (ملء الشاشة) |
-/// | [verse] | 24 Bold · 1.6 | الذكر المميز في الرئيسية |
-/// | [verseCompact] | 19 Bold · 1.5 | بطاقة ذكر في قائمة |
-/// | [verseSmall] | 14 Bold | ذكر قصير داخل بطاقة فضائل |
-/// | [hadithBody] | 18 · 1.8 | متن حديث للقراءة |
-/// | [quote] | 16 Bold · 1.5 | اقتباس/حكمة داخل بطاقة |
+/// | [verseHero] | Amiri 32 Bold · 1.6 | الذكر في وضع الزن (ملء الشاشة) |
+/// | [verse] | Amiri 24 Bold · 1.6 | الذكر المميز في الرئيسية |
+/// | [verseCounter] | Amiri 26 Bold · 1.7 | الذكر في شاشة العدّاد |
+/// | [verseCompact] | Amiri 19 Bold · 1.6 | بطاقة ذكر في قائمة |
+/// | [verseSmall] | Amiri 14 Bold | ذكر قصير داخل بطاقة فضائل |
+/// | [hadithBody] | Amiri 18 · 1.8 | متن حديث للقراءة |
+/// | [quote] | Amiri 16 Bold · 1.6 | اقتباس/حكمة داخل بطاقة |
 /// | [counterHero] | 58 Bold · 1.0 | رقم العدّاد في الزن |
 /// | [counterValue] | 48 Bold · 1.1 | رقم العدّاد في الشاشة |
 /// | [statValue] | 20 Bold · 1.0 | رقم إحصائي في بطاقة الرئيسية |
@@ -68,15 +71,33 @@ import 'package:flutter/material.dart';
 abstract final class AppType {
   const AppType._();
 
-  /// العائلة الوحيدة المسموح بها في الحزمة.
+  /// العائلة الأساسية لواجهة التطبيق.
   static const String family = 'Cairo';
+
+  /// عائلة النص الروحاني — الشعار والأذكار والآيات فقط.
+  static const String spiritualFamily = 'Amiri';
+
+  /// الأدوار الوحيدة المسموح لها بلبس [spiritualFamily].
+  static const Set<String> spiritualRoles = <String>{
+    'brandTitle',
+    'brandMark',
+    'verseHero',
+    'verse',
+    'verseCounter',
+    'verseCompact',
+    'verseSmall',
+    'hadithBody',
+    'quote',
+  };
 
   // ── الهوية والشعار ────────────────────────────────────────────────────────
   static const TextStyle brandTitle = TextStyle(
-    fontFamily: family,
+    fontFamily: spiritualFamily,
     fontSize: 46,
     fontWeight: FontWeight.bold,
     letterSpacing: 2,
+    // Amiri صعوده+هبوطه ≈ 1.52em: أي ارتفاع أقل يقصّ الحروف داخل ShaderMask.
+    height: 1.6,
   );
 
   static const TextStyle brandSubtitle = TextStyle(
@@ -86,9 +107,10 @@ abstract final class AppType {
   );
 
   static const TextStyle brandMark = TextStyle(
-    fontFamily: family,
+    fontFamily: spiritualFamily,
     fontSize: 26,
     fontWeight: FontWeight.bold,
+    height: 1.6,
   );
 
   static const TextStyle onboardingTitle = TextStyle(
@@ -140,45 +162,53 @@ abstract final class AppType {
     fontWeight: FontWeight.bold,
   );
 
-  // ── النص الروحاني ─────────────────────────────────────────────────────────
+  // ── النص الروحاني (Amiri) ─────────────────────────────────────────────────
   static const TextStyle verseHero = TextStyle(
-    fontFamily: family,
+    fontFamily: spiritualFamily,
     fontSize: 32,
     fontWeight: FontWeight.bold,
     height: 1.6,
   );
 
   static const TextStyle verse = TextStyle(
-    fontFamily: family,
+    fontFamily: spiritualFamily,
     fontSize: 24,
     fontWeight: FontWeight.bold,
     height: 1.6,
   );
 
+  /// الذكر في شاشة العدّاد — أكبر من [verse] وأصغر من [verseHero].
+  static const TextStyle verseCounter = TextStyle(
+    fontFamily: spiritualFamily,
+    fontSize: 26,
+    fontWeight: FontWeight.bold,
+    height: 1.7,
+  );
+
   static const TextStyle verseCompact = TextStyle(
-    fontFamily: family,
+    fontFamily: spiritualFamily,
     fontSize: 19,
     fontWeight: FontWeight.bold,
-    height: 1.5,
+    height: 1.6,
   );
 
   static const TextStyle verseSmall = TextStyle(
-    fontFamily: family,
+    fontFamily: spiritualFamily,
     fontSize: 14,
     fontWeight: FontWeight.bold,
   );
 
   static const TextStyle hadithBody = TextStyle(
-    fontFamily: family,
+    fontFamily: spiritualFamily,
     fontSize: 18,
     height: 1.8,
   );
 
   static const TextStyle quote = TextStyle(
-    fontFamily: family,
+    fontFamily: spiritualFamily,
     fontSize: 16,
     fontWeight: FontWeight.bold,
-    height: 1.5,
+    height: 1.6,
   );
 
   // ── الأرقام ───────────────────────────────────────────────────────────────
@@ -312,6 +342,7 @@ abstract final class AppType {
     'cardTitleSmall': cardTitleSmall,
     'verseHero': verseHero,
     'verse': verse,
+    'verseCounter': verseCounter,
     'verseCompact': verseCompact,
     'verseSmall': verseSmall,
     'hadithBody': hadithBody,
