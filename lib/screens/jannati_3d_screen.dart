@@ -159,6 +159,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   final double _dpr = 1.0;
   bool _disposed = false;
   bool _loaded = false;
+
+  /// حاجب أول إقلاع (B3): المشهد لا يُكشف قبل اكتمال أصوله.
+  bool _sceneReady = false;
+  int _assetsTotal = 0;
+  int _assetsDone = 0;
   bool _platformInitStarted = false; // guard: prevent double initPlatformState
   // الدوران التلقائي كان يلفّ المشهد حول نقطة واحدة رغم المستخدم؛ صار مطفأً
   // افتراضيًا ويبقى زرّه في الشريط العلوي لمن يريده.
@@ -1115,13 +1120,44 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     debugPrint('🏝 nature island ready (${kNatureInstances.length} copies)');
   }
 
+  /// يسجّل أصلًا غير متزامنًا في حاجب أول إقلاع (B3).
+  ///
+  /// كل بناء يزيد العدّاد قبل أن يبدأ وينقص عند اكتماله — نجاحًا أو فشلًا —
+  /// فلا يُكشف المشهد قبل آخر شبكة. `catchError` يمنع خطأ أصل واحد من إسقاط
+  /// العدّاد، والمهلة الزمنية في [initPage] شبكة أمان أخيرة.
+  void _trackAsset(Future<void> work) {
+    _assetsTotal++;
+    unawaited(
+      work
+          .catchError((Object e) {
+            debugPrint('⚠️ scene asset failed: $e');
+          })
+          .whenComplete(() {
+            if (_disposed) return;
+            _assetsDone++;
+            if (_assetsDone >= _assetsTotal) {
+              _markSceneReady();
+            } else if (mounted) {
+              setState(() {});
+            }
+          }),
+    );
+  }
+
+  void _markSceneReady() {
+    if (_sceneReady || _disposed) return;
+    _sceneReady = true;
+    debugPrint('✅ scene ready ($_assetsDone/$_assetsTotal)');
+    if (mounted) setState(() {});
+  }
+
   void _buildSculptedTerrain() {
     final terrainGroup = three.Group();
 
     // الجزيرة كاملة — جبال، بحيرتان، ممرات، مرج — من مشهد
     // `PP_FreeLowPolyForest_v3.0`. تحلّ محل الأرض المسطّحة والنهر المحفور:
     // الماء هنا بحيرتان مغلقتان، والمرج بلاطات مصمَّمة لا شبكة مولَّدة.
-    unawaited(_buildNatureIsland(terrainGroup));
+    _trackAsset(_buildNatureIsland(terrainGroup));
 
     // كومة التراب تحت الشجرة: مادة واحدة يشترك فيها كل النماذج، فتُنشأ هنا كي
     // تلتقط خامة الطحلب عند وصولها بدل أن تُنشأ متأخرًا بلا خامة.
@@ -1182,11 +1218,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     _scene.add(terrainGroup);
     _buildIslandShell(terrainGroup);
     _buildNaturePackIslands(terrainGroup);
-    _buildPlateauModel();
+    _trackAsset(_buildPlateauModel());
     // الرصف يُبنى مستقلًا عن تحميل موديل الهضبة: ارتفاعه ثابت ٢٫٧٦ وسطح
     // الموديل المقيس يقع بين ٢٫٧٥ و٢٫٩٧ في هذا النطاق، فلو تأخّر التحميل
     // أو فشل يبقى الرصف في مكانه الصحيح على القرص الاحتياطي.
-    _buildPlateauPaving(terrainGroup);
+    _trackAsset(_buildPlateauPaving(terrainGroup));
 
     // 3. Fine Volumetric Grass Tufts & Flowers
     _buildMeadowFlora();
@@ -1196,11 +1232,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
 
     // 5. الجسر والزنابق: الماء الآن بحيرتان داخل الجزيرة، فالجسر يعبر الوسطى
     // والزنابق تطفو على سطحيهما.
-    _buildStoneBridge();
+    _trackAsset(_buildStoneBridge());
     _buildWaterLilies();
 
     // 6. خامات الجرف والكومة: تُحمَّل بعد بناء المواد فلا يتأخر أول إطار.
-    _loadGroundTextures();
+    _trackAsset(_loadGroundTextures());
   }
 
   // =========================================================================
@@ -1716,10 +1752,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   /// **لا تُستبدل خامتها**: `plateau.jpg` تحمل عشب السطح وجرفه الصخري في أطلس
   /// واحد، واستبدالها بخامة المرج (`ground_spots`) كان يمحو الجرف ويحوّل
   /// الهضبة إلى فطيرة باهتة. تكرار UV ×3 كان لمصلحة تلك الخامة لا لهذا الأطلس.
-  void _buildPlateauModel() {
+  Future<void> _buildPlateauModel() {
     const targetWidth = _kPlateauRadiusX * 2;
 
-    three_jsm.GLTFLoader()
+    return three_jsm.GLTFLoader()
         .loadAsync(kPlateauModel)
         .timeout(const Duration(seconds: 30))
         .then((gltf) {
@@ -1898,7 +1934,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     }
   }
 
-  void _buildStoneBridge() {
+  Future<void> _buildStoneBridge() {
     // جسر حجري يعبر البحيرة الوسطى. الماء دائرة نصف قطرها ١٤٫٧٥ وشاطئها
     // ١٧٫١٥، فـ١٦٫٩ يمدّ الموديل (١٫٨٩٧ طولًا) إلى ٣٢ وحدة ويغرس طرفيه في
     // الشاطئين. **الطول لا يُصغَّر**: أي قيمة أقل تترك الجسر معلّقًا فوق الماء.
@@ -1908,7 +1944,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     const scaleY = 8.8; // 0.520 × 8.8 ≈ 4.58 ارتفاعًا
     const scaleZ = 8.0; // 1.126 × 8.0 ≈ 9.0 عرضًا
 
-    three_jsm.GLTFLoader()
+    return three_jsm.GLTFLoader()
         .loadAsync(kBridgeModel)
         .timeout(const Duration(seconds: 30))
         .then((gltf) {
@@ -3993,6 +4029,45 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                 ),
               ),
             ),
+
+            // 🚪 حاجب أول إقلاع: يغطي المشهد والحواف حتى تكتمل آخر شبكة/بلاطة.
+            if (!_sceneReady)
+              Positioned.fill(
+                child: Container(
+                  color: const Color(0xFF071B12),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(
+                          color: Color(0xFFFFD700),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          '🌿 جارٍ فتح أبواب جنتك النورانية...',
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Color(0xFFFFD700),
+                          ),
+                        ),
+                        if (_assetsTotal > 0) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            '${NumberFormatter.toArabic(_assetsDone)} / '
+                            '${NumberFormatter.toArabic(_assetsTotal)}',
+                            textDirection: TextDirection.rtl,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.55),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         );
       },
@@ -4103,7 +4178,7 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
-                    'جنتي ثلاثية الأبعاد 🌊🌴✨',
+                    'جنتي',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -5023,6 +5098,14 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
 
     _buildAtmosphere();
     _buildSculptedTerrain();
+    // شبكة أمان: أصل معلّق (شبكة بطيئة أو ملف مفقود) لا يحقّ له حجب الجنة.
+    Future.delayed(const Duration(seconds: 25), () {
+      if (!_sceneReady && !_disposed) {
+        debugPrint('⚠️ scene gate timeout: $_assetsDone/$_assetsTotal');
+        _markSceneReady();
+      }
+    });
+    if (_assetsTotal == 0) _markSceneReady();
     _buildLightParticlesAndWildlife();
 
     // 🌅 إضاءة اللحظة الحالية (تلقائي حسب ساعة الجهاز، أو وضع ثابت محفوظ)
