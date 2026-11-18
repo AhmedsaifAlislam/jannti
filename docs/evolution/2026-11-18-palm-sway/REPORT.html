@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>جنتي — تقرير تأرجح سعف النخيل ٢٠٢٦-١١-١٨</title>
+<style>
+  :root{
+    --bg:#08201A; --panel:#0E2E24; --panel2:#103A2C;
+    --gold:#E8C97A; --gold-dim:#B99C57; --txt:#EAF3EE; --muted:#9FB8AD;
+    --bad:#E36A5A; --good:#4FD08A; --line:rgba(232,201,122,.18);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px 64px; background:
+      radial-gradient(1200px 600px at 80% -10%, #14493A 0%, transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, #0C3529 0%, transparent 55%),
+      var(--bg);
+    color:var(--txt);
+    font-family:"Cairo","Segoe UI",Tahoma,system-ui,sans-serif;
+    line-height:1.75;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  .eyebrow{color:var(--gold-dim);letter-spacing:.14em;font-size:12px;margin-bottom:10px}
+  h1{font-size:30px;margin:0 0 6px;font-weight:800;letter-spacing:-.01em}
+  h1 span{color:var(--gold)}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:28px}
+  h2{font-size:19px;margin:40px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);font-weight:700}
+  h2::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;
+    background:var(--gold);margin-inline-end:10px;transform:rotate(45deg)}
+  h3{font-size:16px;margin:24px 0 8px;color:var(--gold);font-weight:700}
+  p{margin:0 0 12px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:22px 0 8px}
+  .kpi{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:14px;padding:16px 14px;text-align:center}
+  .kpi b{display:block;font-size:26px;color:var(--gold);line-height:1.2}
+  .kpi small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+  .kpi.ok b{color:var(--good)}
+  .kpi.bad b{color:var(--bad)}
+  table{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:10px 12px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06)}
+  th{background:rgba(232,201,122,.10);color:var(--gold);font-weight:700;font-size:13px}
+  tr:last-child td{border-bottom:none}
+  code,pre{font-family:"Cascadia Mono",Consolas,monospace;direction:ltr;text-align:left}
+  code{background:rgba(255,255,255,.07);padding:2px 6px;border-radius:5px;font-size:12.5px;color:#D8F3E6;
+    direction:ltr;unicode-bidi:isolate}
+  pre{background:#06170F;border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    overflow:auto;font-size:12.5px;line-height:1.65;color:#CFE9DC;margin:12px 0}
+  .shot{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin:16px 0 26px}
+  .shot img{width:100%;display:block;border-radius:10px;border:1px solid rgba(0,0,0,.35)}
+  .shot .cap{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--muted)}
+  .tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid}
+  .tag.bad{color:var(--bad);border-color:rgba(227,106,90,.45);background:rgba(227,106,90,.10)}
+  .tag.mid{color:#E9B44C;border-color:rgba(233,180,76,.45);background:rgba(233,180,76,.10)}
+  .tag.good{color:var(--good);border-color:rgba(79,208,138,.45);background:rgba(79,208,138,.10)}
+  .note{border-inline-start:3px solid var(--gold);background:rgba(232,201,122,.07);
+    padding:12px 16px;border-radius:0 10px 10px 0;font-size:14px;margin:14px 0}
+  .note.warn{border-color:var(--bad);background:rgba(227,106,90,.08)}
+  ul{margin:8px 0 14px;padding-inline-start:22px}
+  li{margin:6px 0}
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+  .topnav{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:26px;
+    padding:10px 14px;background:rgba(14,46,36,.85);border:1px solid var(--line);border-radius:14px}
+  .topnav a{color:var(--txt);text-decoration:none;font-size:13.5px;font-weight:700;
+    padding:7px 14px;border-radius:999px;border:1px solid rgba(232,201,122,.28);white-space:nowrap}
+  .topnav a:hover{background:rgba(232,201,122,.12);border-color:var(--gold)}
+  .topnav a.home{background:rgba(232,201,122,.16);border-color:var(--gold);color:var(--gold)}
+  .topnav .spacer{flex:1}
+  .topnav .here{color:var(--muted);font-size:12px}
+  .pager{display:flex;justify-content:space-between;gap:12px;margin-top:40px;padding-top:18px;
+    border-top:1px solid var(--line)}
+  .pager a{color:var(--gold);text-decoration:none;font-size:13.5px;font-weight:700;
+    padding:9px 16px;border:1px solid rgba(232,201,122,.3);border-radius:999px}
+  .pager a:hover{background:rgba(232,201,122,.12)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topnav">
+    <a class="home" href="../index.html">الفهرس</a>
+    <a href="../2026-11-17-jannati-tab/REPORT.html">→ السابق: تبويب جنتي</a>
+    <a href="../index.html">كل المراحل ←</a>
+    <span class="spacer"></span>
+    <span class="here">المرحلة ٦ من ٦</span>
+  </div>
+
+  <div class="eyebrow">جَنَّتِي · سجل تطوّر المشهد · المرحلة ٦ · ٩٫٢</div>
+  <h1>تأرجح سعف النخيل: <span>انحناء في الشادر، لا ريج</span></h1>
+  <div class="sub">تقرير جلسة ١٨ نوفمبر ٢٠٢٦ — الخيار (ب): قمة الموديل تنحني فعليًا في
+    <code>onBeforeCompile</code>، والقاعدة لا تتحرك. الحلّ إجرائي مؤقت لحين الريج (B8)،
+    لكنه مُقاس بالبكسل ومُثبت بالعين — مرّتين: مرة سقط فيها المشهد، ومرة بعد إصلاح
+    الشادر.</div>
+
+  <div class="kpis">
+    <div class="kpi"><b>١٥٫١px</b><small>حركة التاج ذهابًا وإيابًا</small></div>
+    <div class="kpi ok"><b>٠٫٢٤px</b><small>حركة قاعدة الجذع</small></div>
+    <div class="kpi ok"><b>٠٫٠٧px</b><small>حركة الجسر (مرجع ثابت)</small></div>
+    <div class="kpi"><b>١١٫٤ث</b><small>دورة التمايل المقاسة</small></div>
+    <div class="kpi ok"><b>١٠٢/١٠٢</b><small>اختبار ناجح</small></div>
+    <div class="kpi ok"><b>٠</b><small>مشاكل في analyze</small></div>
+  </div>
+
+  <h2>الطلب والقيد</h2>
+  <p>
+    البند ٩٫٢ كان مكتوبًا كـ«ريج وعظام ثم <code>AnimationMixer</code>» (B8). والريج
+    <strong>غير ممكن</strong> على الملفات الحالية: كل ملفات النخيل والشجر شبكة واحدة
+    بلا هيكل ولا مقطع حركة، ولا تُضاف عظام لملف جاهز من داخل Dart — يلزم إعادة تصدير
+    من Blender. لذلك نُفِّذ البديل الذي نصّت عليه خطة B8 نفسها: «تمايل إجرائي في حلقة
+    الرسم عبر <code>onBeforeCompile</code> لتشويه القمم حسب الارتفاع»، بشرط أن يُقاس
+    لا أن يُدَّعى.
+  </p>
+
+  <h2>لماذا انحناء القمم لا إمالة الموديل</h2>
+  <p>
+    الإمالة الكاملة بدت أرخص، لكنها تسقط لسبب هندسي: <code>fitModelToGround</code>
+    يضع محور الموديل <strong>داخل</strong> المجسّم، لا عند قاعدته. فإمالة الطفل تُزيح
+    قاعدته عن الأرض وتجرّ خلفها الظل وحلقة الزينة والكومة العشبية. البديل المنفَّذ:
+    إزاحة رؤوس x/z بوزن يصفر عند أدنى نقطة ويبلغ واحدًا عند القمة، فالجزء الملامس
+    للأرض لا يتحرك ببناء الصيغة نفسها.
+  </p>
+
+  <h2>كيف يعمل — <code>lib/three/model_sway.dart</code></h2>
+  <p>الدالة <code>installModelSway</code> تستبدل <code>#include &lt;begin_vertex&gt;</code> في الشادر:</p>
+  <pre>float swayH = clamp((position.y - uSwayBase) / max(uSwaySpan, 0.0001), 0.0, 1.0);
+float swayBend = pow(swayH, 2.0);
+float swayPhase = modelMatrix[3][0] * 0.7 + modelMatrix[3][2] * 1.3;
+transformed.x += sin(uSwayTime * 0.55 + swayPhase) * uSwayAmpX * swayBend;
+transformed.z += cos(uSwayTime * 0.40 + swayPhase * 1.7) * uSwayAmpZ * swayBend;</pre>
+  <table>
+    <tr><th>القرار</th><th>القيمة</th><th>السبب</th></tr>
+    <tr><td>سعة النخيل</td><td><code>0.018</code> من ارتفاع الموديل</td><td>٪١٫٨ من نخلة ٩ وحدات ≈ ٠٫١٦ وحدة</td></tr>
+    <tr><td>سعة شجر المكافآت</td><td><code>0.012</code></td><td>تيجانه عريضة، ونفس النسبة تعني قوسًا أطول</td></tr>
+    <tr><td>سعة أشجار البيئة</td><td><code>0.010</code></td><td>٤٠ شجرة خلفية: تتنفّس ولا تلفت النظر</td></tr>
+    <tr><td>المحور العرضي</td><td><code>0.62</code></td><td>تمايل بيضاوي لا خطّ واحد</td></tr>
+    <tr><td>السرعتان</td><td><code>0.55</code> · <code>0.40</code> راد/ث</td><td>دورتان ≈١١٫٤ث و≈١٥٫٧ث</td></tr>
+    <tr><td>وزن الارتفاع</td><td><code>pow(h, 2.0)</code></td><td>الجذع السفلي ساكن تمامًا تقريبًا، والسعف هو المتحرك</td></tr>
+    <tr><td>الطور</td><td>من <code>modelMatrix[3]</code></td><td>نسختان متجاورتان لا تتزامنان، بلا uniform لكل نسخة</td></tr>
+    <tr><td>الساعة</td><td>ثوانٍ منذ بدء المشهد</td><td>طابع Unix ‏(١٫٧×١٠⁹) خطوة float32 عنده ≈٢٥٦ث فيتجمّد التمايل</td></tr>
+    <tr><td>مفتاح البرنامج</td><td><code>jannati/sway/v3</code></td><td>يُرفَع مع أي تعديل GLSL، وإلا بقي الشادر القديم في الكاش</td></tr>
+  </table>
+  <div class="note">
+    <strong>نطاق التثبيت:</strong> في <code>_styleModelChild</code> لنسخ الـGLB من
+    <code>palmTree</code> و<code>tree</code> (المكافآت والزينة)، وفي
+    <code>_buildNatureIsland</code> للشبكات الأربع <code>birch_a/b</code> و
+    <code>tree_a/b</code> قبل الاستنساخ — المادة مشتركة بالمرجع، فبرنامج واحد يخدم
+    النسخ الأربعين. البديل الإجرائي والمباني والكنوز والجبال والصخور خارج النطاق.
+  </div>
+
+  <h2>العيب: «2.0» تصل إلى الشادر كـ«2» فيموت المشهد كله</h2>
+  <p>
+    أول بناء ويب نجح، والاختبارات الـ١٠١ كلها خضراء، ثم فتحتُ المشهد فلم يتحرك شيء
+    <strong>أصلًا</strong>: لا نخلة ولا ماء ولا كاميرا. سجلّ المتصفح كان صريحًا:
+  </p>
+  <pre>ERROR: 0:581: 'pow' : no matching overloaded function found
+Error
+    at Object.ab (main.dart.js:4322:30)
+    at a1d.fj (main.dart.js:122625:6)</pre>
+  <p>
+    السبب سطر واحد في الشادر: <code>pow(swayH, 2)</code>. في Dart الرقم
+    <code>2.0</code> هو <code>double</code>، لكن <code>dart2js</code> يطبع الرقم كما
+    يراه JavaScript: <code>2</code> بلا فاصلة. وGLSL لا يملك تحميل
+    <code>pow(float, int)</code> — فيه <code>pow(float, float)</code> فقط، ففشل ترجمة
+    الشادر. وبما أن الاستثناء وقع داخل <code>render()</code>، لم يُعَد جدولة
+    <code>requestAnimationFrame</code> فتوقّف <code>animate()</code> عن الدوران،
+    وتجمّد المشهد كله وليس السعف وحده.
+  </p>
+  <div class="note warn">
+    <strong>الدرس:</strong> اختبار الـVM يرى <code>2.0</code> فيمرّ، و<code>dart2js</code>
+    يرى <code>2</code> فيسقط. أي ثابت رقمي يدخل نص GLSL يمرّ الآن عبر
+    <code>glslFloat()</code> الذي يضمن الفاصلة العشرية:
+    <code>'${value.toInt()}.0'</code> للأعداد الصحيحة، و<code>'$value'</code> لغيرها.
+    المفتاح رُفع من <code>v2</code> إلى <code>v3</code> لأن الكاش يحتفظ بالبرنامج
+    المترجم، واختبار <code>pow(swayH, 2)</code> السلبي يحرس النص المُولَّد نفسه.
+  </div>
+
+  <h2>القياس: ١٣٠ إطارًا من متصفح حقيقي</h2>
+  <p>
+    النخلة وُضعت في مركز الكادر عند أقصى تقريب (مسافة ≈١٨، ارتفاعها على الشاشة
+    ≈٣٦٥px، الكادر ٤٩٢×٦٢٩ CSS). صُوّرت ١٣٠ لقطة على دفعتين، وزمن كل لقطة مأخوذ من
+    <strong>تاريخ تعديل ملفها</strong> لا من افتراض انتظام الدفعات: الدفعتان تفصلهما
+    فجوة ≈١٦ث. ثم قيست الإزاحة الأفقية لكل منطقة بمطابقة طورية تحت البكسل، مقابل
+    الإطار الأول.
+  </p>
+  <table>
+    <tr><th>المنطقة</th><th>المدى (px)</th><th>الانحراف المعياري</th><th>الحكم</th></tr>
+    <tr><td>قمة التاج (السعف)</td><td><strong>١٥٫١٤</strong></td><td>٤٫٤٩</td><td>تمايل واضح</td></tr>
+    <tr><td>قاعدة الجذع على الكومة</td><td>٠٫٢٤</td><td>٠٫٠٨</td><td>ساكنة عمليًا</td></tr>
+    <tr><td>الجسر (مرجع ثابت)</td><td>٠٫٠٧</td><td>٠٫٠١</td><td>الكاميرا لم تنزح</td></tr>
+  </table>
+  <p>
+    ومطابقة الإشارة على التردّدين المكتوبين في الشادر نفسه — <code>0.55</code>
+    و<code>0.40</code> راد/ث أي دورتان ١١٫٤ث و١٥٫٧ث — تعطي اتساعًا
+    <strong>٦٫٠٥px</strong> للمحور x و<strong>١٫٣٦px</strong> للمحور z، بمعامل تحديد
+    <strong>R² = 0.99</strong>. أسوأ حالة جمع ١٤٫٨px، والمقيس ١٥٫١px.
+  </p>
+  <p>
+    والتحقق من الصيغة: <code>0.018 × 9 وحدات = 0.162</code> وحدة، والمقياس ≈٤٠px
+    للوحدة، أي ≈٦٫٥px اتساعًا في المستوى — و٦٫٠٥px هي المسقطة على الشاشة. الرقم
+    المقاس هو الرقم المحسوب، لا رقم آخر يشبهه.
+  </p>
+  <div class="note">
+    <strong>ما يتحرك تحت النخلة هو ظلّها لا الأرض.</strong> السعف المتحرك يغيّر خريطة
+    ظلّه على الكومة، فيظهر أثر حركة في صفوف الظل. أما الجسر — وهو خارج الشادر تمامًا —
+    فلم يتحرك إلا ٠٫٠٧px، وهذا هو سقف ضجيج القياس.
+  </div>
+
+  <h2>الأدلة البصرية</h2>
+
+  <div class="shot">
+    <img src="01-closeup.jpg" alt="النخلة عن قرب داخل المشهد عند أقصى تقريب">
+    <div class="cap"><span class="tag mid">الإعداد</span> النخلة عن قرب (مسافة ≈١٨،
+      كادر ٤٩٢×٦٢٩). نُقلت مؤقتًا في بيانات الاختبار إلى (−12، 10) لتقع على خطّ نظر
+      الكاميرا، ثم أُعيد موضعها الأصلي بعد القياس.</div>
+  </div>
+
+  <div class="shot">
+    <img src="02-poses.jpg" alt="أربع لقطات: السعف يميل يسارًا ثم يمينًا مع ثبات الجذع">
+    <div class="cap"><span class="tag good">بالعين</span> أربع لقطات مرتّبة بالحركة من
+      الحدّ الأدنى (−٧٫١١px) إلى الأقصى (+٧٫٩١px): السعف يميل يمينًا ويسارًا والجذع
+      والقاعدة ثابتان.</div>
+  </div>
+
+  <div class="shot">
+    <img src="03-ghost.jpg" alt="تسجيل أحمر/أخضر لوضعي التطرف: السعف وحده يفترق">
+    <div class="cap"><span class="tag good">تطرفان</span> تسجيل أحمر/أخضر للقطتين
+      −٧٫١٢ و+٨٫٠٢: يفترقان عند أطراف السعف ويتطابقان (رمادي) عند الجذع — هذا هو تعريف
+      الانحناء من القاعدة.</div>
+  </div>
+
+  <div class="shot">
+    <img src="04-motion-map.jpg" alt="خريطة حركة: التاج مضيء والقاعدة والمرج معتمان">
+    <div class="cap"><span class="tag good">خريطة الحركة</span> الانحراف الزمني لكل
+      بكسل على ١٣٠ إطارًا: التاج مضيء، الجذع يخفت كلما نزل، والكومة والمرج أسفل
+      الصورة سوداء.</div>
+  </div>
+
+  <div class="shot">
+    <img src="05-sway-curve.png" alt="منحنى الحركة المقاسة مقابل تركيب الترددين ٠٫٥٥ و٠٫٤٠">
+    <div class="cap"><span class="tag good">رقميًا</span> الإزاحة المقاسة (أخضر) مقابل
+      تركيب التردّدين <code>0.55</code> و<code>0.40</code> راد/ث (ذهبي): R² ٠٫٩٩.
+      الشريط الداكن فجوة التصوير بين الدفعتين — والخط مقطوع عندها كي لا تُقرأ حركة.</div>
+  </div>
+
+  <div class="shot">
+    <img src="06-palm-sway.gif" alt="صورة متحركة للتمايل: ٦٥ لقطة متتالية">
+    <div class="cap"><span class="tag good">متحرك</span> ٦٥ لقطة × ١٨٠ms = ١١٫٧ث —
+      الزمن الحقيقي كما التُقط (٥٫٥ لقطة/ث، ليست مسرّعة ولا مبطّأة). لاحظ السعف فقط.</div>
+  </div>
+
+  <h2>الأداء: الخطر الحقيقي الوحيد</h2>
+  <p>
+    التعديل لا يضيف رسمًا ولا خامة ولا draw call: أربعة uniforms و<code>sin</code>/
+    <code>cos</code> لكل رأس، والشادر لا يعمل إلا على نسخ النخيل والشجر.
+  </p>
+  <div class="note warn">
+    <strong>لا يمكن الحكم على FPS من تبويب الأتمتة.</strong> قياس
+    <code>requestAnimationFrame</code> أعطى ١٫٢ إطار/ث على <em>الرئيسية</em> أيضًا،
+    و١٫٥–٢ داخل المشهد — أي أن Chrome يخنق الإطارات في هذا التبويب، والفرق بين
+    الشاشتين ليس دليلًا على تكلفة المشهد. الحكم النهائي يحتاج جهازًا حقيقيًا
+    (وفحص Impeller على أندرويد)، وقد سُجّل ذلك في PROJECT.md.
+  </div>
+
+  <h2>الملفات المتأثرة</h2>
+  <table>
+    <tr><th>الملف</th><th>التغيير</th></tr>
+    <tr><td><code>lib/three/model_sway.dart</code></td><td>جديد — الثوابت و<code>glslFloat</code> والشادر والتثبيت (١٨٦ سطرًا)</td></tr>
+    <tr><td><code>test/model_sway_test.dart</code></td><td>جديد — ٥ حراسات: الـuniforms، القاعدة، الفاصلة العشرية في GLSL، النسب والمفتاح، والمجموعة الفارغة</td></tr>
+    <tr><td><code>lib/screens/jannati_3d_screen.dart</code></td><td>import · <code>_swayClock</code> وبدايته · تثبيت في <code>_styleModelChild</code> · تحديث مرة واحدة في <code>render()</code></td></tr>
+  </table>
+
+  <h2>ما تبقّى</h2>
+  <ul>
+    <li><strong>الريج (B8)</strong> يبقى مؤجلًا: إعادة تصدير من Blender بعظام ومقطع ٤ث ثم قياس الحجم والرسم. التمايل الحالي مؤقت ومقصود.</li>
+    <li><strong>٩٫٤ النهر السماوي</strong> هو البند التالي في المرحلة ٩.</li>
+    <li>قياس FPS على جهاز أندرويد حقيقي + فحص Impeller — لا يغطيه Chrome.</li>
+  </ul>
+
+  <div class="pager">
+    <a href="../2026-11-17-jannati-tab/REPORT.html">→ تبويب جنتي</a>
+    <a href="../index.html">الفهرس ←</a>
+  </div>
+
+  <footer>
+    اللقطات والقياسات من Chrome حقيقي على <code>127.0.0.1:8080</code>
+    (بناء <code>flutter build web</code>)، كادر ٤٩٢×٦٢٩ CSS. ١٣٠ لقطة،
+    والزمن من تاريخ تعديل كل ملف، والإزاحة بمطابقة طورية تحت البكسل في ثلاث مناطق.
+    تقرير ١٨ نوفمبر ٢٠٢٦.
+  </footer>
+
+</div>
+</body>
+</html>

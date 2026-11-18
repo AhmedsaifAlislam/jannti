@@ -18,6 +18,7 @@ import '../three/day_palette.dart';
 import '../three/ground_texture.dart';
 import '../three/model_evolution.dart';
 import '../three/model_fit.dart';
+import '../three/model_sway.dart';
 import '../three/model_texture.dart';
 import '../three/nature_layout.dart';
 import '../utils/garden_assets.dart';
@@ -218,6 +219,14 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   final GlobalKey<three_jsm.DomLikeListenableState> _globalKey =
       GlobalKey<three_jsm.DomLikeListenableState>();
   late three_jsm.OrbitControls _controls;
+
+  /// ساعة التمايل المشتركة: كائن واحد تقرأه كل مواد النخيل والشجر، فيكفي
+  /// تحديثه مرة في [render] بدل تسعين تحديثًا. القيمة **ثوانٍ منذ بدء المشهد**
+  /// لا طابعًا زمنيًا حقبيًا: float32 عند ١٫٧ مليار ثانية يتقدّم ~٢٥٦ ثانية
+  /// فيتجمّد التمايل تمامًا.
+  final Map<String, dynamic> _swayClock = newSwayClock();
+  final int _swayClockOriginMs = DateTime.now().millisecondsSinceEpoch;
+
   final List<_AnimatedModel> _animatedModels = [];
   final List<_SavedEntry> _savedEntries = [];
   final List<_GoldBurst> _goldBursts = [];
@@ -1057,6 +1066,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     16: 0.85, // tree_b
   };
 
+  /// مؤشرات الشبكات التي تتمايل في البيئة: البتولا (0، 1) والشجرتان (15، 16).
+  /// الجبال والصخور والمرج لا تعرف التمايل، والبحيرات سطح ماء ساكن.
+  static const Set<int> _kNatureSwayMeshes = {0, 1, 15, 16};
+
   Future<void> _buildNatureIsland(three.Group parent) async {
     final rowsByMesh = <int, List<List<double>>>{};
     for (final row in kNatureInstances) {
@@ -1095,6 +1108,16 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         // المؤشرات ٣٢-بت في كل تصدير، و`clone` لا يعرف إلا ١٦-بت: التضييق
         // يجب أن يسبق التخزين وإلا رمى أول نسخة.
         makeModelCloneable(scene);
+
+        // غابة الجزيرة تتنفّس مع المكافآت. التثبيت يسبق `clone` لأن المواد
+        // مشتركة بالمرجع بين النسخ الأربعين، فبرنامج واحد يخدمها كلها.
+        if (_kNatureSwayMeshes.contains(i)) {
+          installModelSway(
+            scene,
+            amplitudeFraction: kNatureSwayFraction,
+            clock: _swayClock,
+          );
+        }
 
         for (final row in rows) {
           final matrix = three.Matrix4();
@@ -3025,6 +3048,18 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     }
     _applyTint(child, model.tint);
     model.appliedTint = model.tint;
+
+    // التمايل يُثبَّت على نسخة الـGLB وحدها: هي التي تحمل شبكة السعف. البديل
+    // الإجرائي لا يحتاجه، وموديلات المباني والكنوز خارج النطاق عن قصد.
+    if (model.type == RewardType.palmTree || model.type == RewardType.tree) {
+      installModelSway(
+        child,
+        amplitudeFraction: model.type == RewardType.palmTree
+            ? kPalmSwayFraction
+            : kTreeSwayFraction,
+        clock: _swayClock,
+      );
+    }
   }
 
   /// كم يُدفن الموديل تحت الأرض: قاعدة النخلة العشبية كبيرة في المرتبة الأولى،
@@ -4843,6 +4878,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     final gl = _three3dRender.gl;
     final now = DateTime.now().millisecondsSinceEpoch;
     _frameCount++;
+
+    // الساعة المشتركة للشادرات المثبَّتة على النخيل والشجر. تُحدَّث قبل
+    // `_renderer!.render` فتُرفع مع بقية الـuniforms في نفس الإطار.
+    _swayClock['value'] = (now - _swayClockOriginMs) / 1000.0;
 
     // 0. تحليق الكاميرا إلى غرسة غُرست خارج الكادر. الهدف والكاميرا يُزاحان
     //    بنفس المقدار، فتبقى المسافة والاتجاه كما هما وينتقل النظر وحده.

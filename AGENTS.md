@@ -161,6 +161,38 @@
   `tier 1 / stage 0 / 1.0`. It also sorts the existing models by stage before
   assigning, so the grown ones stay in front even if `rewards_3d` was written in
   another order. Do not collapse this back to one style per type.
+- **التمايل إجرائي في الشادر، لا ريج ولا `AnimationMixer`.** `lib/three/model_sway.dart`
+  هو المصدر الوحيد: `installModelSway` يستبدل `#include <begin_vertex>` بإزاحة
+  x/z وزنها `pow(h, 1.7)`، حيث `h` ارتفاع الرأس داخل هندسة الموديل نفسها
+  (`boundingBox`)، فالقاعدة `h = 0` **لا تتحرك**، والظل والكومة وحلقة الزينة
+  أطفال آخرون لا يمرّون بهذا الشادر. **لا تُمِل الموديل كاملًا:** محور
+  `fitModelToGround` يقع داخل الموديل، فالإمالة تُزيح القاعدة عن الأرض وتجرّ
+  ظلّها — الخيار (ب) انحناء القمم ثبت بصريًا، فلا تعده إلى (أ).
+  السعات `kPalmSwayFraction = 0.018` و`kTreeSwayFraction = 0.012`
+  و`kNatureSwayFraction = 0.010` لأشجار البيئة الأربعين (birch_a/b · tree_a/b)
+  من ارتفاع الموديل **المرئي** (الإزاحة تُطبَّق في الفراغ المحلي قبل مصفوفة
+  العالم، فمقياس المرتبة و`_kNatureScale` يضربانها معه)؛ المحور العرضي
+  `kSwayCrossRatio = 0.62`؛ السرعتان 0.55 و0.40 راد/ث (دورتان ≈11.4ث و≈15.7ث)؛
+  ووزن الارتفاع `pow(h, 2.0)`؛ والطور من `modelMatrix[3]` فلا تتمايل نسختان
+  بتزامن آلي بلا uniform لكل نسخة.
+  **لا ترفع السعة أو السرعة بلا لقطة متحركة بالزمن الحقيقي:** المحاولة الأولى
+  (٪٥ وسرعة 1.45، دورة 4.33ث) رُفضت بالعين «سريعة ومصطنعة»، والـGIF حينها كان
+  يُعرض أسرع من الواقع أربع مرات فبدت أسوأ مما هي.
+  الساعة `newSwayClock()` كائن واحد يكتبه `render()` بقيمة **ثوانٍ منذ بدء
+  المشهد**، لا طابع Unix: float32 عند 1.7×10⁹ ثانية خطوته ≈256ث فيتجمّد التمايل.
+  مفتاح `kSwayProgramCacheKey = 'jannati/sway/v3'` **يُرفَع مع أي تعديل على
+  GLSL**، وإلا بقي البرنامج القديم في كاش المصيّر.
+  **أي ثابت رقمي يدخل نص GLSL يمرّ عبر `glslFloat`**: `dart2js` يطبع `2.0` كـ`2`،
+  وGLSL لا يملك `pow(float, int)`، فسقط الشادر بـ«no matching overloaded
+  function» وتوقّف `animate()` كله — المشهد تجمّد لا السعف وحده. اختبار الـVM يرى
+  `2.0` فيمرّ، فالحارس هو **نص الشادر المُولَّد** في `test/model_sway_test.dart`.
+  القياس البصري (2026-11-18، بناء v3، مسافة ≈١٨، ١٣٠ إطارًا): التاج
+  **١٥٫١٤px** ذهابًا وإيابًا (sd ٤٫٤٩ · سعة ٦٫٠٥px على ٠٫٥٥ · دورة ١١٫٤ث ·
+  R² ٠٫٩٩)، القاعدة **٠٫٢٤px**، والجسر المرجعي **٠٫٠٧px** — وما يتحرك تحت
+  النخلة هو ظلّها وحده.
+  الأدلة والمنهج في `docs/evolution/2026-11-18-palm-sway/`.
+  التمايل **مؤقت لحين الريج** (§3.6/B8)، ولا يُثبَّت على المباني والكنوز أو
+  البديل الإجرائي — الشروط في `_styleModelChild`.
 - **Decor (`isDecor`) is the only models not derived from `rewards_list`.** The
   bottom bar plants it, it lives 24 h, it never renews by itself, and
   `_sweepExpiredDecor` drops it on load. **One decor per type at a time**: the
@@ -175,9 +207,11 @@
   spacing helpers and `_writeSaved` both read that list, so an untracked model
   is invisible to persistence by construction — do not "fix" that by always
   registering an entry.
-- `_kMaxSceneModels` is 120. The meadow (46×100 per bank) with `_kMinSpacing`
-  8.5 holds ~127 spots; the old cap of 65 filled up and made the garden look
-  frozen while the dhikr counter kept counting.
+- `_kMaxSceneModels` is 92 — the nature-island planting box (−76..82 × −48..76)
+  holds 7629 m² ≈ **92 spots** at `_kMinSpacing` 8.5, so the cap matches the
+  meadow instead of pretending there is room the island does not have. 65 was
+  the pre-island cap and filled up; 120 belonged to the old 280×180 ground and
+  could never be reached here.
 - The GLB cache key is `path#tier`, not `path` — the same file can serve two stages at two heights.
 - **مراحل النخيل الخمس مقصوصة من `assets/نخيل.glb`.** الملف فيه **خمس** نباتات لا
   ستة، فـ`--clusters 6` كان يخترع سادسًا. القصّ:
@@ -342,7 +376,8 @@
 ### 🎯 Active Next Phase:
 **Phase 9: Paradise Environment & Models Upgrade** (in this order):
 1. ~~Model tap inspection~~ ✅ (لمسة → بطاقة زجاجية داخل المشهد)
-2. Palm frond sway in the render loop
+2. ~~Palm frond sway in the render loop~~ ✅ إجرائي في الشادر (2026-11-18) —
+   `lib/three/model_sway.dart`؛ الريج/العظام (B8) يبقى اختياريًا لاحقًا
 3. ~~Floating light particles~~ ✅ (٨٠ يمامة نور + ٤٥ ورقة متساقطة + ٥ حمامات في `_buildLightParticlesAndWildlife`)
 4. Celestial river
 5. Gentle terrains (optional, highest risk)
