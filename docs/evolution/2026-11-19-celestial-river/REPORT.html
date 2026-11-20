@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>جنتي — تقرير النهر السماوي ٢٠٢٦-١١-١٩</title>
+<style>
+  :root{
+    --bg:#08201A; --panel:#0E2E24; --panel2:#103A2C;
+    --gold:#E8C97A; --gold-dim:#B99C57; --txt:#EAF3EE; --muted:#9FB8AD;
+    --bad:#E36A5A; --good:#4FD08A; --line:rgba(232,201,122,.18);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px 64px; background:
+      radial-gradient(1200px 600px at 80% -10%, #14493A 0%, transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, #0C3529 0%, transparent 55%),
+      var(--bg);
+    color:var(--txt);
+    font-family:"Cairo","Segoe UI",Tahoma,system-ui,sans-serif;
+    line-height:1.75;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  .eyebrow{color:var(--gold-dim);letter-spacing:.14em;font-size:12px;margin-bottom:10px}
+  h1{font-size:30px;margin:0 0 6px;font-weight:800;letter-spacing:-.01em}
+  h1 span{color:var(--gold)}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:28px}
+  h2{font-size:19px;margin:40px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);font-weight:700}
+  h2::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;
+    background:var(--gold);margin-inline-end:10px;transform:rotate(45deg)}
+  h3{font-size:16px;margin:24px 0 8px;color:var(--gold);font-weight:700}
+  p{margin:0 0 12px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:22px 0 8px}
+  .kpi{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:14px;padding:16px 14px;text-align:center}
+  .kpi b{display:block;font-size:26px;color:var(--gold);line-height:1.2}
+  .kpi small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+  .kpi.ok b{color:var(--good)}
+  .kpi.bad b{color:var(--bad)}
+  table{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:10px 12px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06)}
+  th{background:rgba(232,201,122,.10);color:var(--gold);font-weight:700;font-size:13px}
+  tr:last-child td{border-bottom:none}
+  code,pre{font-family:"Cascadia Mono",Consolas,monospace;direction:ltr;text-align:left}
+  code{background:rgba(255,255,255,.07);padding:2px 6px;border-radius:5px;font-size:12.5px;color:#D8F3E6;
+    direction:ltr;unicode-bidi:isolate}
+  pre{background:#06170F;border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    overflow:auto;font-size:12.5px;line-height:1.65;color:#CFE9DC;margin:12px 0}
+  .shot{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin:16px 0 26px}
+  .shot img{width:100%;display:block;border-radius:10px;border:1px solid rgba(0,0,0,.35)}
+  .shot .cap{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--muted)}
+  .tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid}
+  .tag.bad{color:var(--bad);border-color:rgba(227,106,90,.45);background:rgba(227,106,90,.10)}
+  .tag.mid{color:#E9B44C;border-color:rgba(233,180,76,.45);background:rgba(233,180,76,.10)}
+  .tag.good{color:var(--good);border-color:rgba(79,208,138,.45);background:rgba(79,208,138,.10)}
+  .note{border-inline-start:3px solid var(--gold);background:rgba(232,201,122,.07);
+    padding:12px 16px;border-radius:0 10px 10px 0;font-size:14px;margin:14px 0}
+  .note.warn{border-color:var(--bad);background:rgba(227,106,90,.08)}
+  ul{margin:8px 0 14px;padding-inline-start:22px}
+  li{margin:6px 0}
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+  .topnav{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:26px;
+    padding:10px 14px;background:rgba(14,46,36,.85);border:1px solid var(--line);border-radius:14px}
+  .topnav a{color:var(--txt);text-decoration:none;font-size:13.5px;font-weight:700;
+    padding:7px 14px;border-radius:999px;border:1px solid rgba(232,201,122,.28);white-space:nowrap}
+  .topnav a:hover{background:rgba(232,201,122,.12);border-color:var(--gold)}
+  .topnav a.home{background:rgba(232,201,122,.16);border-color:var(--gold);color:var(--gold)}
+  .topnav .spacer{flex:1}
+  .topnav .here{color:var(--muted);font-size:12px}
+  .pager{display:flex;justify-content:space-between;gap:12px;margin-top:40px;padding-top:18px;
+    border-top:1px solid var(--line)}
+  .pager a{color:var(--gold);text-decoration:none;font-size:13.5px;font-weight:700;
+    padding:9px 16px;border:1px solid rgba(232,201,122,.3);border-radius:999px}
+  .pager a:hover{background:rgba(232,201,122,.12)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topnav">
+    <a class="home" href="../index.html">الفهرس</a>
+    <a href="../2026-11-18-palm-sway/REPORT.html">→ السابق: تأرجح السعف</a>
+    <a href="../index.html">كل المراحل ←</a>
+    <span class="spacer"></span>
+    <span class="here">المرحلة ٧ من ٧</span>
+  </div>
+
+  <div class="eyebrow">جَنَّتِي · سجل تطوّر المشهد · المرحلة ٧ · ٩٫٤</div>
+  <h1>النهر السماوي: <span>ماء واحد من الشلال إلى الحافة</span></h1>
+  <div class="sub">تقرير جلسة ١٩ نوفمبر ٢٠٢٦ — الخيار (E): نهر واحد يبدأ من قدم شلال M15،
+    يعبر مرج الجزيرة، ويتدلّى من حافتها الجنوبية. المسار محسوب بمنحنى واحد لا بقطع
+    مستقيمة، والجدار يحتويه، والمصابّ تنزل إلى البحيرتين. وأثناء التحقق ظهر عطل حقيقي:
+    <strong>الشلال لم يكن يُرسم إطلاقًا</strong> — لا محجوبًا، بل بلا مثلثات.</div>
+
+  <div class="kpis">
+    <div class="kpi"><b>٦٧</b><small>شبكة في النهر</small></div>
+    <div class="kpi"><b>١٥٠٫٩</b><small>وحدة طول المسار</small></div>
+    <div class="kpi"><b>٩٫١٦</b><small>هبوط شلال M15</small></div>
+    <div class="kpi ok"><b>١٢٦/١٢٦</b><small>اختبار ناجح</small></div>
+    <div class="kpi ok"><b>٠</b><small>مشاكل في analyze</small></div>
+    <div class="kpi ok"><b>٢٪</b><small>عيّنة حجب من ٤٣٥٢</small></div>
+  </div>
+
+  <h2>القرار: نهر واحد لا قنوات</h2>
+  <p>
+    الخيار (E) الذي اعتُمد: <strong>نهر سماوي واحد</strong> يبدأ عند قدم الشلال M15 غرب
+    البحيرتين، يعبر المرج، ثم ينحدر من حافة الجزيرة الجنوبية شلالًا. سبب رفض البدائل:
+    قنوات منفصلة لكل بحيرة تُنتج ماءً «معلّقًا» بلا مصدر، ونهرًا يمرّ فوق الهضبة كان
+    سيقطع الرصف ومواضع الزرع. المسار الحالي يمرّ في الفراغ بينهما بخلوص محسوب:
+    <strong>٥٫٨٨</strong> و<strong>٩٫٤٨</strong> وحدة من حدّ ماء البحيرتين.
+  </p>
+
+  <h2>المسار — <code>lib/three/celestial_river_route.dart</code></h2>
+  <table>
+    <tr><th>البند</th><th>القيمة</th><th>كيف قيست</th></tr>
+    <tr><td>الطول</td><td>١٥٠٫٩٤ وحدة</td><td>تراكم أقواس العيّنات</td></tr>
+    <tr><td>العيّنات</td><td>٤٣٣ عيّنة بتباعد ٠٫٣٥</td><td>دقة كافية لانحناء لا يُرى فيه تقطيع</td></tr>
+    <tr><td>البداية</td><td>(−1.55، −36.10)</td><td>قدم شلال M15 نفسه، لا في المرج</td></tr>
+    <tr><td>المماس عند البداية</td><td>(−0.7234، 0.6904)</td><td>مطابق لاتجاه انحدار الصخر</td></tr>
+    <tr><td>أقصى انعطاف</td><td>٢٫٧° عند s ≈ ٩٦٫٨</td><td>تغيّر المماس بين عيّنتين متتاليتين</td></tr>
+    <tr><td>عرض الماء</td><td>٤٫٧ عند القدم ← ٣٫٢ بعد ٦ وحدات</td><td>فم الشلال أعرض، ثم يستقر</td></tr>
+  </table>
+  <p>
+    الانحناء مقصود: نهر بقطع مستقيمة يبدو أنبوبًا، والـ٢٫٧° القصوى أقل من عتبة الإحساس
+    بالكسر البصري، فلا تظهر «زاوية» في الماء.
+  </p>
+
+  <h2>مناسيب الرسم — ثلاث حلقات للجدار</h2>
+  <table>
+    <tr><th>الطبقة</th><th>المنسوب</th><th>الملاحظة</th></tr>
+    <tr><td>سطح الماء</td><td><code>0.26</code></td><td>فوق مستوى ماء الطبيعة (−0.75) عن قصد</td></tr>
+    <tr><td>حافة مبلَّلة</td><td><code>0.22</code> بعرض <code>0.35</code></td><td>تُخفي التقاء الماء بالجدار</td></tr>
+    <tr><td>الجدار — حلقة ١</td><td><code>1.95 / 0.22</code></td><td>ارتفاع ١٫٩٥ من القاعدة</td></tr>
+    <tr><td>الجدار — حلقة ٢</td><td><code>2.45 / 0.40</code></td><td>الحافة العلوية</td></tr>
+    <tr><td>الجدار — حلقة ٣</td><td><code>2.62 / −0.85</code></td><td>يغرق في الأرض عند الطرفين</td></tr>
+  </table>
+  <p>
+    قدم الجدار <code>−0.85</code> هو ما يمنع «شريطًا معلّقًا» عند نهاية النهر: الجدار
+    يُغرق نفسه تحت مستوى الأرض بدل أن يُقطع عند السطح. والحلقات الثلاث ضرورة لا ترف:
+    حلقة واحدة تُنتج مستوى مسطّحًا يُقرأ لوحًا، والثالثة هي التي تُدخل الجدار في التضاريس.
+  </p>
+
+  <h2>الشلالان</h2>
+
+  <h3>شلال M15 — الجدول المقيس</h3>
+  <p>
+    الشلال ليس منحدرًا افتراضيًا: <strong>١٨ صفًا × ٥ أعمدة</strong> مقيسة بأشعة عمودية
+    على مجسّمات الجبال الجنوبية بعد تطبيق تصغير <code>_kNatureScale = 0.80</code>، ثم
+    أُضيف <strong>٠٫٢٢</strong> خلوصًا فوق السطح. الارتفاع الأول <strong>٩٫٤٢</strong>
+    عند z = −44.5، والقدم <strong>٠٫٢٤</strong> عند z = −36.0 — هبوط ٩٫١٦ على ٨٫٥
+    أفقية (≈٤٧°). جدول منحنيات يُعاد قياسه بنفس السكربت، لا يُقدَّر بالعين: أي رقم
+    مختلف يُدفن الشلال في الصخر أو يجعله يطير فوقه.
+  </p>
+
+  <h3>شلال الحافة</h3>
+  <p>
+    أربع نقاط تنزل من <strong>٠٫٢٦</strong> إلى <strong>−١٢</strong> وتتّسع كلما هبطت،
+    فيبدو الماء منسكبًا من الجزيرة إلى الفراغ لا ملتصقًا بحافة.
+  </p>
+
+  <h2>المصبّان — ثلاث مراحل لكل قناة</h2>
+  <p>
+    كل مصبّ ينزل من حافة الجدار إلى البحيرة على ثلاث قطع، لأن القناة بمرحلة واحدة
+    تُنتج سقوطًا عموديًا يبدو أنبوبًا مقطوعًا:
+  </p>
+  <table>
+    <tr><th>المرحلة</th><th>من</th><th>إلى</th></tr>
+    <tr><td>١ — من حافة الجدار</td><td><code>0.26</code></td><td><code>0.81</code></td></tr>
+    <tr><td>٢ — الظهر</td><td><code>0.81</code></td><td><code>−0.55</code></td></tr>
+    <tr><td>٣ — الغطس في البحيرة</td><td><code>−0.55</code></td><td><code>−0.75</code></td></tr>
+  </table>
+  <p>
+    العرض <strong>١٫٢٤</strong>، ومقطع V بعمق <strong>٠٫٢٠</strong>، وجداران حجريان
+    على الجانبين. والجدار الرئيسي <strong>يفتح فتحة</strong> عند كل مصبّ
+    (<code>_gapFactor</code>)، وإلا فسد الماء نفسه وسال من فوق الحجر.
+  </p>
+
+  <h2>الإزاحات — ثلاثة نماذج وجيودان</h2>
+  <table>
+    <tr><th>النموذج</th><th>الموضع الجديد (x, z)</th><th>السبب</th></tr>
+    <tr><td><code>birch_a</code></td><td>(−14.03، −29.92)</td><td>كان في مجرى النهر</td></tr>
+    <tr><td><code>birch_b</code></td><td>(1.51، −32.77) بإزاحة ٤٫٠</td><td>أبعد من بقية الإزاحات لازدحام المجسّمات في تلك البقعة</td></tr>
+    <tr><td><code>grass_b</code></td><td>(−16.34، −27.92)</td><td>كان في مجرى النهر</td></tr>
+  </table>
+  <p>
+    لم يُحذف أي نموذج. ومضافة إلى ذلك حجران (<code>Dodecahedron</code>) عند
+    (−23.6، 15) و(−20، 36) يكسران استقامة الجدار في مقطعين طويلين بلا معلم.
+  </p>
+
+  <h2>العطل: الشلال لم يكن يُرسم</h2>
+  <p>
+    بعد تركيب النهر كاملًا ظهر كل شيء — الماء، الجدار، المصبّان، شلال الحافة — إلا
+    <strong>شلال M15</strong>: النهر ينتهي بقصّة حادة بلا ماء ينزل. التشخيص الأولي كان
+    الحجب، فأُجري اختبار على <strong>كل الـ٢٤٥ مجسّمًا</strong> في الجدول بأشعة من
+    سطح الشلال نحو كاميرا الافتتاح:
+  </p>
+  <pre># أشعة من سطح الشلال نحو كاميرا الافتتاح، ٤٣٥٢ عيّنة على الجبال الست
+fall samples: 4352  blocked by rock: 76  (2%)
+vertex clearance to rock (min/median/max): [0.029 0.155 0.47]
+
+# ثم على كل الـ٢٤٥ مجسّمًا في الجدول
+fall sheet grid samples: 50, blocked: 2 (4%)
+  blocker (3, 'mountain_b', -6.1, -49.0) -> 2 samples</pre>
+  <p>
+    أي أن الشلال يبعد عن الصخر ٠٫١٥ وحدة في المتوسط — لا حجب يُذكر. ثم أُعيد رسم
+    حدود الشبكة على اللقطة بدقة (معايرة الإسقاط تنطبق على الشلال والجسر والحافة
+    والهضبة)، فظهر أن موضع الشلال يغطي منحدرًا أخضر <strong>بلا أي أثر لماء</strong>.
+  </p>
+  <div class="shot">
+    <img src="01-before-no-fall.jpg" alt="موضع شلال M15 قبل الإصلاح: منحدر أخضر بلا ماء">
+    <div class="cap"><span class="tag bad">قبل</span>
+      موضع شلال M15 (مكبَّر ×٤ من كادر الافتتاح): منحدر أخضر لامع، لا ماء ولا بركة.</div>
+  </div>
+  <p>
+    ولأنه لا يمكن الحكم على لون ماء شفاف في مشهد مضيء، أُعيد البناء بمادة اختبارية
+    حمراء قاتمة و<code>depthTest: false</code>. شلال الحافة ظهر <strong>أحمر</strong>
+    فعلًا، أما شلال M15 فلم يظهر ولو بكسل أحمر واحد — بينما البركة الأرجوانية تحته
+    ظهرت. إذًا الشبكة تدخل المشهد (البركة والوالد نفسه) لكنها لا ترسم.
+  </p>
+  <p>
+    الحكم جاء من داخل التطبيق، لا من التخمين:
+  </p>
+  <pre>FALLDEBUG verts=90 tris=0 posNan=0 nrmNan=270
+           bs=(-1.70, 4.83, -40.25) r=6.41 visible=true</pre>
+  <p>
+    <code>tris=0</code> — <strong>فهرس المثلثات فارغ</strong>، والنواظم كلها NaN تبعًا
+    لذلك. السبب سطر واحد في <code>_buildMainFall</code>: كان يضيف <strong>صفًّا لكل
+    نقطة</strong> (٣ قيم) بينما <code>_mesh</code> يتوقع كل صف أن يحمل <strong>الأعمدة
+    الخمسة</strong> (١٥ قيمة). فيرى الدالة عمودًا واحدًا، فلا تُبنى أي رباعية:
+  </p>
+  <pre>// خطأ: صف لكل نقطة → columns = 1 → لا مثلثات
+for (var c = 0; c &lt; columns.length; c++) {
+  rows.add(&lt;double&gt;[columns[c], y, z]);
+}
+
+// صحيح: صفٌّ واحد لكل z يحمل الأعمدة الخمسة
+final row = &lt;double&gt;[];
+for (var c = 0; c &lt; columns.length; c++) { row..add(columns[c])..add(y)..add(z); }
+rows.add(row);</pre>
+  <div class="note warn">
+    <strong>الدرس:</strong> «المجسّم موجود بحدود سليمة» ليس دليلًا على أنه يُرى.
+    الفحص البصري وحده لا يكشف شبكة بعدد رؤوس صحيح وحدود صحيحة وفهرس فارغ — يلزم
+    فحص الفهرس والنواظم. هذا ما صار حارسًا آليًا الآن.
+  </div>
+
+  <h2>الطمر — الحافة التي كانت معلّقة في الهواء</h2>
+  <p>
+    بعد الإصلاح ظهر الشلال، لكن صفّه الأعلى كان يظهر <strong>قصّة مستديرة معلّقة</strong>
+    فوق السطح. القياس أعطى الحل: الصخر يرتفع شمالًا من ٨٫٧٥ عند z = −44.5 إلى
+    <strong>١٣٫٠٣</strong> عند z = −47.0؛ فالتمديد شمالًا كان سيضع القمة خلف الشلال
+    لا أمامه فلا يحجب شيئًا. الحل الصحيح: <strong>طمر الصف العلوي</strong> بمقدار
+    <code>_kFallCrestTuck = 0.50</code> — أي ٠٫٢٨ وحدة <em>داخل</em> الصخر — فيخرج
+    الماء من شقّ طبيعي. الجدول المقيس نفسه لم يُعدَّل.
+  </p>
+  <div class="shot">
+    <img src="04-before-tuck.jpg" alt="الشلال بعد الإصلاح وقبل الطمر: القمة قصّة مستديرة معلّقة">
+    <div class="cap"><span class="tag mid">بعد الإصلاح، قبل الطمر</span>
+      الشلال صار مرئيًا (ماء أبيض مزرّق ينزل)، لكن حافته العلوية قصّة مستديرة بلا صخر يحتويها.</div>
+  </div>
+  <div class="shot">
+    <img src="03-after-crest.jpg" alt="الشلال بعد الطمر: الماء يخرج من داخل الصخر">
+    <div class="cap"><span class="tag good">بعد الطمر</span>
+      الصف العلوي داخل الصخر: الماء يخرج من شقّ في السطح وينزل إلى النهر بلا حافة معلّقة.</div>
+  </div>
+
+  <h2>الحرّاس الجديدة — <code>test/celestial_river_test.dart</code></h2>
+  <p>٢٥ حارسًا الآن، أهمها ثلاثة وُلدت من هذا العطل:</p>
+  <ul>
+    <li><strong>«كل شبكة مرسومة فعلًا»</strong> — كل شبكة يجب أن تحمل مثلثات: الفهرس
+      إن وُجد وإلا عدد الرؤوس (لأن <code>DodecahedronGeometry</code> غير مفهرسة
+      بطبيعتها)، ولا ناظم NaN واحد.</li>
+    <li><strong>«الصف العلوي مطمور تحت الصخر»</strong> — أعلى نقطة في شبكة الشلال
+      يجب أن تكون أسفل الجدول المقيس بـ٠٫٣–٠٫٨ وحدة، فلا تعود الحافة المعلّقة.</li>
+    <li><strong>«المسار لا يدخل أي بحيرة»</strong> — خلوص ٥٫٨٨ و٩٫٤٨ من حدّ الماء،
+      و«المصبّان يصلان حدّ ماء البحيرتين بالحساب لا بالتقدير».</li>
+  </ul>
+
+  <h2>النتيجة الكاملة</h2>
+  <div class="shot">
+    <img src="02-after-full.jpg" alt="المشهد كاملًا: النهر يبدأ من الشلال أعلى النهر ويعبر المرج إلى الحافة">
+    <div class="cap"><span class="tag good">بعد</span>
+      كادر الافتتاح: النهر يبدأ أعلى اليسار عند قدم الشلال، يعبر المرج غرب الهضبة والبحيرتين،
+      ثم ينزل من الحافة الجنوبية.</div>
+  </div>
+
+  <h2>ما رُفض</h2>
+  <ul>
+    <li><strong>التمديد شمالًا لإخفاء القمة</strong> — القياس أثبت أن القمة خلف الشلال لا
+      أمامه، فلا تحجب. الطمر أنظف وأرخص.</li>
+    <li><strong>حلقة صخور حول حافة الشلال</strong> — جُرِّبت سابقًا في الهضبة فخرجت
+      «حلقة بيضاء». الطمر يفعل الشيء نفسه بلا هندسة إضافية.</li>
+    <li><strong>القنوات المنفصلة لكل بحيرة</strong> — ماء بلا مصدر مرئي.</li>
+    <li><strong>مرحلة واحدة للمصبّ</strong> — سقوط عمودي يُقرأ أنبوبًا مقطوعًا.</li>
+    <li><strong>تعديل جدول الشلال المقيس</strong> — الجدول نتيجة أشعة على الصخر نفسه؛
+      تعديله بالعين يدفن الشلال أو يجعله يطير.</li>
+  </ul>
+
+  <h2>ما يبقى خارج هذا التقرير</h2>
+  <ul>
+    <li><strong>النهر البعيد</strong> (تحليل الاتساع): الجزيرة تشغل ٢٤٪ من الكادر،
+      والرافعة الحقيقية طبقات بعيدة — نهر بعيد وأرخبيل وضباب — لا تصغير الجبال وحده.
+      مؤجّل بقرار بعد E، ولا يُبنى داخل القبة.</li>
+    <li><strong>حاجب الإقلاع</strong> ما زال عدّادًا خشنًا (٥ وحدات)؛ الترقية إلى نمو
+      الجزيرة المصغّرة مرحلة ٩٫٥.</li>
+    <li><strong>عطل التحكم:</strong> السحب بالفأرة اليسرى يدوّر رغم
+      <code>'LEFT': MOUSE.PAN</code>، وإيماءة الإصبعين تقريبًا دوران. يُسجَّل ملاحظةً
+      ولا يُصلح في هذه الجلسة.</li>
+    <li><strong>أداة الحقن 🧪</strong> ما زالت في HUD — حذفها شرط قبل الإصدار،
+      مؤجّل بقرار المستخدم.</li>
+  </ul>
+
+  <div class="note">
+    <strong>الأرقام كلها من البناء الحقيقي.</strong> اللقطات من Chrome يشغّل
+    <code>flutter build web --release</code> يُقدَّم محليًا. لا صور مركّبة. تحقّق الكاش
+    عبر <code>performance.getEntriesByType('resource')</code>:
+    <code>decodedBodySize</code> = 3٬958٬564 بايت — أي أن الصفحة كانت فعلًا على البناء
+    الجديد لا على نسخة قديمة من الكاش.
+  </div>
+
+  <div class="pager">
+    <a href="../2026-11-18-palm-sway/REPORT.html">→ السابق: تأرجح السعف</a>
+    <a href="../index.html">كل المراحل ←</a>
+  </div>
+
+  <footer>
+    المجلد: <code>docs/evolution/2026-11-19-celestial-river/</code> ·
+    الملفات: <code>lib/three/celestial_river.dart</code> ·
+    <code>lib/three/celestial_river_route.dart</code> ·
+    <code>test/celestial_river_test.dart</code> ·
+    الدمج في <code>lib/screens/jannati_3d_screen.dart</code>.
+    ١٢٦/١٢٦ اختبارًا ناجحًا، وصفر مشاكل في <code>flutter analyze</code>.
+    · الحالة والخطة: <a href="../../PROJECT.md">PROJECT.md</a>.
+  </footer>
+
+</div>
+</body>
+</html>

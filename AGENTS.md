@@ -82,12 +82,13 @@
 
 ---
 
-## Current Status (Audio system shipped ✅ / Phase 9 next)
+## Current Status (Celestial river shipped ✅ / Phase 9.5 next)
 
 ### ✅ Working:
 - Storage system (SharedPreferences + Persistent Chrome Profile)
 - تبويب «جنتي»: مشهد 3D داخل `IndexedStack`، يُبنى عند أول زيارة ثم يبقى حيًّا، ويختفي الشريط السفلي بعد ٣ ثوانٍ
 - 3D scene with Tier progression (Tiers 1-5), Biome distribution, Anti-cluttering (min spacing 8.5), and Luxury HUD
+- **النهر السماوي (9.4)**: ٦٧ شبكة، مسار ١٥٠٫٩ وحدة، شلال M15 بجدول مقيس، مصبّان، وجدار بثلاث حلقات — `celestial_river.dart`
 - Celestial day cycle (dawn / noon / dusk / night) driven by the device clock, with a persisted manual mode
 - Corrected 3D Asset paths in `asset_map.dart`
 - Dhikr counter with lazy sync + zen fullscreen mode (wakelock)
@@ -340,9 +341,10 @@
 - **حاجب أول إقلاع (B3) داخل `Stack` المشهد، لا Route ولا `showModalBottomSheet`.**
   `_trackAsset` يزيد `_assetsTotal` قبل البدء و`_assetsDone` عند الانتهاء —
   نجاحًا أو فشلًا (`catchError` يمنع أصلًا واحدًا من تعليق العدّاد) — والكشف في
-  `_markSceneReady()` وحده. الوحدات المتتبَّعة **خمس**: جزيرة الطبيعة (١٧ شبكة
-  كوحدة)، الهضبة، الرصف، الجسر، خامات الأرض. أصل معلّق لا يحجب الجنة أكثر من
-  **٢٥ث** (شبكة أمان)، والعدّاد يظهر `done / total` بأرقام عربية.
+  `_markSceneReady()` وحده. الوحدات المتتبَّعة **ست**: جزيرة الطبيعة (١٧ شبكة
+  كوحدة)، الهضبة، الرصف، الجسر، خامات الأرض، والنهر السماوي (أُضيف 2026-11-19).
+  أصل معلّق لا يحجب الجنة أكثر من **٢٥ث** (شبكة أمان)، والعدّاد يظهر
+  `done / total` بأرقام عربية.
   الحاجب **داخل Stack** كي يستمر بناء الـcanvas خلفه: أي حجب لبناء
   `DomLikeListenable` يرمي في `OrbitControls` ويترك المشهد أسود.
   لا تُعِد البنّاءات إلى `unawaited` مجرّد بلا تسجيل في `_trackAsset`.
@@ -373,14 +375,51 @@
 - `io.flutter.embedding.android.EnableImpeller = true` في `AndroidManifest.xml`
   مفعّل إجباريًا — لا تحذفه.
 
+### 🌊 River invariants (9.4 — do not break):
+- **النهر ملفّان فقط:** `lib/three/celestial_river.dart` للهندسة والمواد
+  والتحريك، و`celestial_river_route.dart` لكل رقم (مسار، عرض، مناسيب، مصبّان،
+  جدول الشلال). **لا رقم موضع مكتوب في الشاشة**؛ الدمج كله
+  `_buildCelestialRiver()` في `jannati_3d_screen.dart`.
+- **المسار منحنى واحد لا قطع مستقيمة:** ٤٣٣ عيّنة بتباعد ٠٫٣٥، طول ١٥٠٫٩٤،
+  وأقصى انعطاف ٢٫٧° عند s ≈ ٩٦٫٨. البداية عند **قدم شلال M15** (−1.55، −36.10)
+  بمماس (−0.7234، 0.6904). خلوص البحيرتين ٥٫٨٨ و٩٫٤٨ من حدّ الماء — حرّاس
+  في `test/celestial_river_test.dart`.
+- **المناسيب:** ماء `0.26` · حافة مبلَّلة `0.22` بعرض `0.35` · جدار ثلاث حلقات
+  (`1.95/0.22 → 2.45/0.40 → 2.62/−0.85`). **قدم الجدار −0.85** هو ما يُغرق الجدار
+  في الأرض بدل أن يُقطع عند السطح.
+- **شلال M15 جدول مقيس، لا منحدر مُقدَّر:** ١٨ صفًا × ٥ أعمدة، أشعة عمودية على
+  جبال الجنوب بعد `_kNatureScale = 0.80` بخلوص ٠٫٢٢، من ٩٫٤٢ إلى ٠٫٢٤. أي تعديل
+  رقمي يحتاج إعادة القياس بنفس السكربت، وإلا دُفن الشلال أو طار فوق الصخر.
+- **`_mesh` يتوقع صفًّا لكل عيّنة يحمل كل الأعمدة.** الخطأ الذي أخفى شلال M15
+  (2026-11-19): صفٌّ لكل **نقطة** (٣ قيم) بدل صفٍّ لكل **z** (١٥ قيمة) → عمود
+  واحد → **فهرس مثلثات فارغ** (`tris=0`) ونواظم NaN. المجسّم يبقى بحدود سليمة
+  ولا يرسم مثلثًا. الحارس: «كل شبكة مرسومة فعلًا» يقبل الهندسة غير المفهرسة
+  (`Dodecahedron` لحجارة المخاضات) ويقيس الفهرس أو عدد الرؤوس.
+- **الصف العلوي للشلال مطمور `_kFallCrestTuck = 0.50`** تحت السطح المقيس (أي
+  ٠٫٢٨ داخل الصخر) فيخرج الماء من شقّ طبيعي. بلا ذلك تظهر الحافة قصّةً مستديرة
+  معلّقة في الهواء. التمديد شمالًا **رُفض**: القمة (١٣٫٠٣ عند z=−47) خلف الشلال
+  لا أمامه فلا تحجب. الجدول المقيس نفسه لا يُعدَّل.
+- **المصبّان ثلاث مراحل** (`0.26 → 0.81 → −0.55 → −0.75`)، عرض ١٫٢٤، V بعمق
+  ٠٫٢٠، جداران حجريان، والجدار الرئيسي يفتح فتحة عندهما (`_gapFactor`) وإلا فسد
+  الماء. مرحلة واحدة تُنتج سقوطًا عموديًا يُقرأ أنبوبًا مقطوعًا.
+- **إزاحة ثلاثة نماذج فقط، ولا حذف:** `birch_a` (−14.03، −29.92) · `birch_b`
+  (1.51، −32.77) بإزاحة **٤٫٠** لازدحام المجسّمات (استثناء موثَّق) · `grass_b`
+  (−16.34، −27.92). وحجران عند (−23.6، 15) و(−20، 36).
+- **الشلال/البركة/الماء كلها شفافة**: لا تحكم على وجودها بالعين من كادر بعيد.
+  أثناء التشخيص استُخدمت مادة حمراء + `depthTest: false` لمعرفة أيّهما يُرسم —
+  طريقة ناجحة، لكن تُزال قبل الكوميت.
+
 ### 🎯 Active Next Phase:
 **Phase 9: Paradise Environment & Models Upgrade** (in this order):
 1. ~~Model tap inspection~~ ✅ (لمسة → بطاقة زجاجية داخل المشهد)
 2. ~~Palm frond sway in the render loop~~ ✅ إجرائي في الشادر (2026-11-18) —
    `lib/three/model_sway.dart`؛ الريج/العظام (B8) يبقى اختياريًا لاحقًا
 3. ~~Floating light particles~~ ✅ (٨٠ يمامة نور + ٤٥ ورقة متساقطة + ٥ حمامات في `_buildLightParticlesAndWildlife`)
-4. Celestial river
-5. Gentle terrains (optional, highest risk)
+4. ~~Celestial river~~ ✅ 2026-11-19 — `celestial_river.dart` + `celestial_river_route.dart`،
+   ٦٧ شبكة، شلال M15 بجدول مقيس ومصبّان وحرّاس
+5. **Loading gate → mini island growth** (9.5) — ترقية عدّاد B3 إلى نمو الجزيرة
+6. Gentle terrains (optional, highest risk)
+7. Distant layers: far river + archipelago + fog (تحليل الاتساع — مؤجّل بعد E)
 
 ### 📦 Repo invariants (after the 2026-11-01 history rewrite):
 - The public repo no longer carries the tier-models zip, `.blend` sources or `lib/3d/`.

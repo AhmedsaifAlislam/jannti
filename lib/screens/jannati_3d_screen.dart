@@ -14,6 +14,8 @@ import '../models/reward_type.dart';
 import '../services/spiritual_audio_service.dart';
 import '../services/storage_service.dart';
 import '../three/asset_map.dart';
+import '../three/celestial_river.dart';
+import '../three/celestial_river_route.dart';
 import '../three/day_palette.dart';
 import '../three/ground_texture.dart';
 import '../three/model_evolution.dart';
@@ -334,6 +336,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
   three.MeshPhongMaterial? _cliffMat;
   bool _groundTexturesRequested = false;
 
+  /// النهر السماوي: شبكات الماء والجدار والشلالين. يُبنى مرة عند الإقلاع،
+  /// ويُحرَّك في كل إطار بـ[render].
+  CelestialRiver? _celestialRiver;
+
   final Random _rng = Random(42);
 
   static const double _kGroundW = 280.0;
@@ -461,7 +467,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     if (x < _kPlantMinX || x > _kPlantMaxX) return false;
     if (z < _kPlantMinZ || z > _kPlantMaxZ) return false;
     if (_isInLake(x, z, margin: _kPlantClearance)) return false;
-    return !_isOnMountain(x, z, margin: _kPlantClearance);
+    if (_isOnMountain(x, z, margin: _kPlantClearance)) return false;
+    // مجرى النهر السماوي: الماء والجدار يحتاجان ٣٫٤٥ حول خط المنتصف.
+    return kCelestialRiverRoute.distanceTo(x, z) >=
+        kCelestialRiverPlantClearance;
   }
 
   /// ما يقف عليه اللاعب/الموديل: الهضبة إن كان داخلها، وإلا سطح المرج.
@@ -1131,6 +1140,16 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
               elements[k] = elements[k] * squeeze;
             }
           }
+          // إزاحات النهر السماوي: ثلاثة مجسّمات كانت واقفة في المجرى.
+          // المطابقة بـ(الشبكة + الإحداثي) لا بفهرس الصف، لأن الجدول مولَّد
+          // وترتيبه يتغيّر مع كل توليد.
+          for (final shift in kCelestialPropShifts) {
+            if (shift[0].toInt() != i) continue;
+            if ((elements[12] - shift[1]).abs() > 0.01) continue;
+            if ((elements[14] - shift[2]).abs() > 0.01) continue;
+            elements[12] = shift[3];
+            elements[14] = shift[4];
+          }
           final copy = scene.clone(true);
           copy.applyMatrix4(matrix);
           parent.add(copy);
@@ -1258,7 +1277,11 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     _trackAsset(_buildStoneBridge());
     _buildWaterLilies();
 
-    // 6. خامات الجرف والكومة: تُحمَّل بعد بناء المواد فلا يتأخر أول إطار.
+    // 6. النهر السماوي: من قدم شلال M15 غربًا بين البحيرتين ثم إلى شلال
+    // حافة الجزيرة. يُسجَّل في حاجب الإقلاع لأن خامته تُفكّ ترميزها.
+    _trackAsset(_buildCelestialRiver());
+
+    // 7. خامات الجرف والكومة: تُحمَّل بعد بناء المواد فلا يتأخر أول إطار.
     _trackAsset(_loadGroundTextures());
   }
 
@@ -1731,11 +1754,21 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
 
     // أربعة أصداف موزّعة على المرج حول البحيرتين. الموضع الرابع كان (19، 28)
     // داخل هضبة القصور الجديدة، فنُقل إلى غرب البحيرة الشمالية.
+    // والأول والرابع كانا على مجرى النهر السماوي، فنُقلا غربًا ٥ وحدات
+    // (`kCelestialGeodeShifts`)؛ لا يُحذف أي صدف.
     final geodePositions = [
-      three.Vector3(-18.5, 0.2, 16.0),
+      three.Vector3(
+        kCelestialGeodeShifts[0][2],
+        0.2,
+        kCelestialGeodeShifts[0][3],
+      ),
       three.Vector3(22.0, 0.2, -16.0),
       three.Vector3(-19.0, 0.2, -26.0),
-      three.Vector3(-14.0, 0.2, 36.0),
+      three.Vector3(
+        kCelestialGeodeShifts[1][2],
+        0.2,
+        kCelestialGeodeShifts[1][3],
+      ),
     ];
 
     for (int g = 0; g < geodePositions.length; g++) {
@@ -2080,6 +2113,15 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
         _scene.add(lilyGroup);
       }
     }
+  }
+
+  /// يبني النهر السماوي ويسجّله في الحاجب. الشبكات في `celestial_river.dart`
+  /// والأرقام كلها في `celestial_river_route.dart`، فلا موضع مكتوب هنا.
+  Future<void> _buildCelestialRiver() async {
+    final river = await CelestialRiver.build();
+    if (_disposed) return;
+    _celestialRiver = river;
+    _scene.add(river.group);
   }
 
   // =========================================================================
@@ -4881,7 +4923,10 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
 
     // الساعة المشتركة للشادرات المثبَّتة على النخيل والشجر. تُحدَّث قبل
     // `_renderer!.render` فتُرفع مع بقية الـuniforms في نفس الإطار.
-    _swayClock['value'] = (now - _swayClockOriginMs) / 1000.0;
+    final sceneSeconds = (now - _swayClockOriginMs) / 1000.0;
+    _swayClock['value'] = sceneSeconds;
+    // ماء النهر والشلال والرغوة: نفس الساعة (لا طابع Unix: float32 يتجمّد).
+    _celestialRiver?.update(sceneSeconds);
 
     // 0. تحليق الكاميرا إلى غرسة غُرست خارج الكادر. الهدف والكاميرا يُزاحان
     //    بنفس المقدار، فتبقى المسافة والاتجاه كما هما وينتقل النظر وحده.
