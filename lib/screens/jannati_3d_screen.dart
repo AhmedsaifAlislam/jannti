@@ -25,6 +25,7 @@ import '../three/model_texture.dart';
 import '../three/nature_layout.dart';
 import '../utils/garden_assets.dart';
 import '../utils/number_formatter.dart';
+import '../widgets/paradise_loader.dart';
 
 class _AnimatedModel {
   final three.Object3D mesh;
@@ -165,6 +166,9 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
 
   /// حاجب أول إقلاع (B3): المشهد لا يُكشف قبل اكتمال أصوله.
   bool _sceneReady = false;
+
+  /// يُرفع بعد تلاشي الحاجب كي يُزال من الشجرة نهائيًا.
+  bool _gateDismissed = false;
   int _assetsTotal = 0;
   int _assetsDone = 0;
   bool _platformInitStarted = false; // guard: prevent double initPlatformState
@@ -1191,6 +1195,12 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
     _sceneReady = true;
     debugPrint('✅ scene ready ($_assetsDone/$_assetsTotal)');
     if (mounted) setState(() {});
+    // تلاشي الحاجب ثم إزالته من الشجرة: إبقاؤه شفافًا يترك طبقة تُبنى في
+    // كل setState بلا فائدة.
+    Future<void>.delayed(const Duration(milliseconds: 620), () {
+      if (!mounted || _disposed) return;
+      setState(() => _gateDismissed = true);
+    });
   }
 
   void _buildSculptedTerrain() {
@@ -4107,47 +4117,105 @@ class _Jannati3DScreenState extends State<Jannati3DScreen>
               ),
             ),
 
-            // 🚪 حاجب أول إقلاع: يغطي المشهد والحواف حتى تكتمل آخر شبكة/بلاطة.
-            if (!_sceneReady)
+            // 🚪 حاجب أول إقلاع: جزيرة مصغّرة تنمو مع الأصول بدل مؤشر جاف.
+            if (!_gateDismissed)
               Positioned.fill(
-                child: Container(
-                  color: const Color(0xFF071B12),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CircularProgressIndicator(
-                          color: Color(0xFFFFD700),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          '🌿 جارٍ فتح أبواب جنتك النورانية...',
-                          textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Color(0xFFFFD700),
-                          ),
-                        ),
-                        if (_assetsTotal > 0) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            '${NumberFormatter.toArabic(_assetsDone)} / '
-                            '${NumberFormatter.toArabic(_assetsTotal)}',
-                            textDirection: TextDirection.rtl,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white.withValues(alpha: 0.55),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                child: IgnorePointer(
+                  ignoring: _sceneReady,
+                  child: AnimatedOpacity(
+                    opacity: _sceneReady ? 0.0 : 1.0,
+                    duration: const Duration(milliseconds: 560),
+                    curve: Curves.easeOut,
+                    child: _buildBootGate(),
                   ),
                 ),
               ),
           ],
         );
       },
+    );
+  }
+
+  /// 🚪 حاجب أول إقلاع (9.5): جزيرة مصغّرة تنمو مع الأصول.
+  ///
+  /// الحاجب يبقى **داخل `Stack` المشهد** لا Route ولا شيت (B3): أي حجب لبناء
+  /// `DomLikeListenable` يرمي في `OrbitControls` ويترك المشهد أسود. والنمو
+  /// مقود بـ`_assetsDone / _assetsTotal` نفسه لا بمؤقّت منفصل، فلا يكذب أبدًا
+  /// عن تقدّم التحميل.
+  Widget _buildBootGate() {
+    final double progress = _assetsTotal == 0
+        ? 0.0
+        : (_assetsDone / _assetsTotal).clamp(0.0, 1.0);
+    final ParadiseStage stage = paradiseStageFor(progress);
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -0.18),
+          radius: 1.05,
+          colors: <Color>[
+            Color(0xFF103A2A),
+            Color(0xFF071B12),
+            Color(0xFF04120C),
+          ],
+          stops: <double>[0.0, 0.62, 1.0],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            // قفزات العدّاد خشنة (٦ وحدات)، فالتحريك الناعم هو ما يجعل
+            // الجزيرة تنمو بدل أن تقفز.
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0.0, end: progress),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (BuildContext context, double value, Widget? child) {
+                return ParadiseLoader(progress: value, size: 200);
+              },
+            ),
+            const SizedBox(height: 12),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 340),
+              child: Text(
+                stage.label,
+                key: ValueKey<ParadiseStage>(stage),
+                textDirection: TextDirection.rtl,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                  color: Color(0xFFB9E4C8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              '🌿 جارٍ فتح أبواب جنتك النورانية...',
+              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFFFFD700),
+              ),
+            ),
+            if (_assetsTotal > 0) ...<Widget>[
+              const SizedBox(height: 6),
+              Text(
+                '${NumberFormatter.toArabic(_assetsDone)} / '
+                '${NumberFormatter.toArabic(_assetsTotal)}',
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.50),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 

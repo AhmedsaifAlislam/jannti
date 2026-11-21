@@ -82,13 +82,14 @@
 
 ---
 
-## Current Status (Celestial river shipped ✅ / Phase 9.5 next)
+## Current Status (Paradise loader shipped ✅ / B5 metrics + B4 archipelago next)
 
 ### ✅ Working:
 - Storage system (SharedPreferences + Persistent Chrome Profile)
 - تبويب «جنتي»: مشهد 3D داخل `IndexedStack`، يُبنى عند أول زيارة ثم يبقى حيًّا، ويختفي الشريط السفلي بعد ٣ ثوانٍ
 - 3D scene with Tier progression (Tiers 1-5), Biome distribution, Anti-cluttering (min spacing 8.5), and Luxury HUD
 - **النهر السماوي (9.4)**: ٦٧ شبكة، مسار ١٥٠٫٩ وحدة، شلال M15 بجدول مقيس، مصبّان، وجدار بثلاث حلقات — `celestial_river.dart`
+- **حاجب الإقلاع (9.5)**: جزيرة مصغّرة تنمو مع الأصول (٥ أطوار، ٧٨٪→١٠٠٪، بلا أصول خارجية) — `paradise_loader.dart`
 - Celestial day cycle (dawn / noon / dusk / night) driven by the device clock, with a persisted manual mode
 - Corrected 3D Asset paths in `asset_map.dart`
 - Dhikr counter with lazy sync + zen fullscreen mode (wakelock)
@@ -345,6 +346,15 @@
   كوحدة)، الهضبة، الرصف، الجسر، خامات الأرض، والنهر السماوي (أُضيف 2026-11-19).
   أصل معلّق لا يحجب الجنة أكثر من **٢٥ث** (شبكة أمان)، والعدّاد يظهر
   `done / total` بأرقام عربية.
+  **في 9.5 (2026-11-20) صار المؤشر الدوّار جزيرة مصغّرة** في
+  `lib/widgets/paradise_loader.dart`: `CustomPaint` بلا أي أصل خارجي، **٥ أطوار**
+  (`soil → mountains → water → palms → ready`) عتباتها `0 · >0 · 0.33 · 0.66 · 1`
+  على الوحدات الست، وتكبر **٠٫٧٨ → ١٫٠**. النمو مقود بـ`_assetsDone / _assetsTotal`
+  نفسه لا بمؤقّت، مع `TweenAnimationBuilder` ٧٠٠ms فوق القفزات الخشنة، ونبضة ٧ث،
+  وتلاشٍ ٥٦٠ms ثم `_gateDismissed` يزيل الطبقة من الشجرة.
+  **لا تعتمد على `clamp` لتنقية NaN:** `double.nan.clamp(0,1)` يعيد **١٫٠** في Dart
+  (`compareTo` يضع NaN فوق كل شيء)، فكان يعلن «اكتملت جنتك» على قيمة تالفة —
+  افحص `isNaN` قبل أي حساب تقدّم (في `paradiseStageFor` والودجت).
   الحاجب **داخل Stack** كي يستمر بناء الـcanvas خلفه: أي حجب لبناء
   `DomLikeListenable` يرمي في `OrbitControls` ويترك المشهد أسود.
   لا تُعِد البنّاءات إلى `unawaited` مجرّد بلا تسجيل في `_trackAsset`.
@@ -417,9 +427,12 @@
 3. ~~Floating light particles~~ ✅ (٨٠ يمامة نور + ٤٥ ورقة متساقطة + ٥ حمامات في `_buildLightParticlesAndWildlife`)
 4. ~~Celestial river~~ ✅ 2026-11-19 — `celestial_river.dart` + `celestial_river_route.dart`،
    ٦٧ شبكة، شلال M15 بجدول مقيس ومصبّان وحرّاس
-5. **Loading gate → mini island growth** (9.5) — ترقية عدّاد B3 إلى نمو الجزيرة
+5. ~~**Loading gate → mini island growth** (9.5)~~ ✅ 2026-11-20 — `paradise_loader.dart`،
+   ٥ أطوار، بلا أصول خارجية، وحرّاس NaN
 6. Gentle terrains (optional, highest risk)
 7. Distant layers: far river + archipelago + fog (تحليل الاتساع — مؤجّل بعد E)
+
+**التالي فعليًا:** B5 — تمريرة المقاييس، ثم B4 — الأرخبيل (§3.6 في `PROJECT.md`).
 
 ### 📦 Repo invariants (after the 2026-11-01 history rewrite):
 - The public repo no longer carries the tier-models zip, `.blend` sources or `lib/3d/`.

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>جنتي — تقرير حاجب الإقلاع ٢٠٢٦-١١-٢٠</title>
+<style>
+  :root{
+    --bg:#08201A; --panel:#0E2E24; --panel2:#103A2C;
+    --gold:#E8C97A; --gold-dim:#B99C57; --txt:#EAF3EE; --muted:#9FB8AD;
+    --bad:#E36A5A; --good:#4FD08A; --line:rgba(232,201,122,.18);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px 64px; background:
+      radial-gradient(1200px 600px at 80% -10%, #14493A 0%, transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, #0C3529 0%, transparent 55%),
+      var(--bg);
+    color:var(--txt);
+    font-family:"Cairo","Segoe UI",Tahoma,system-ui,sans-serif;
+    line-height:1.75;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  .eyebrow{color:var(--gold-dim);letter-spacing:.14em;font-size:12px;margin-bottom:10px}
+  h1{font-size:30px;margin:0 0 6px;font-weight:800;letter-spacing:-.01em}
+  h1 span{color:var(--gold)}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:28px}
+  h2{font-size:19px;margin:40px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);font-weight:700}
+  h2::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;
+    background:var(--gold);margin-inline-end:10px;transform:rotate(45deg)}
+  h3{font-size:16px;margin:24px 0 8px;color:var(--gold);font-weight:700}
+  p{margin:0 0 12px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:22px 0 8px}
+  .kpi{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:14px;padding:16px 14px;text-align:center}
+  .kpi b{display:block;font-size:26px;color:var(--gold);line-height:1.2}
+  .kpi small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+  .kpi.ok b{color:var(--good)}
+  .kpi.bad b{color:var(--bad)}
+  table{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:10px 12px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06)}
+  th{background:rgba(232,201,122,.10);color:var(--gold);font-weight:700;font-size:13px}
+  tr:last-child td{border-bottom:none}
+  code,pre{font-family:"Cascadia Mono",Consolas,monospace;direction:ltr;text-align:left}
+  code{background:rgba(255,255,255,.07);padding:2px 6px;border-radius:5px;font-size:12.5px;color:#D8F3E6;
+    direction:ltr;unicode-bidi:isolate}
+  pre{background:#06170F;border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    overflow:auto;font-size:12.5px;line-height:1.65;color:#CFE9DC;margin:12px 0}
+  .shot{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin:16px 0 26px}
+  .shot img{width:100%;display:block;border-radius:10px;border:1px solid rgba(0,0,0,.35)}
+  .shot .cap{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--muted)}
+  .tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid}
+  .tag.bad{color:var(--bad);border-color:rgba(227,106,90,.45);background:rgba(227,106,90,.10)}
+  .tag.mid{color:#E9B44C;border-color:rgba(233,180,76,.45);background:rgba(233,180,76,.10)}
+  .tag.good{color:var(--good);border-color:rgba(79,208,138,.45);background:rgba(79,208,138,.10)}
+  .note{border-inline-start:3px solid var(--gold);background:rgba(232,201,122,.07);
+    padding:12px 16px;border-radius:0 10px 10px 0;font-size:14px;margin:14px 0}
+  .note.warn{border-color:var(--bad);background:rgba(227,106,90,.08)}
+  ul{margin:8px 0 14px;padding-inline-start:22px}
+  li{margin:6px 0}
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+  .topnav{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:26px;
+    padding:10px 14px;background:rgba(14,46,36,.85);border:1px solid var(--line);border-radius:14px}
+  .topnav a{color:var(--txt);text-decoration:none;font-size:13.5px;font-weight:700;
+    padding:7px 14px;border-radius:999px;border:1px solid rgba(232,201,122,.28);white-space:nowrap}
+  .topnav a:hover{background:rgba(232,201,122,.12);border-color:var(--gold)}
+  .topnav a.home{background:rgba(232,201,122,.16);border-color:var(--gold);color:var(--gold)}
+  .topnav .spacer{flex:1}
+  .topnav .here{color:var(--muted);font-size:12px}
+  .pager{display:flex;justify-content:space-between;gap:12px;margin-top:40px;padding-top:18px;
+    border-top:1px solid var(--line)}
+  .pager a{color:var(--gold);text-decoration:none;font-size:13.5px;font-weight:700;
+    padding:9px 16px;border:1px solid rgba(232,201,122,.3);border-radius:999px}
+  .pager a:hover{background:rgba(232,201,122,.12)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topnav">
+    <a class="home" href="../index.html">الفهرس</a>
+    <a href="../2026-11-19-celestial-river/REPORT.html">→ السابق: النهر السماوي</a>
+    <a href="../index.html">كل المراحل ←</a>
+    <span class="spacer"></span>
+    <span class="here">المرحلة ٨ من ٨</span>
+  </div>
+
+  <div class="eyebrow">جَنَّتِي · سجل تطوّر المشهد · المرحلة ٨ · ٩٫٥</div>
+  <h1>حاجب الإقلاع: <span>جزيرة تنمو بدل مؤشر يدور</span></h1>
+  <div class="sub">تقرير جلسة ٢٠ نوفمبر ٢٠٢٦ — البند ٩٫٥: العدّاد الخشن «١ / ٦» ومؤشر
+    دوّار لا يقولان للزائر إنه على أبواب جنة. صار مكانهما جزيرة مصغّرة تُبنى طبقةً
+    طبقة مع الأصول نفسها: تُجمع تربتها، ثم تُرفع جبالها، ثم يجري نهرها، ثم تُغرس
+    نخيلها. لا أصل خارجي ولا صورة — كلها <code>Canvas</code>.</div>
+
+  <div class="kpis">
+    <div class="kpi"><b>٥</b><small>أطوار نمو</small></div>
+    <div class="kpi"><b>٦</b><small>وحدات تقود النمو</small></div>
+    <div class="kpi ok"><b>٠</b><small>أصول خارجية</small></div>
+    <div class="kpi"><b>٥٦٠ms</b><small>تلاشي الحاجب</small></div>
+    <div class="kpi ok"><b>١٣٢/١٣٢</b><small>اختبار ناجح</small></div>
+    <div class="kpi ok"><b>٠</b><small>مشاكل في analyze</small></div>
+  </div>
+
+  <h2>المشكلة قبل</h2>
+  <p>
+    حاجب B3 كان ثلاثة عناصر: <code>CircularProgressIndicator</code> ذهبي، نص «جارٍ فتح
+    أبواب جنتك النورانية...»، وعدّاد <code>done / total</code>. المشكلة أن العدّاد
+    يقفز <strong>ستّ قفزات فقط</strong> (وحدات الحاجب الست)، فمعظم الوقت يبدو ثابتًا على
+    «١ / ٦»، ثم يقفز. ولا شيء في الشاشة يشبه ما ينتظره المستخدم.
+  </p>
+  <div class="shot">
+    <img src="01-before-spinner.jpg" alt="الحاجب القديم: مؤشر دائري ونص وعدّاد ١ / ١">
+    <div class="cap"><span class="tag bad">قبل</span>
+      مؤشر دوّار + نص + «١ / ١» — لا نمو، ولا علاقة بصرية بالجنة.</div>
+  </div>
+
+  <h2>ما صار</h2>
+  <p>
+    الودجت الجديد <code>lib/widgets/paradise_loader.dart</code> يرسم جزيرة كاملة داخل
+    لوحة <code>CustomPaint</code> بحجم <strong>١٧٢</strong> بكسل في اللقطات أدناه
+    (ورُفع إلى <strong>٢٠٠</strong> في البناء النهائي): قشرة صخرية دافئة، مرج أخضر، أربع قمم،
+    بحيرتان، نهر، وثلاث نخيل. كل طبقة لها عتبة ظهور من نسبة الإنجاز، والجزيرة كلها
+    تكبر من <strong>٧٨٪ إلى ١٠٠٪</strong> بين أول أصل وآخره.
+  </p>
+
+  <h3>الأطوار — دالة نقية</h3>
+  <table>
+    <tr><th>النطاق</th><th>الطور</th><th>النص</th></tr>
+    <tr><td><code>0</code> بالضبط</td><td><code>soil</code></td><td>يُجمع تراب الجنة…</td></tr>
+    <tr><td><code>&gt; 0</code> – <code>0.33</code></td><td><code>mountains</code></td><td>تُرفع جبالها…</td></tr>
+    <tr><td><code>0.33</code> – <code>0.66</code></td><td><code>water</code></td><td>يجري نهرها…</td></tr>
+    <tr><td><code>0.66</code> – <code>1</code></td><td><code>palms</code></td><td>تُغرس نخيلها…</td></tr>
+    <tr><td><code>1</code> بالضبط</td><td><code>ready</code></td><td>اكتملت جنتك</td></tr>
+  </table>
+  <p>
+    العتبات على وحدات الحاجب الست لا على نسب عشوائية: ٣ من ٦ = ماء، و٤ من ٦ = نخيل.
+    والدالة <code>paradiseStageFor</code> تُختبر وحدها بلا محرّك رسم، ومعها حارس
+    «الطور لا يتقهقر» على ١٠١ قيمة.
+  </p>
+
+  <div class="shot">
+    <img src="02-after-soil.jpg" alt="اللحظة الأولى: قرص من تراب ومرج">
+    <div class="cap"><span class="tag mid">٠ / ٦</span>
+      يبدأ من تراب: قشرة صخرية ومرج وحدود ذهبية رقيقة، بلا قمم ولا ماء.</div>
+  </div>
+
+  <div class="shot">
+    <img src="03-after-water.jpg" alt="٣ / ٦: الجبال والبحيرتان والنهر ظهرت">
+    <div class="cap"><span class="tag good">٣ / ٦</span>
+      الجبال ظهرت، والبحيرتان، والنهر الأزرق — والنص صار «يجري نهرها…».</div>
+  </div>
+
+  <div class="shot">
+    <img src="04-after-palms.jpg" alt="٥ / ٦: ثلاث نخيل بسعفها واليمامات">
+    <div class="cap"><span class="tag good">٥ / ٦</span>
+      ثلاث نخيل بسعف مفتوح، والحجم بلغ ١٠٠٪ تقريبًا، واليمامات تدور حول الجزيرة.</div>
+  </div>
+
+  <h2>الحركة</h2>
+  <ul>
+    <li><strong>نبضة ٧ ثوانٍ</strong> لـ<code>AnimationController.repeat</code>: هالة النور
+      تتنفّس ±٣٪، واليمامات تدور حول الجزيرة.</li>
+    <li><strong>يمامات بعدد متزايد</strong>: ٢ في البداية ← ٨ عند الاكتمال.</li>
+    <li><strong>تنعيم القفزات</strong>: <code>TweenAnimationBuilder</code> بـ٧٠٠ms
+      و<code>easeOutCubic</code> فوق القفزات الخشنة الست.</li>
+    <li><strong>تلاشي الخروج</strong>: <code>AnimatedOpacity</code> ٥٦٠ms، ثم تُرفع
+      <code>_gateDismissed</code> فتُزال الطبقة من الشجرة نهائيًا — إبقاء حاجب شفاف
+      يترك بناءً في كل <code>setState</code> بلا فائدة.</li>
+  </ul>
+
+  <div class="shot">
+    <img src="05-after-scene.jpg" alt="المشهد بعد اختفاء الحاجب: الجزيرة الحقيقية بالنهر">
+    <div class="cap"><span class="tag good">بعد</span>
+      الحاجب اختفى والمشهد كامل: النهر السماوي يظهر من الشلال إلى الحافة.
+      السجل: <code>✅ scene ready (6/6)</code>.</div>
+  </div>
+
+  <h2>عطل منطقي كُشف بالاختبار</h2>
+  <p>
+    كتبت الاختبار على «التقدّم خارج ٠..١ يُقصّ بلا رمي»، فسقط على
+    <code>double.nan</code>. السبب مفاجأة في Dart:
+  </p>
+  <pre>double.nan.clamp(0.0, 1.0)  // → 1.0  (وليس NaN!)
+double.nan &gt; 0.0            // → false
+double.nan.isNaN            // → true</pre>
+  <p>
+    لأن <code>num.clamp</code> يستخدم <code>compareTo</code>، و<code>Double.compareTo</code>
+    يضع NaN <strong>فوق كل الأرقام</strong>، فيعيد الحد الأعلى ١٫٠. أي أن أي قيمة تالفة
+    كانت ستُظهر «اكتملت جنتك» وتكشف المشهد قبل أوانه. الفحص صريح الآن:
+  </p>
+  <pre>if (progress.isNaN) return ParadiseStage.soil;</pre>
+  <div class="note warn">
+    <strong>القاعدة:</strong> لا تعتمد على <code>clamp</code> لتنقية NaN. هو يمرّر
+    القيمة إلى الحد الأعلى صامتًا. افحص <code>isNaN</code> قبل أي حساب تقدّم.
+  </div>
+
+  <h2>ما لم يتغيّر — بقصد</h2>
+  <ul>
+    <li><strong>الحاجب ما زال داخل <code>Stack</code> المشهد</strong>، لا Route ولا
+      <code>showModalBottomSheet</code>: أي حجب لبناء <code>DomLikeListenable</code>
+      يرمي في <code>OrbitControls</code> ويترك المشهد أسود.</li>
+    <li><strong>المصدر هو <code>_assetsDone / _assetsTotal</code></strong> نفسه، لا مؤقّت
+      منفصل: النمو لا يكذب عن التقدّم أبدًا.</li>
+    <li><strong>مهلة ٢٥ ثانية</strong> وشبكة الأمان كما هي — أصل معلّق لا يحجب الجنة.</li>
+    <li><strong>النصان</strong> «جارٍ فتح أبواب جنتك النورانية...» والعدّاد الرقمي
+      باقيان: الأولوية للنمو أثناء التحميل، لا للقفزات.</li>
+    <li><strong>الخط:</strong> Cairo من الثيم، ولا Amiri هنا — هذا نص واجهة لا نص روحي.</li>
+  </ul>
+
+  <h2>ما رُفض</h2>
+  <ul>
+    <li><strong>Lottie أو فيديو</strong> — أصل خارجي يُحمَّل <em>قبل</em> الحاجب،
+      فيصير الحاجب نفسه انتظارًا لتحميل.</li>
+    <li><strong>صورة PNG للجزيرة</strong> — لا تنمو؛ ولأنها لا تتغير لا تفرق عن المؤشر.</li>
+    <li><strong>إطالة الحاجب ليعرض «اكتملت جنتك»</strong> — تأخير مقصود للدخول من أجل
+      جملة. الومضة ٥٦٠ms كافية.</li>
+    <li><strong>الاعتماد على <code>clamp</code> لتنقية NaN</strong> — أثبت الاختبار
+      أنه يعلن الاكتمال.</li>
+  </ul>
+
+  <div class="note">
+    <strong>التحقق البصري:</strong> اللقطتان ٠/٦ و٣/٦ و٥/٦ من بناء
+    <code>flutter build web --release</code> حقيقي في Chrome، بعد
+    <code>reload ignoreCache</code>. ولقطة «قبل» من إعادة بناء النسخة السابقة
+    (<code>8463aac</code>) لا من رسم يدوي — الفرق بين المؤشر والجزيرة حقيقي.
+  </div>
+
+  <div class="pager">
+    <a href="../2026-11-19-celestial-river/REPORT.html">→ السابق: النهر السماوي</a>
+    <a href="../index.html">كل المراحل ←</a>
+  </div>
+
+  <footer>
+    المجلد: <code>docs/evolution/2026-11-20-paradise-loader/</code> ·
+    الملفات: <code>lib/widgets/paradise_loader.dart</code> ·
+    <code>lib/screens/jannati_3d_screen.dart</code> (<code>_buildBootGate</code>) ·
+    <code>test/paradise_loader_test.dart</code>.
+    ١٣٢/١٣٢ اختبارًا ناجحًا، وصفر مشاكل في <code>flutter analyze</code>.
+    · الحالة والخطة: <a href="../../PROJECT.md">PROJECT.md</a>.
+  </footer>
+
+</div>
+</body>
+</html>
