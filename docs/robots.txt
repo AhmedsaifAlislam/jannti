@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ahmedsaifalislam.github.io/jannti/sitemap.xml
