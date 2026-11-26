@@ -1,16 +1,16 @@
 {
-  "version_name": "1.0.2",
-  "version_code": 3,
+  "version_name": "1.0.3",
+  "version_code": 4,
   "min_supported_version_code": 1,
-  "title": "تحديث جنّتي المبارك • الإصدار 1.0.2 🌿✨",
+  "title": "تحديث جنّتي المبارك • الإصدار 1.0.3 🌿✨",
   "release_notes": [
-    "تثبيت وتحديث التطبيق من الداخل مباشرة بدون فتح المتصفح أو رسائل التحذير",
-    "تصحيح ومزامنة رقم الإصدار داخل شاشة الإعدادات (v1.0.2)",
-    "تحسينات في الأداء والتنزيل التلقائي في الخلفية",
-    "تحديث شاشات وأذونات التثبيت الآمن"
+    "تحديث وتحسين محرك التثبيت والتحديث الداخلي الفوري",
+    "تصحيح ومزامنة رقم الإصدار داخل شاشة الإعدادات (v1.0.3)",
+    "تحسين استقرار وأداء مشهد الفردوس ثلاثي الأبعاد",
+    "تطوير المسبحة التفاعلية وغراس النخيل المتصاعد"
   ],
-  "apk_url": "https://github.com/AhmedsaifAlislam/jannti/releases/download/v1.0.2/app-arm64-v8a-release.apk",
-  "web_url": "https://github.com/AhmedsaifAlislam/jannti/releases/tag/v1.0.2",
+  "apk_url": "https://github.com/AhmedsaifAlislam/jannti/releases/download/v1.0.3/app-arm64-v8a-release.apk",
+  "web_url": "https://github.com/AhmedsaifAlislam/jannti/releases/tag/v1.0.3",
   "force_update": false,
   "active_users_base": 14200,
   "active_users_enabled": true,

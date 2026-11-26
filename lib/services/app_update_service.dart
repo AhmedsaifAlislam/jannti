@@ -15,8 +15,8 @@ class AppUpdateService {
   factory AppUpdateService() => _instance;
   AppUpdateService._internal();
 
-  static const int currentVersionCode = 3;
-  static const String currentVersionName = '1.0.2';
+  static const int currentVersionCode = 4;
+  static const String currentVersionName = '1.0.3';
 
   // 🌐 Default remote configuration endpoint
   // مربوط بمستودعك على GitHub

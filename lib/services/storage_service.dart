@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,8 +32,64 @@ class StorageService {
     return _prefs!;
   }
 
+  // --- ⚡ In-Memory Buffer & Fast Batching System ---
+  final Map<String, int> _pendingDhikrCounts = {};
+  final List<Reward> _pendingRewards = [];
+  List<Reward>? _cachedRewardsList;
+  DateTime _lastFlushTime = DateTime.now();
+  bool _isFlushing = false;
+
+  /// Flushes all pending in-memory dhikr counts and rewards to persistent storage.
+  Future<void> flushBuffer() async {
+    if (_isFlushing) return;
+    _isFlushing = true;
+    try {
+      // 1. Flush pending dhikr counts
+      if (_pendingDhikrCounts.isNotEmpty) {
+        final entries = Map<String, int>.from(_pendingDhikrCounts);
+        _pendingDhikrCounts.clear();
+        for (final entry in entries.entries) {
+          await _p.setInt('dhikr_count_${entry.key}', entry.value);
+        }
+      }
+
+      // 2. Flush pending rewards in a single serialized write
+      if (_pendingRewards.isNotEmpty) {
+        final currentRewards = getAllRewards();
+        currentRewards.addAll(_pendingRewards);
+        _pendingRewards.clear();
+        _cachedRewardsList = currentRewards;
+        final jsonList = currentRewards.map((r) => r.toJson()).toList();
+        await _p.setString('rewards_list', jsonEncode(jsonList));
+        debugPrint('💾 Buffer flushed: ${currentRewards.length} total rewards');
+      }
+      _lastFlushTime = DateTime.now();
+    } catch (e) {
+      debugPrint('⚠️ flushBuffer() failed: $e');
+    } finally {
+      _isFlushing = false;
+    }
+  }
+
+  /// High-performance buffered increment for dhikr counter.
+  /// Holds writes in memory and flushes periodically or on threshold to prevent I/O blocking.
+  void recordDhikrBuffered(String dhikrId, int newTotalCount, Reward reward) {
+    _pendingDhikrCounts[dhikrId] = newTotalCount;
+    _pendingRewards.add(reward);
+
+    // Keep memory cache up to date
+    _cachedRewardsList?.add(reward);
+
+    final now = DateTime.now();
+    if (_pendingRewards.length >= 15 ||
+        now.difference(_lastFlushTime).inSeconds >= 4) {
+      unawaited(flushBuffer());
+    }
+  }
+
   Future<void> saveDhikrCount(String dhikrId, int count) async {
     final key = 'dhikr_count_$dhikrId';
+    _pendingDhikrCounts.remove(dhikrId);
     try {
       await _p.setInt(key, count);
       debugPrint('💾 Saved: $key = $count');
@@ -43,6 +100,9 @@ class StorageService {
   }
 
   int getDhikrCount(String dhikrId) {
+    if (_pendingDhikrCounts.containsKey(dhikrId)) {
+      return _pendingDhikrCounts[dhikrId]!;
+    }
     final key = 'dhikr_count_$dhikrId';
     try {
       final value = _p.getInt(key) ?? 0;
@@ -65,6 +125,8 @@ class StorageService {
           counts[dhikrId] = _p.getInt(key) ?? 0;
         }
       }
+      // Overlay any pending in-memory counts
+      counts.addAll(_pendingDhikrCounts);
       return counts;
     } catch (e) {
       debugPrint('⚠️ getAllDhikrCounts() failed: $e');
@@ -76,6 +138,7 @@ class StorageService {
     try {
       final rewards = getAllRewards();
       rewards.add(reward);
+      _cachedRewardsList = rewards;
       final jsonList = rewards.map((r) => r.toJson()).toList();
       await _p.setString('rewards_list', jsonEncode(jsonList));
       debugPrint('💾 Saved: rewards_list (${rewards.length} items)');
@@ -91,6 +154,8 @@ class StorageService {
   /// writing once avoids N sequential `setString` calls for large test counts.
   Future<void> saveRewards(List<Reward> rewards) async {
     try {
+      _cachedRewardsList = List.from(rewards);
+      _pendingRewards.clear();
       final jsonList = rewards.map((r) => r.toJson()).toList();
       await _p.setString('rewards_list', jsonEncode(jsonList));
       debugPrint('💾 Saved: rewards_list (${rewards.length} items)');
@@ -110,17 +175,30 @@ class StorageService {
   }
 
   List<Reward> getAllRewards() {
+    if (_cachedRewardsList != null) {
+      final combined = List<Reward>.from(_cachedRewardsList!);
+      if (_pendingRewards.isNotEmpty) {
+        combined.addAll(_pendingRewards);
+      }
+      return combined;
+    }
+
     try {
       final jsonString = _p.getString('rewards_list');
       if (jsonString == null || jsonString.isEmpty) {
         debugPrint('📂 Loaded: rewards_list = empty');
-        return [];
+        _cachedRewardsList = [];
+        return List<Reward>.from(_pendingRewards);
       }
       final jsonList = jsonDecode(jsonString) as List<dynamic>;
       final rewards = jsonList
           .map((e) => Reward.fromJson(e as Map<String, dynamic>))
           .toList();
+      _cachedRewardsList = List.from(rewards);
       debugPrint('📂 Loaded: rewards_list (${rewards.length} items)');
+      if (_pendingRewards.isNotEmpty) {
+        rewards.addAll(_pendingRewards);
+      }
       return rewards;
     } catch (e) {
       // قراءة آمنة: بيانات مزرعة تالفة يجب ألا تُسقط التطبيق.
