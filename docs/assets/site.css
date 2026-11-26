@@ -44,7 +44,29 @@
   --container: 1160px;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none;
+}
+
+/* الخط الروحاني الأصيل (أميري) لكل كلمات الجنة ومشتقاتها وشعار جنتي */
+.brand span,
+.foot-brand b,
+.hero .gold,
+.jannah-word,
+.ayah,
+.tasbeeh-dhikr-name,
+.tasbeeh-virtue {
+  font-family: "Amiri", serif !important;
+}
+
+/* تمييز وتفخيم أي كلمة جنة/جنتي/جنتك */
+.jannah-gold {
+  font-family: "Amiri", serif !important;
+  color: var(--gold);
+  font-weight: 700;
+}
 
 html {
   scroll-behavior: smooth;
@@ -1152,6 +1174,9 @@ table.data td:first-child { color: var(--txt); font-weight: 500; }
   justify-content: center;
   cursor: pointer;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none;
   animation: tasbeeh-pulse-glow 2.8s ease-in-out infinite;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
   position: relative;

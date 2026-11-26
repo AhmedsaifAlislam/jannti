@@ -192,20 +192,21 @@
 
     var onTasbeehClick = function() {
       count++;
+      trees++; // الغراس الحي يزيد نخلة في الجنة مع كل تسبيحة
       spawnFloatingPalm(tasbeehBtn);
 
+      if (treesDisplay) treesDisplay.textContent = toArabic(trees);
+
       if (count % 10 === 0) {
-        trees++;
-        if (treesDisplay) treesDisplay.textContent = toArabic(trees);
-        if (feedback) feedback.textContent = "مبارك! اكتملت عشر تسبيحات وغُرست نخلة يانعة 🌴✨";
+        if (feedback) feedback.textContent = "مبارك! أتممت عشر تسبيحات وغرست عشر نخلات يانعات في الجنة 🌴✨";
       } else {
-        if (feedback) feedback.textContent = "تقبل الله ذكرك وطاعتك.. استمر 🌱";
+        if (feedback) feedback.textContent = "«غُرست لك نخلة في الجنة».. تقبل الله ذكرك وطاعتك 🌱";
       }
 
       var currentInCycle = count % 33;
       if (currentInCycle === 0 && count > 0) {
         currentInCycle = 33;
-        if (feedback) feedback.textContent = "أتممت دورة مباركة (٣٣) تسبيحة! هنيئاً لك 🌿✨";
+        if (feedback) feedback.textContent = "أتممت دورة مباركة (٣٣) تسبيحة وغرست ٣٣ نخلة في الفردوس! 🌿✨";
       }
 
       if (display) display.textContent = toArabic(count);
