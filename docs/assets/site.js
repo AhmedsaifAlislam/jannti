@@ -168,8 +168,32 @@
       return String(n).replace(/[0-9]/g, function(d) { return ar[+d]; });
     };
 
+    var spawnFloatingPalm = function(btn) {
+      var rect = btn.getBoundingClientRect();
+      var seed = document.createElement("div");
+      seed.className = "palm-floating-seed";
+
+      var randomOffset = (Math.random() * 60) - 30;
+      seed.style.left = (rect.left + rect.width / 2 + randomOffset) + "px";
+      seed.style.top = (rect.top + rect.height / 2) + "px";
+
+      seed.innerHTML =
+        '<div class="palm-icon-badge">🌴</div>' +
+        '<div class="palm-text-badge">+١ نخلة في الجنة</div>';
+
+      document.body.appendChild(seed);
+
+      setTimeout(function() {
+        if (seed && seed.parentNode) {
+          seed.parentNode.removeChild(seed);
+        }
+      }, 1500);
+    };
+
     var onTasbeehClick = function() {
       count++;
+      spawnFloatingPalm(tasbeehBtn);
+
       if (count % 10 === 0) {
         trees++;
         if (treesDisplay) treesDisplay.textContent = toArabic(trees);
@@ -188,7 +212,7 @@
       if (cycleDisplay) cycleDisplay.textContent = toArabic(currentInCycle) + " / ٣٣";
 
       if (navigator.vibrate) {
-        navigator.vibrate(20);
+        navigator.vibrate(25);
       }
     };
 
